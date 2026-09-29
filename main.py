@@ -48,11 +48,15 @@ def main() -> int:
         return 1
 
     log.info("CLINICAN iniciado. Base de datos: %s", rutas.ruta_bd())
-    from clinican.servicios import turnos
+    from clinican.servicios import respaldos, turnos
 
     liberados = turnos.expirar_vencidos(conn)  # RN-07: también al iniciar
     if liberados:
         log.info("Turnos liberados por vencimiento al iniciar: %s", liberados)
+    try:
+        respaldos.diario(conn)  # sección 10: un respaldo automático al día
+    except Exception:
+        log.exception("Falló el respaldo diario al iniciar")
     try:
         AplicacionClinican(conn).mainloop()
     finally:
