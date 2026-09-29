@@ -11,6 +11,10 @@ LARGOS = {"1CM": "1 cm", "MEDIO_CM": "½ cm"}
 COLA_ESTILOS = {"COMPLETA": "Completa", "AL_RAS": "Al ras del cuerpo"}
 FORMAS_CARA = {"REDONDA": "Redonda", "PROPORCIONAL": "Proporcional", "PAREJA_AL_CUERPO": "Pareja al cuerpo"}
 MAX_BANOS_EXTRA = 5
+LARGO_MAX_COLOR = 40
+# Colores sugeridos para corbatín y moños; también se puede escribir otro.
+COLORES = ["Rojo", "Rosado", "Fucsia", "Morado", "Azul", "Azul claro", "Verde", "Amarillo", "Naranja",
+           "Blanco", "Negro", "Dorado", "Plateado", "Estampado"]
 
 # ---------------------------------------------------------------- estados
 PLANEADO = "PLANEADO"
@@ -51,6 +55,16 @@ def _si_no(valor, etiqueta: str) -> int | None:
     raise DatoInvalido(f"«{etiqueta}» debe ser sí o no.")
 
 
+def _color(lleva: int | None, color: str | None, que: str) -> str | None:
+    """El color solo se guarda si se le pone el accesorio."""
+    color = " ".join(str(color or "").split())
+    if lleva != 1 or not color:
+        return None
+    if len(color) > LARGO_MAX_COLOR:
+        raise DatoInvalido(f"El color del {que} es demasiado largo (máximo {LARGO_MAX_COLOR} letras).")
+    return color[0].upper() + color[1:]
+
+
 @dataclass
 class DetallesFicha:
     tipo_servicio: str
@@ -65,6 +79,10 @@ class DetallesFicha:
     forma_cara: str | None = None
     condiciones: dict[str, bool] = field(default_factory=dict)
     observaciones: str | None = None
+    corbatin: int | None = None
+    corbatin_color: str | None = None
+    monos: int | None = None
+    monos_color: str | None = None
 
     def validar(self) -> "DetallesFicha":
         if self.tipo_servicio not in TIPOS_SERVICIO:
@@ -77,6 +95,10 @@ class DetallesFicha:
         self.copete = _si_no(self.copete, "Copete")
         self.barbas = _si_no(self.barbas, "Barbas")
         self.cola_leon = _si_no(self.cola_leon, "Cola de león")
+        self.corbatin = _si_no(self.corbatin, "Corbatín")
+        self.monos = _si_no(self.monos, "Moños en las orejas")
+        self.corbatin_color = _color(self.corbatin, self.corbatin_color, "corbatín")
+        self.monos_color = _color(self.monos, self.monos_color, "moños")
         bajito = es_corte_bajito(self.tipo_servicio, self.largo_maquina)
         if self.cola_estilo is not None:
             if not bajito:
@@ -115,6 +137,10 @@ class DetallesFicha:
             "cola_leon": self.cola_leon,
             "cola_estilo": self.cola_estilo,
             "forma_cara": self.forma_cara,
+            "corbatin": self.corbatin,
+            "corbatin_color": self.corbatin_color,
+            "monos": self.monos,
+            "monos_color": self.monos_color,
             **{c: int(v) for c, v in self.condiciones.items()},
             "observaciones": self.observaciones,
         }

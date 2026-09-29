@@ -26,6 +26,8 @@ NOMBRES_ACCION = {
     "EDITAR_PROPIETARIO": "Editó propietario",
     "MARCA_NUEVO_ABONO": "Cambió «requiere nuevo abono»",
     "CREAR_MASCOTA": "Creó mascota",
+    "CREAR_CLIENTE_SIN_REGISTRAR": "Agendó cliente sin registrar",
+    "COMPLETAR_REGISTRO": "Completó registro de cliente",
     "EDITAR_MASCOTA": "Editó mascota",
     "ACTIVAR_MASCOTA": "Reactivó mascota",
     "DESACTIVAR_MASCOTA": "Dio de baja mascota",

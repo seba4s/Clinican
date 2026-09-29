@@ -69,6 +69,11 @@ RAZAS: list[tuple[str, str | None, int]] = [
     ("Perro mestizo (sin raza)", None, 0),
 ]
 
+# Razas de gato (migración 4): (nombre, tamaño o None, pelaje complicado, especie)
+RAZAS_GATO: list[tuple[str, str | None, int, str]] = [
+    ("Gato (sin raza definida)", None, 0, "GATO"),
+]
+
 FRANJAS_MANANA = ["08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30"]
 FRANJAS_TARDE = ["14:30", "15:00", "15:30", "16:00", "16:30"]
 DIAS_ATENCION = range(1, 7)  # lunes a sábado; domingo cerrado

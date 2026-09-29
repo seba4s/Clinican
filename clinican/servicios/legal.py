@@ -55,6 +55,8 @@ def aceptar(conn, sesion: Sesion, propietario_id: int, tipos: list[str], origen:
         dueno = repo_propietarios.propietario(conn, propietario_id)
         if dueno is None:
             raise NoEncontrado("No se encontró el propietario.")
+        if dueno["provisional"]:
+            raise DatoInvalido("Primero complete los datos del cliente (cédula y dirección) en la pestaña «Datos».")
         for t in tipos:
             fila, texto = texto_vigente(conn, t)
             repo_legal.insertar_consentimiento(conn, propietario_id, None, t, fila["id"], texto, None,

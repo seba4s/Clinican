@@ -239,3 +239,22 @@ def test_historial_muestra_ficha(conn, empleada, en_sesiones):
     mid = fichas.obtener(conn, empleada, en_sesiones)["mascota_id"]
     h = sp.historial(conn, empleada, mid)
     assert h[0]["id"] == en_sesiones and h[0]["desenredado"] == 60000
+
+
+# ------------------------------------------------------ corbatín y moños
+
+def test_corbatin_y_monos_con_color(conn, empleada):
+    mid = _mascota(conn, empleada)
+    d = DetallesFicha("MAQUINA", corbatin=1, corbatin_color="  rojo ", monos=1, monos_color="Rosado")
+    sid = fichas.crear(conn, empleada, mid, HOY, d)
+    s = fichas.obtener(conn, empleada, sid)
+    assert (s["corbatin"], s["corbatin_color"], s["monos"], s["monos_color"]) == (1, "Rojo", 1, "Rosado")
+    # Si se quita el accesorio, el color no se guarda
+    fichas.editar(conn, empleada, sid, HOY, DetallesFicha("MAQUINA", corbatin=0, corbatin_color="Rojo", monos=1))
+    s = fichas.obtener(conn, empleada, sid)
+    assert (s["corbatin"], s["corbatin_color"], s["monos"], s["monos_color"]) == (0, None, 1, None)
+
+
+def test_color_demasiado_largo():
+    with pytest.raises(DatoInvalido, match="color"):
+        DetallesFicha("MAQUINA", monos=1, monos_color="x" * 41).validar()

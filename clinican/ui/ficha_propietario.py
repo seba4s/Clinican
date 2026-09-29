@@ -7,14 +7,14 @@ from typing import Callable
 
 import customtkinter as ctk
 
-from clinican.dominio.catalogos import CONDICIONES, ESTADOS_SERVICIO, TAMANOS, TIPOS_LEGALES, TIPOS_SERVICIO, nombre_tamano
+from clinican.dominio.catalogos import CONDICIONES, ESTADOS_SERVICIO, TIPOS_LEGALES, TIPOS_SERVICIO
 from clinican.dominio.formato import pesos
 from clinican.dominio.propietarios import formato_celular
-from clinican.servicios import legal, propietarios, razas
+from clinican.servicios import legal, propietarios
 from clinican.ui import dialogos, tema
+from clinican.ui.selector_raza import SelectorRaza
 
 P_DATOS, P_MASCOTAS, P_CONSENT = "Datos", "Mascotas", "Consentimientos"
-ELIJA = "— Elija —"
 
 
 class DetallePropietario(ctk.CTkFrame):
@@ -33,7 +33,11 @@ class DetallePropietario(ctk.CTkFrame):
             self.fila = fila
 
         titulo = self.fila["nombre"] if self.fila else "Nuevo propietario"
-        tema.subtitulo(self, titulo).pack(anchor="w", pady=(0, 6))
+        self.provisional = bool(self.fila and self.fila["provisional"])
+        tema.subtitulo(self, titulo + (" (sin registrar)" if self.provisional else "")).pack(anchor="w", pady=(0, 6))
+        if self.provisional:
+            tema.insignia(self, "Cliente sin registrar: complete la cédula y la dirección en «Datos» y luego "
+                                "los consentimientos, antes de atender a su mascota.", tema.FUCSIA).pack(anchor="w", pady=(0, 6))
 
         self.pestanas = ctk.CTkTabview(
             self, fg_color=tema.BLANCO, border_width=1, border_color=tema.BORDE, corner_radius=14,
@@ -71,9 +75,13 @@ class DetallePropietario(ctk.CTkFrame):
             tema.etiqueta(z, texto, negrita=True).pack(anchor="w", padx=16, pady=(10, 4))
             e = tema.entrada(z, ancho=460)
             e.pack(anchor="w", padx=16)
-            if f is not None and f[clave]:
+            if f is not None and f[clave] and not (clave == "cedula" and self.provisional):
                 e.insert(0, formato_celular(f[clave]) if clave.startswith("celular") else f[clave])
             campos[clave] = e
+        self.campos_datos = campos
+        if self.provisional:
+            tema.etiqueta(z, "Si la cédula ya está registrada, el cliente y sus mascotas se unen a ese propietario.",
+                          tema.TAM_PEQUENO, color=tema.GRIS_TEXTO, wraplength=520).pack(anchor="w", padx=16, pady=(6, 0))
 
         def guardar():
             valores = {k: e.get() for k, e in campos.items()}
@@ -89,10 +97,16 @@ class DetallePropietario(ctk.CTkFrame):
                 r = dialogos.ejecutar(self, propietarios.editar, self.ctx.conn, self.ctx.sesion, f["id"], **valores)
                 if r is dialogos.FALLO:
                     return
+                if self.provisional:
+                    dialogos.aviso(self, "Cliente registrado",
+                                   "Ahora registre la aceptación de los términos y la autorización de datos.")
+                    self.al_guardar(r, P_CONSENT)
+                    return
                 dialogos.aviso(self, "Guardado", "Los datos del propietario quedaron actualizados.")
                 self.al_guardar(f["id"], P_DATOS)
 
-        tema.boton(z, "Crear propietario" if f is None else "Guardar cambios", guardar, ancho=460).pack(anchor="w", padx=16, pady=(20, 10))
+        texto = "Crear propietario" if f is None else ("Registrar cliente" if self.provisional else "Guardar cambios")
+        tema.boton(z, texto, guardar, ancho=460).pack(anchor="w", padx=16, pady=(20, 10))
 
         if f is None:
             return
@@ -136,11 +150,6 @@ class DetallePropietario(ctk.CTkFrame):
             hijo.destroy()
         tema.subtitulo(z, m["nombre"] if m else "Nueva mascota").pack(anchor="w", pady=(6, 0))
 
-        lista_razas = list(razas.listar(self.ctx.conn, solo_activas=True))
-        if m is not None and m["raza_id"] not in {r["id"] for r in lista_razas}:
-            lista_razas += [r for r in razas.listar(self.ctx.conn, solo_activas=False) if r["id"] == m["raza_id"]]
-        por_nombre = {r["nombre"]: r for r in lista_razas}
-
         def etiqueta(texto):
             lbl = tema.etiqueta(z, texto, negrita=True)
             lbl.pack(anchor="w", pady=(10, 4))
@@ -149,15 +158,8 @@ class DetallePropietario(ctk.CTkFrame):
         etiqueta("Nombre *")
         nombre = tema.entrada(z, ancho=420)
         nombre.pack(anchor="w")
-        etiqueta("Raza *")
-        raza = tema.selector(z, [ELIJA, *por_nombre], ancho=420, command=lambda _v: actualizar_opciones())
-        raza.pack(anchor="w")
-        lbl_tam = etiqueta("Tamaño")
-        tamano = tema.selector(z, [ELIJA], ancho=420)
-        tamano.pack(anchor="w")
-        lbl_pel = etiqueta("Pelaje complicado (husky o razas similares)")
-        pelaje = tema.selector(z, [ELIJA], ancho=420)
-        pelaje.pack(anchor="w")
+        raza = SelectorRaza(z, self.ctx.conn, raza_actual_id=m["raza_id"] if m else None)
+        self.selector_raza = raza
 
         edad = ctk.CTkFrame(z, fg_color="transparent")
         edad.pack(anchor="w", pady=(10, 0))
@@ -177,50 +179,17 @@ class DetallePropietario(ctk.CTkFrame):
         obs = tema.caja_texto(z, alto=90, width=520)
         obs.pack(anchor="w")
 
-        # Opciones de tamaño y pelaje según la raza (el mestizo exige elegir)
-        tam_opc: dict[str, str | None] = {}
-        pel_opc: dict[str, int | None] = {}
-
-        def actualizar_opciones(tam_inicial=None, pel_inicial=None):
-            r = por_nombre.get(raza.get())
-            tam_opc.clear()
-            pel_opc.clear()
-            if r is not None and r["tamano"]:
-                tam_opc[f"Según la raza ({nombre_tamano(r['tamano'])})"] = None
-                lbl_tam.configure(text="Tamaño")
-            else:
-                tam_opc[ELIJA] = None
-                lbl_tam.configure(text="Tamaño * (obligatorio para esta raza)")
-            tam_opc.update({v: k for k, v in TAMANOS.items()})
-            if r is not None and r["tamano"]:
-                pel_opc[f"Según la raza ({'Sí' if r['pelaje_complicado'] else 'No'})"] = None
-                lbl_pel.configure(text="Pelaje complicado (husky o razas similares)")
-            else:
-                pel_opc[ELIJA] = None
-                lbl_pel.configure(text="Pelaje complicado * (obligatorio para esta raza)")
-            pel_opc.update({"Sí": 1, "No": 0})
-            tamano.configure(values=list(tam_opc))
-            pelaje.configure(values=list(pel_opc))
-            tamano.set(next((k for k, v in tam_opc.items() if v == tam_inicial), list(tam_opc)[0]))
-            pelaje.set(next((k for k, v in pel_opc.items() if v == pel_inicial), list(pel_opc)[0]))
-
         if m is not None:
             nombre.insert(0, m["nombre"])
-            raza.set(m["raza_nombre"])
+            raza.cargar(m)
             anios.insert(0, "" if m["edad_anios"] is None else str(m["edad_anios"]))
             meses.insert(0, "" if m["edad_meses"] is None else str(m["edad_meses"]))
             ultima.insert(0, m["fecha_ultima_visita"] or "")
             obs.insert("1.0", m["observaciones"] or "")
-            actualizar_opciones(m["tamano_manual"], m["pelaje_complicado_manual"])
-        else:
-            raza.set(ELIJA)
-            actualizar_opciones()
 
         def guardar():
-            r = por_nombre.get(raza.get())
             datos = dict(
-                nombre=nombre.get(), raza_id=r["id"] if r else None,
-                tamano_manual=tam_opc.get(tamano.get()), pelaje_manual=pel_opc.get(pelaje.get()),
+                nombre=nombre.get(), **raza.valores(),
                 edad_anios=anios.get(), edad_meses=meses.get(),
                 fecha_ultima_visita=ultima.get().strip() or None, observaciones=obs.get("1.0", "end"),
             )

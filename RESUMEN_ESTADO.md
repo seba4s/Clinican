@@ -6,8 +6,19 @@ Programa de escritorio (Python + CustomTkinter + SQLite, 100 % sin internet) par
 CLINICAN. Se construye por fases según `ESPECIFICACION_CLINICAN.md` (sección 12).
 
 **Estado general:** fases 1 a 5 terminadas en el código. De la 5 solo falta la prueba en el PC real (instalación
-limpia en Windows 11 sin internet). La 6 (WhatsApp) necesita autorización. Las **257 pruebas automáticas pasan**
+limpia en Windows 11 sin internet). La 6 (WhatsApp) necesita autorización. Las **274 pruebas automáticas pasan**
 (`.venv\Scripts\python -m pytest`).
+
+### Ajustes pedidos al revisar el programa
+- **Agendar sin registrar al cliente.** En Nuevo turno, «+ Cliente nuevo» pide solo nombre, celular y mascota.
+  El cliente queda «sin registrar»; al llegar, el turno ofrece **Registrar datos del propietario** (cédula,
+  dirección y consentimientos). Si la cédula ya existía, se une a ese propietario con sus mascotas y turnos.
+  *Cambio a la especificación (RN-05 / RN-15):* para estos clientes los consentimientos se piden al iniciar la
+  atención y no al agendar. Al iniciar la atención se comprueba siempre que estén vigentes.
+- **Gatos y raza escrita a mano.** Cada mascota es perro o gato; la raza se elige o se escribe. Una raza nueva
+  se agrega al catálogo sin tamaño (la mascota lleva el suyo). Nueva raza «Gato (sin raza definida)».
+- **Ficha: corbatín y moños en las orejas**, cada uno con su color.
+- Base de datos: migración 4 (se aplica sola al abrir el programa).
 
 > **Importante — capa de datos recuperada.** La regla `datos/` del `.gitignore` ignoraba también el paquete
 > `clinican/datos` (conexión, esquema, migraciones, semillas, repositorios y lector de Excel), así que nunca se

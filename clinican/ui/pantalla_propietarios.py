@@ -6,7 +6,7 @@ from tkinter import filedialog
 
 import customtkinter as ctk
 
-from clinican.dominio.propietarios import formato_celular
+from clinican.dominio.propietarios import cedula_visible, formato_celular
 from clinican.servicios import importacion, propietarios
 from clinican.ui import dialogos, tema
 from clinican.ui.ficha_propietario import DetallePropietario
@@ -65,7 +65,7 @@ class PantallaPropietarios(ctk.CTkFrame):
         for i, f in enumerate(filas):
             self.tabla.insert(
                 "", "end", iid=str(f["id"]), tags=["par"] if i % 2 else [],
-                values=(f["nombre"], f["cedula"], formato_celular(f["celular1"]), f["mascotas"] or "—"),
+                values=(f["nombre"], cedula_visible(f), formato_celular(f["celular1"]), f["mascotas"] or "—"),
             )
         if seleccionar is not None and self.tabla.exists(str(seleccionar)):
             self.tabla.selection_set(str(seleccionar))

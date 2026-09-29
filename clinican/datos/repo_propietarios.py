@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import re
+import secrets
 import sqlite3
 
 from clinican.dominio.formato import sin_tildes
+from clinican.dominio.propietarios import PREFIJO_CEDULA_PROVISIONAL
 
 _AHORA = "datetime('now','localtime')"
 
 _MASCOTA = """
-    SELECT m.*, r.nombre AS raza_nombre, r.tamano AS raza_tamano,
-           r.pelaje_complicado AS raza_pelaje_complicado, p.nombre AS propietario_nombre
+    SELECT m.*, r.nombre AS raza_nombre, r.tamano AS raza_tamano, r.especie,
+           r.pelaje_complicado AS raza_pelaje_complicado, p.nombre AS propietario_nombre,
+           p.provisional AS propietario_provisional
     FROM mascotas m
     JOIN razas r ON r.id = m.raza_id
     JOIN propietarios p ON p.id = m.propietario_id
@@ -58,6 +61,39 @@ def insertar_propietario(conn: sqlite3.Connection, datos: dict) -> int:
         (datos["nombre"], datos["cedula"], datos["celular1"], datos.get("celular2"), datos["direccion"]),
     )
     return cur.lastrowid
+
+
+def insertar_provisional(conn: sqlite3.Connection, nombre: str, celular1: str) -> int:
+    """Cliente sin registrar: cédula provisional única y dirección vacía hasta completar el registro."""
+    temporal = f"{PREFIJO_CEDULA_PROVISIONAL}{secrets.token_hex(8)}"
+    cur = conn.execute(
+        "INSERT INTO propietarios (nombre, cedula, celular1, direccion, provisional) VALUES (?, ?, ?, '', 1)",
+        (nombre, temporal, celular1),
+    )
+    conn.execute("UPDATE propietarios SET cedula = ? WHERE id = ?",
+                 (f"{PREFIJO_CEDULA_PROVISIONAL}{cur.lastrowid}", cur.lastrowid))
+    return cur.lastrowid
+
+
+def completar_registro(conn: sqlite3.Connection, propietario_id: int, datos: dict) -> None:
+    actualizar_propietario(conn, propietario_id, datos)
+    conn.execute("UPDATE propietarios SET provisional = 0 WHERE id = ?", (propietario_id,))
+
+
+def borrar_propietario(conn: sqlite3.Connection, propietario_id: int) -> None:
+    conn.execute("DELETE FROM propietarios WHERE id = ?", (propietario_id,))
+
+
+def cambiar_dueno_mascota(conn: sqlite3.Connection, mascota_id: int, propietario_id: int) -> None:
+    conn.execute(f"UPDATE mascotas SET propietario_id = ?, actualizado_en = {_AHORA} WHERE id = ?",
+                 (propietario_id, mascota_id))
+
+
+def unir_mascotas(conn: sqlite3.Connection, origen_id: int, destino_id: int) -> None:
+    """Pasa turnos, fichas y declaraciones de una mascota a otra y borra la de origen."""
+    for tabla in ("turnos", "servicios", "consentimientos"):
+        conn.execute(f"UPDATE {tabla} SET mascota_id = ? WHERE mascota_id = ?", (destino_id, origen_id))
+    conn.execute("DELETE FROM mascotas WHERE id = ?", (origen_id,))
 
 
 def actualizar_propietario(conn: sqlite3.Connection, propietario_id: int, datos: dict) -> None:

@@ -20,8 +20,8 @@ En la agenda, cada turno tiene un color **y** un texto con su estado:
 
 1. En el menú, pulse **Nuevo turno**.
 2. **Propietario:** escriba la cédula, el nombre, el celular o el nombre de la mascota y pulse **Buscar**. Elija al propietario.
-   - Si no existe, regístrelo antes en **Propietarios › + Nuevo propietario** y agréguele sus mascotas.
-   - Si el programa dice que faltan los **términos** o la **autorización de datos**, pulse **Registrar consentimientos**, lea el texto al propietario, marque las casillas y pulse **Guardar aceptación**. Sin esto no se puede agendar.
+   - **Cliente nuevo:** pulse **+ Cliente nuevo: agendar sin registrarlo**. Escriba solo el nombre del cliente, su celular y el nombre de la mascota; elija **Perro** o **Gato**, la raza (de la lista o escríbala si no está) y el tamaño. Pulse **Continuar con este cliente**. La cédula, la dirección y los consentimientos se piden cuando llegue.
+   - Si el cliente ya está registrado y el programa dice que faltan los **términos** o la **autorización de datos**, pulse **Registrar consentimientos**, lea el texto al propietario, marque las casillas y pulse **Guardar aceptación**.
 3. **Mascotas y tipo de servicio:** marque la mascota (o varias, si vienen juntas) y elija *corte a máquina*, *corte con tijera* o *baño y deslanado*.
 4. **Fecha y hora:** escriba la fecha y pulse **Ver horas disponibles**. Solo aparecen las horas con cupo para esa mascota. Con varias mascotas, pulse **Proponer horario**: el programa las pone seguidas desde las 9:00 (mañana) o las 2:30 (tarde).
 5. **¿Quién agenda?:** aparece su nombre; cámbielo si agendó otra persona.
@@ -39,10 +39,12 @@ En la agenda, cada turno tiene un color **y** un texto con su estado:
 
 ## 3. Atender una mascota
 
-1. Cuando llegue, toque su turno en la **Agenda** y pulse **Llegó: iniciar atención**.
-2. Pulse **Abrir ficha de servicio**: marque el corte, los extras (baño medicado o antipulgas), las condiciones de la mascota y escriba el **precio final**. El programa sugiere el precio mínimo y avisa si el precio es menor. Pulse **Guardar ficha** y luego **← Volver**.
-3. Al terminar, pulse **Mascota lista: avisar al dueño**. En pantalla aparecen los celulares del dueño: llame y pulse **Registrar que ya se llamó**.
-4. Cuando la recojan, pulse **Entregar y cobrar saldo**. El programa muestra el total, lo abonado y el **saldo a cobrar**.
+1. Cuando llegue, toque su turno en la **Agenda**.
+   - Si dice **CLIENTE SIN REGISTRAR**, pulse **Registrar datos del propietario**, escriba la cédula y la dirección y pulse **Registrar cliente**. Luego lea los términos y la autorización de datos, marque las casillas y pulse **Guardar aceptación**. Vuelva a la **Agenda**. (Si la cédula ya estaba registrada, el programa une al cliente con ese propietario y sus mascotas.)
+2. Pulse **Llegó: iniciar atención**.
+3. Pulse **Abrir ficha de servicio**: marque el corte, el **corbatín** y los **moños en las orejas** (con su color), los extras (baño medicado o antipulgas), las condiciones de la mascota y escriba el **precio final**. El programa sugiere el precio mínimo y avisa si el precio es menor. Pulse **Guardar ficha** y luego **← Volver**.
+4. Al terminar, pulse **Mascota lista: avisar al dueño**. En pantalla aparecen los celulares del dueño: llame y pulse **Registrar que ya se llamó**.
+5. Cuando la recojan, pulse **Entregar y cobrar saldo**. El programa muestra el total, lo abonado y el **saldo a cobrar**.
 
 Otros casos, desde la tarjeta del turno:
 - **No asistió:** escriba cuándo avisó el dueño (si avisó). Con aviso de al menos 12 horas, el abono queda a su favor para otro turno; si no, se pierde y deberá abonar de nuevo.

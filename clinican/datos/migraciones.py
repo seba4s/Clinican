@@ -262,7 +262,28 @@ CREATE INDEX ix_abonos_turno ON abonos(turno_id)
 """)
 
 
-MIGRACIONES = {1: _v1, 2: _v2, 3: _v3}
+# ---------------------------------------------------------------- versión 4
+# - Propietarios «sin registrar»: se agenda solo con nombre y celular; la cédula
+#   y la dirección se completan al momento del servicio.
+# - Especie de la raza (perro o gato) y la raza «Gato (sin raza definida)».
+# - Ficha: corbatín y moños en las orejas, con su color.
+
+def _v4(conn: sqlite3.Connection) -> None:
+    from clinican.datos import semillas
+
+    _ejecutar(conn, """
+ALTER TABLE propietarios ADD COLUMN provisional INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE razas ADD COLUMN especie TEXT NOT NULL DEFAULT 'PERRO' CHECK (especie IN ('PERRO','GATO'));
+ALTER TABLE servicios ADD COLUMN corbatin INTEGER;
+ALTER TABLE servicios ADD COLUMN corbatin_color TEXT;
+ALTER TABLE servicios ADD COLUMN monos INTEGER;
+ALTER TABLE servicios ADD COLUMN monos_color TEXT
+""")
+    conn.executemany("INSERT OR IGNORE INTO razas (nombre, tamano, pelaje_complicado, especie) VALUES (?, ?, ?, ?)",
+                     semillas.RAZAS_GATO)
+
+
+MIGRACIONES = {1: _v1, 2: _v2, 3: _v3, 4: _v4}
 VERSION_ACTUAL = max(MIGRACIONES)
 
 

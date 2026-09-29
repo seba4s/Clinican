@@ -47,6 +47,14 @@ Este paso es el único que necesita internet. Después, para abrir el programa:
 La primera vez aparece un asistente para crear la cuenta de la **administradora** (la jefe).
 Luego ella agrega al resto del personal desde **Personal**.
 
+## Mascotas y razas
+
+- Cada mascota es **perro o gato**. La raza se elige de la lista (filtrada por especie) o se **escribe a mano**.
+- Una raza escrita a mano que no existe se agrega al catálogo al guardar (lo puede hacer todo el personal y
+  queda en la auditoría). Se crea **sin tamaño**, así que cada mascota de esa raza lleva su propio tamaño y
+  pelaje, como el perro mestizo. La administradora puede completarla en Configuración › Razas.
+- «Gato (sin raza definida)» viene en el catálogo y pide elegir tamaño y pelaje.
+
 ## Importar mascotas desde Excel
 
 1. En **Propietarios › Importar desde Excel › Guardar plantilla vacía** (o use `plantilla_importacion.xlsx`).
@@ -59,9 +67,12 @@ Cuando se consiga un Excel real [A-9], se adapta `clinican/datos/importar_excel.
 
 ## Consentimientos
 
-- Antes de agendar, el propietario debe aceptar la versión vigente de los **términos** y de la
-  **autorización de datos** (Propietarios › Consentimientos). Se guarda la fecha, la versión, quién
+- Antes de agendar, el propietario registrado debe aceptar la versión vigente de los **términos** y de
+  la **autorización de datos** (Propietarios › Consentimientos). Se guarda la fecha, la versión, quién
   lo registró y el texto exacto que se le mostró.
+- Un **cliente sin registrar** (ver Turnos) los acepta al llegar: no se puede iniciar la atención de su
+  mascota hasta registrar sus datos y sus consentimientos. En todos los casos, al iniciar la atención
+  se vuelve a comprobar que los consentimientos estén vigentes.
 - Si la administradora cambia un texto legal (Configuración › Textos legales), se crea una versión
   nueva y todos deben aceptarla otra vez.
 - La declaración de **responsabilidad** se registra por mascota con las condiciones marcadas.
@@ -75,6 +86,8 @@ Se abre desde **Propietarios › Mascotas › + Nueva ficha de servicio** (o con
 - Extras: baños extra × valor según tamaño, si el baño es medicado o antipulgas. Un mismo baño que es
   medicado y antipulgas se cobra una vez.
 - Estilo de la cola de león y forma de la cara solo aparecen en corte bajito (máquina 1 cm o ½ cm) [A-5].
+- Accesorios: **corbatín** y **moños en las orejas** (sí / no), cada uno con su color (de la lista o
+  escrito a mano). El color solo se guarda si se le pone el accesorio.
 - Desenredado: la ficha pasa a «revisión de la estilista» y luego a «sesiones de desenredado». Cada sesión
   cuesta el valor configurado, máximo una por día. Al cerrar, se elige el servicio final (o ninguno, y solo
   se cobran las sesiones).
@@ -86,7 +99,13 @@ Se abre desde **Propietarios › Mascotas › + Nueva ficha de servicio** (o con
   con estado (color **y** texto). Los pendientes muestran la cuenta regresiva. Toque un turno para ver
   sus acciones.
 - **Nuevo turno**: propietario → mascotas y tipo de servicio → fecha y hora → ¿quién agenda? → abono.
-  Sin términos y autorización de datos aceptados no se puede agendar.
+  Un propietario registrado necesita los términos y la autorización de datos aceptados para agendar.
+- **Cliente nuevo**: en Nuevo turno, «+ Cliente nuevo: agendar sin registrarlo» pide solo el nombre, el
+  celular y la mascota (especie, raza, tamaño). El cliente queda **sin registrar** (así aparece en la agenda y
+  en Propietarios). Cuando llega, el turno muestra **Registrar datos del propietario**: se completan la cédula
+  y la dirección y luego los consentimientos; recién entonces se puede iniciar la atención. Si la cédula ya
+  existía, el cliente se une a ese propietario y sus mascotas, turnos y fichas pasan a él (una mascota con el
+  mismo nombre se toma como la misma).
 - Sin abono, el turno queda **pendiente** 30 minutos (configurable) y luego se libera solo. Los
   pendientes no apartan cupo: **gana quien paga primero**, y el sistema avisa a quién llamar.
 - **Varias mascotas**: una franja por mascota, seguidas, desde las 09:00 o las 14:30; si no alcanzan,
@@ -165,7 +184,7 @@ tests\        pruebas automáticas (pytest)
 .venv\Scripts\python -m pytest
 ```
 
-257 pruebas. Las de rutas `C:\...` solo corren en Windows, y la prueba de humo de la interfaz se omite si
+274 pruebas. Las de rutas `C:\...` solo corren en Windows, y la prueba de humo de la interfaz se omite si
 el equipo no tiene pantalla.
 
 ## Notas

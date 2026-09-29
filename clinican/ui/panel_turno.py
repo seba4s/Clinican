@@ -57,6 +57,9 @@ class PanelTurno(ctk.CTkScrollableFrame):
         if t["motivo_no_atendido"]:
             texto += f" — {rt.MOTIVOS_NO_ATENDIDO[t['motivo_no_atendido']].lower()}"
         tema.insignia(self, texto, fondo).pack(anchor="w", padx=16, pady=(0, 8))
+        if t["propietario_provisional"]:
+            tema.insignia(self, "CLIENTE SIN REGISTRAR: al llegar, registre sus datos y consentimientos",
+                          tema.FUCSIA).pack(anchor="w", padx=16, pady=(0, 8))
 
         llamar = t["estado"] in (rt.LISTA, rt.NO_ATENDIDO)
         if llamar:
@@ -124,6 +127,9 @@ class PanelTurno(ctk.CTkScrollableFrame):
     def _acciones(self) -> None:
         self._limpiar()
         e = self.t["estado"]
+        if self.t["propietario_provisional"] and e in rt.ACTIVOS:
+            self._boton("Registrar datos del propietario", lambda: self.ctx.ventana.mostrar(
+                "Propietarios", propietario_id=self.t["propietario_id"], pestana="Datos"))
         if e == rt.PENDIENTE:
             self._boton("Registrar abono", self._form_abono)
             if self.t["grupo_id"]:

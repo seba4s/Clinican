@@ -6,6 +6,25 @@ import re
 
 from clinican.dominio.errores import DatoInvalido
 
+# Cliente «sin registrar»: se agenda con nombre y celular y la cédula se completa al atenderlo.
+# El guion nunca queda en una cédula real (normalizar_cedula lo quita), así que no se confunden.
+PREFIJO_CEDULA_PROVISIONAL = "SIN-REGISTRO-"
+SIN_REGISTRAR = "Sin registrar"
+
+
+def cedula_visible(fila) -> str:
+    """La cédula para mostrar: «Sin registrar» si el cliente todavía no se ha registrado."""
+    cedula = fila["cedula"] or ""
+    return SIN_REGISTRAR if cedula.startswith(PREFIJO_CEDULA_PROVISIONAL) else cedula
+
+
+def validar_cliente_provisional(nombre: str, celular: str) -> dict:
+    """Datos mínimos para agendar a un cliente nuevo sin registrarlo."""
+    nombre = " ".join((nombre or "").split())
+    if not nombre:
+        raise DatoInvalido("Escriba el nombre del cliente.")
+    return {"nombre": nombre, "celular1": normalizar_celular(celular, True, "El celular del cliente")}
+
 
 def normalizar_cedula(cedula: str) -> str:
     """Quita puntos, espacios y guiones: "1.098.765.432" -> "1098765432".

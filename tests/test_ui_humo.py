@@ -303,3 +303,125 @@ def test_pantalla_respaldo(app, conn, monkeypatch, tmp_path, admin, empleada):
     assert [f[0] for f in conn.execute("SELECT nombre FROM propietarios")] == ["María Pérez"]
     assert isinstance(app.vista, PantallaInicioSesion) and app.sesion is None
     assert app.errores == []
+
+
+def _boton(widget, texto):
+    """Busca un botón por su texto (para pulsar botones cuya acción es una función interna)."""
+    import customtkinter as ctk
+
+    if isinstance(widget, ctk.CTkButton) and widget.cget("text") == texto:
+        return widget
+    for hijo in widget.winfo_children():
+        encontrado = _boton(hijo, texto)
+        if encontrado is not None:
+            return encontrado
+    return None
+
+
+def test_cliente_nuevo_se_agenda_y_se_registra_al_llegar(app, conn, monkeypatch, empleada):
+    from datetime import date, timedelta
+
+    from clinican.servicios import legal, turnos
+    from clinican.ui import dialogos
+
+    mensajes = []
+    monkeypatch.setattr(dialogos, "_mostrar", lambda padre, titulo, mensaje, *a, **k: mensajes.append((titulo, mensaje)) or True)
+    hoy = date.today()
+    lunes = (hoy + timedelta(days=7 + (7 - hoy.weekday()) % 7)).isoformat()
+
+    app._entrar(empleada)
+    app.update()
+    ventana = app.vista
+    ventana.mostrar("Nuevo turno", fecha=lunes)
+    app.update()
+    nuevo = ventana.pantalla_actual
+    nuevo._form_cliente_nuevo()
+    app.update()
+    c = nuevo.cliente_nuevo
+    c["nombre"].insert(0, "Carolina")
+    c["celular"].insert(0, "311 222 3344")
+    c["mascota"].insert(0, "Michi")
+    c["raza"].especie.codigo = "GATO"
+    c["raza"]._al_cambiar_especie()
+    c["raza"].raza.set("Gato (sin raza definida)")
+    c["raza"].actualizar()
+    c["raza"].tamano.set("Pequeña")
+    c["raza"].pelaje.set("No")
+    _boton(nuevo, "Continuar con este cliente").invoke()
+    app.update()
+    assert nuevo.dueno["provisional"] == 1  # no pidió cédula ni consentimientos
+    nuevo._horas_individual()
+    app.update()
+    mid = conn.execute("SELECT id FROM mascotas WHERE nombre = 'Michi'").fetchone()[0]
+    nuevo.plan = [(mid, "BANO_DESLANADO", lunes, "09:00")]
+    nuevo._dibujar()
+    nuevo._agendar()
+    app.update()
+    tid = conn.execute("SELECT id FROM turnos").fetchone()[0]
+
+    # Al llegar: el panel del turno ofrece registrar al propietario
+    agenda = ventana.pantalla_actual
+    assert "Registrar datos del propietario" in _textos_de_botones(agenda.panel_turno)
+    agenda.panel_turno._hacer(turnos.iniciar_atencion)  # sin registrar no se puede atender
+    assert "sin registrar" in mensajes[-1][1]
+    _boton(agenda.panel_turno, "Registrar datos del propietario").invoke()
+    app.update()
+    detalle = ventana.pantalla_actual.detalle
+    assert detalle.pestanas.get() == "Datos"
+    campos = detalle.campos_datos
+    assert campos["cedula"].get() == ""  # la cédula provisional no se muestra
+    assert campos["celular1"].get() == "311 222 3344"
+    campos["cedula"].insert(0, "52123456")
+    campos["direccion"].insert(0, "Cra 7 # 8-9")
+    _boton(detalle, "Registrar cliente").invoke()
+    app.update()
+    pid = conn.execute("SELECT propietario_id FROM mascotas WHERE id = ?", (mid,)).fetchone()[0]
+    assert conn.execute("SELECT provisional, cedula FROM propietarios WHERE id = ?", (pid,)).fetchone()[:] == (0, "52123456")
+    assert ventana.pantalla_actual.detalle.pestanas.get() == "Consentimientos"
+    legal.aceptar(conn, empleada, pid, ["TERMINOS", "DATOS"])
+    turnos.iniciar_atencion(conn, empleada, tid)
+    assert app.errores == []
+
+
+def test_mascota_con_raza_escrita_y_ficha_con_corbatin(app, conn, monkeypatch, admin, empleada):
+    from clinican.servicios import fichas
+    from clinican.servicios import propietarios as sp
+    from clinican.ui import dialogos
+
+    monkeypatch.setattr(dialogos, "_mostrar", lambda *a, **k: True)
+    pid = sp.crear(conn, admin, "María Pérez", "1098765432", "3012345678", None, "Calle 10")
+    app._entrar(empleada)
+    app.update()
+    app.vista.mostrar("Propietarios", propietario_id=pid, pestana="Mascotas")
+    app.update()
+    detalle = app.vista.pantalla_actual.detalle
+    selector = detalle.selector_raza  # formulario de «Nueva mascota» (no tiene mascotas)
+    nombre = [w for w in detalle.form_m.winfo_children() if hasattr(w, "insert") and w.winfo_class() == "Frame"][0]
+    nombre.insert(0, "Canela")
+    selector.raza.set("Beagle")
+    selector.actualizar()
+    assert "raza nueva" in selector.nota.cget("text")
+    selector.tamano.set("Mediana")
+    selector.pelaje.set("No")
+    _boton(detalle, "Guardar mascota").invoke()
+    app.update()
+    m = conn.execute("SELECT m.id, r.nombre, m.tamano_manual FROM mascotas m JOIN razas r ON r.id = m.raza_id").fetchone()
+    assert (m[1], m[2]) == ("Beagle", "MEDIANA")
+
+    app.vista.ctx.abrir_ficha(pid, m[0])
+    app.update()
+    f = app.vista.pantalla_actual
+    lleva, color = f.accesorios["corbatin"]
+    assert color.cget("state") == "disabled"
+    lleva.codigo = 1
+    f._al_cambiar_accesorio("corbatin")
+    assert color.cget("state") == "normal"
+    color.set("Azul")
+    f.accesorios["monos"][0].codigo = 1
+    f._al_cambiar_accesorio("monos")
+    f.accesorios["monos"][1].set("Rosado")
+    f._guardar()
+    app.update()
+    s = fichas.obtener(conn, empleada, conn.execute("SELECT id FROM servicios").fetchone()[0])
+    assert (s["corbatin"], s["corbatin_color"], s["monos"], s["monos_color"]) == (1, "Azul", 1, "Rosado")
+    assert app.errores == []

@@ -15,6 +15,7 @@ _EN = lambda estados: "(" + ", ".join(f"'{e}'" for e in estados) + ")"  # noqa: 
 _TURNO = """
     SELECT t.*, m.nombre AS mascota_nombre, m.propietario_id, r.nombre AS raza_nombre,
            p.nombre AS propietario_nombre, p.cedula, p.celular1, p.celular2, p.requiere_nuevo_abono,
+           p.provisional AS propietario_provisional, r.especie,
            a.nombre AS agendado_por_nombre, s.tipo_servicio, s.estado AS servicio_estado,
            (SELECT COALESCE(SUM(ab.monto), 0) FROM abonos ab
              WHERE ab.turno_id = t.id AND ab.estado IN ('VIGENTE', 'APLICADO')) AS abonado

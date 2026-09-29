@@ -7,7 +7,7 @@ from itertools import groupby
 import customtkinter as ctk
 
 from clinican.dominio import config_claves as cc
-from clinican.dominio.catalogos import TAMANOS, TIPOS_LEGALES, nombre_tamano
+from clinican.dominio.catalogos import ESPECIES, TAMANOS, TIPOS_LEGALES, nombre_tamano
 from clinican.dominio.formato import rellenar_texto
 from clinican.servicios import configuracion, legal, razas
 from clinican.ui import dialogos, tema
@@ -95,14 +95,14 @@ class PantallaConfiguracion(ctk.CTkFrame):
         tab.grid_columnconfigure(0, weight=3)
         tab.grid_columnconfigure(1, weight=2)
         tab.grid_rowconfigure(0, weight=1)
-        t = tema.tabla(tab, [("nombre", "Raza", 260), ("tamano", "Tamaño", 170), ("pelaje", "Pelaje complicado", 150),
-                             ("activa", "Estado", 100)])
+        t = tema.tabla(tab, [("nombre", "Raza", 240), ("especie", "Especie", 90), ("tamano", "Tamaño", 170),
+                             ("pelaje", "Pelaje complicado", 150), ("activa", "Estado", 100)])
         t.marco.grid(row=0, column=0, sticky="nsew", padx=(6, 14), pady=6)
         filas = {str(r["id"]): r for r in razas.listar(self.ctx.conn, solo_activas=False)}
         for i, r in enumerate(filas.values()):
             etiquetas = (["par"] if i % 2 else []) + ([] if r["activa"] else ["inactivo"])
             t.insert("", "end", iid=str(r["id"]), tags=etiquetas, values=(
-                r["nombre"], nombre_tamano(r["tamano"]) if r["tamano"] else SE_ELIGE,
+                r["nombre"], ESPECIES.get(r["especie"], r["especie"]), nombre_tamano(r["tamano"]) if r["tamano"] else SE_ELIGE,
                 "Sí" if r["pelaje_complicado"] else "No", "Activa" if r["activa"] else "Inactiva"))
         panel = ctk.CTkFrame(tab, fg_color="transparent")
         panel.grid(row=0, column=1, sticky="nsew", pady=6)
@@ -114,6 +114,9 @@ class PantallaConfiguracion(ctk.CTkFrame):
             tema.etiqueta(panel, "Nombre", negrita=True).pack(anchor="w", pady=(6, 4))
             nombre = tema.entrada(panel, ancho=340)
             nombre.pack(anchor="w")
+            tema.etiqueta(panel, "Especie", negrita=True).pack(anchor="w", pady=(10, 4))
+            especie = tema.Opciones(panel, ESPECIES, inicial=r["especie"] if r else "PERRO")
+            especie.pack(anchor="w")
             tema.etiqueta(panel, "Tamaño", negrita=True).pack(anchor="w", pady=(10, 4))
             opciones = {**{v: k for k, v in TAMANOS.items()}, SE_ELIGE: None}
             tamano = tema.selector(panel, list(opciones), ancho=340)
@@ -131,10 +134,12 @@ class PantallaConfiguracion(ctk.CTkFrame):
             def guardar():
                 args = (nombre.get(), opciones[tamano.get()], bool(pelaje.get()))
                 if r is None:
-                    res = dialogos.ejecutar(self, razas.crear, self.ctx.conn, self.ctx.sesion, *args)
+                    res = dialogos.ejecutar(self, razas.crear, self.ctx.conn, self.ctx.sesion, *args,
+                                            especie=especie.codigo)
                     rid = res
                 else:
-                    res = dialogos.ejecutar(self, razas.editar, self.ctx.conn, self.ctx.sesion, r["id"], *args, bool(activa.get()))
+                    res = dialogos.ejecutar(self, razas.editar, self.ctx.conn, self.ctx.sesion, r["id"], *args,
+                                            bool(activa.get()), especie=especie.codigo)
                     rid = r["id"]
                 if res is not dialogos.FALLO:
                     dialogos.aviso(self, "Raza guardada", f"Se guardó la raza «{nombre.get().strip()}».")

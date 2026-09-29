@@ -14,7 +14,7 @@ def test_version_y_llaves_foraneas(conn):
 
 
 def test_semillas_cargadas(conn):
-    assert conn.execute("SELECT COUNT(*) FROM razas").fetchone()[0] == 13
+    assert conn.execute("SELECT COUNT(*) FROM razas").fetchone()[0] == 14  # 13 de perro + gato
     # 12 franjas por día, lunes a sábado
     assert conn.execute("SELECT COUNT(*) FROM franjas_base").fetchone()[0] == 72
     assert conn.execute("SELECT COUNT(*) FROM franjas_base WHERE dia_semana = 6").fetchone()[0] == 12
@@ -29,7 +29,9 @@ def test_husky_y_mestizo(conn):
     husky = conn.execute("SELECT * FROM razas WHERE nombre = 'Husky'").fetchone()
     assert husky["tamano"] == "GRANDE" and husky["pelaje_complicado"] == 1
     mestizo = conn.execute("SELECT * FROM razas WHERE nombre LIKE 'Perro mestizo%'").fetchone()
-    assert mestizo["tamano"] is None
+    assert mestizo["tamano"] is None and mestizo["especie"] == "PERRO"
+    gato = conn.execute("SELECT * FROM razas WHERE especie = 'GATO'").fetchone()
+    assert gato["nombre"] == "Gato (sin raza definida)" and gato["tamano"] is None
 
 
 def test_migrar_dos_veces_no_duplica(tmp_path):
@@ -39,7 +41,7 @@ def test_migrar_dos_veces_no_duplica(tmp_path):
     c1.commit()
     c1.close()
     c2 = conectar(ruta)
-    assert c2.execute("SELECT COUNT(*) FROM razas").fetchone()[0] == 13
+    assert c2.execute("SELECT COUNT(*) FROM razas").fetchone()[0] == 14
     # Volver a abrir no pisa lo que editó la administradora
     assert c2.execute("SELECT valor FROM config WHERE clave = 'abono_minimo'").fetchone()[0] == "99999"
     c2.close()

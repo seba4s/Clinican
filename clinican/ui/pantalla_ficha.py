@@ -15,6 +15,7 @@ from clinican.servicios import fichas, legal, personal, propietarios
 from clinican.ui import dialogos, tema
 
 SI_NO = {1: "Se deja", 0: "No", None: "Sin definir"}
+SI_NO_ACCESORIO = {1: "Sí", 0: "No", None: "Sin definir"}
 LARGOS = {None: "Sin definir", **reglas.LARGOS}
 
 
@@ -112,6 +113,22 @@ class PantallaFicha(ctk.CTkFrame):
                                         s["forma_cara"] if s else None)
         self.forma_cara.pack(anchor="w")
 
+        # Accesorios: corbatín y moños en las orejas, con el color que se escoja
+        self.accesorios = {}
+        for campo, texto in (("corbatin", "Corbatín"), ("monos", "Moños en las orejas")):
+            caja = self._fila(texto)
+            fila = ctk.CTkFrame(caja, fg_color="transparent")
+            fila.pack(anchor="w")
+            lleva = tema.Opciones(fila, SI_NO_ACCESORIO, lambda c=campo: self._al_cambiar_accesorio(c),
+                                  s[campo] if s else None)
+            lleva.pack(side="left")
+            tema.etiqueta(fila, "Color:").pack(side="left", padx=(16, 6))
+            color = tema.selector(fila, reglas.COLORES, ancho=200, editable=True)
+            color.set((s[f"{campo}_color"] if s else None) or "")
+            color.pack(side="left")
+            self.accesorios[campo] = (lleva, color)
+            self._al_cambiar_accesorio(campo)
+
         caja = self._fila("Baños extra (se cobran según el tamaño)")
         self.medicado = ctk.IntVar(value=s["bano_medicado"] if s else 0)
         self.antipulgas = ctk.IntVar(value=s["bano_antipulgas"] if s else 0)
@@ -152,9 +169,14 @@ class PantallaFicha(ctk.CTkFrame):
             if self.estado == reglas.CANCELADO:
                 self.obs.configure(state="disabled")
 
+    def _al_cambiar_accesorio(self, campo: str) -> None:
+        """El color solo se escoge si se le pone el accesorio."""
+        lleva, color = self.accesorios[campo]
+        color.configure(state="normal" if lleva.codigo == 1 and not self.realizado else "disabled")
+
     def _bloquear_detalles(self) -> None:
         for w in (self.fecha, self.tipo, self.largo, self.cola_estilo, self.forma_cara, self.cantidad,
-                  self.chk_resp, *self.opc.values()):
+                  self.chk_resp, *self.opc.values(), *(w for par in self.accesorios.values() for w in par)):
             w.configure(state="disabled")
         for hijo in self.izq.winfo_children():
             for nieto in hijo.winfo_children():
@@ -293,6 +315,8 @@ class PantallaFicha(ctk.CTkFrame):
             cantidad_banos_extra=cantidad, copete=self.opc["copete"].codigo, barbas=self.opc["barbas"].codigo,
             cola_leon=cola, cola_estilo=self.cola_estilo.codigo if bajito and cola == 1 else None,
             forma_cara=self.forma_cara.codigo if bajito else None,
+            corbatin=self.accesorios["corbatin"][0].codigo, corbatin_color=self.accesorios["corbatin"][1].get(),
+            monos=self.accesorios["monos"][0].codigo, monos_color=self.accesorios["monos"][1].get(),
             condiciones={c: bool(v.get()) for c, v in self.condiciones.items()},
             observaciones=self.obs.get("1.0", "end"),
         )

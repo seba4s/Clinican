@@ -4,6 +4,8 @@ from __future__ import annotations
 
 TAMANOS = {"PEQUENA": "Pequeña", "MEDIANA": "Mediana", "GRANDE": "Grande"}
 
+ESPECIES = {"PERRO": "Perro", "GATO": "Gato"}
+
 TIPOS_LEGALES = {
     "TERMINOS": "Términos y condiciones",
     "DATOS": "Autorización de tratamiento de datos",
