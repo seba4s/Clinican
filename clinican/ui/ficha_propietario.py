@@ -36,8 +36,8 @@ class DetallePropietario(ctk.CTkFrame):
         self.provisional = bool(self.fila and self.fila["provisional"])
         tema.subtitulo(self, titulo + (" (sin registrar)" if self.provisional else "")).pack(anchor="w", pady=(0, 6))
         if self.provisional:
-            tema.insignia(self, "Cliente sin registrar: complete la cédula y la dirección en «Datos» y luego "
-                                "los consentimientos, antes de atender a su mascota.", tema.FUCSIA).pack(anchor="w", pady=(0, 6))
+            tema.insignia(self, "Cliente sin registrar: complete la cédula y la dirección (aquí o en la ficha de "
+                                "servicio al llegar) antes de atender a su mascota.", tema.FUCSIA).pack(anchor="w", pady=(0, 6))
 
         self.pestanas = ctk.CTkTabview(
             self, fg_color=tema.BLANCO, border_width=1, border_color=tema.BORDE, corner_radius=14,
@@ -99,7 +99,8 @@ class DetallePropietario(ctk.CTkFrame):
                     return
                 if self.provisional:
                     dialogos.aviso(self, "Cliente registrado",
-                                   "Ahora registre la aceptación de los términos y la autorización de datos.")
+                                   "Falta la aceptación de los términos y la autorización de datos: regístrela "
+                                   "aquí o en la ficha de servicio al llegar.")
                     self.al_guardar(r, P_CONSENT)
                     return
                 dialogos.aviso(self, "Guardado", "Los datos del propietario quedaron actualizados.")
@@ -252,7 +253,8 @@ class DetallePropietario(ctk.CTkFrame):
     # ====================================================== Consentimientos
     def _pestana_consentimientos(self, z) -> None:
         estado = legal.estado(self.ctx.conn, self.pid)
-        tema.etiqueta(z, "Para agendar turnos, el propietario debe aceptar los dos documentos (versión vigente).",
+        tema.etiqueta(z, "Antes de atender a su mascota, el propietario debe aceptar los dos documentos (versión "
+                         "vigente). Normalmente se registra al llegar, en la ficha de servicio; también se puede aquí.",
                       wraplength=600).pack(anchor="w", padx=16, pady=(10, 8))
         variables = {}
         for tipo in ("TERMINOS", "DATOS"):

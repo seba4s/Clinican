@@ -18,10 +18,15 @@ ELIJA = "— Elija —"
 
 
 class SelectorRaza:
-    """Crea sus campos dentro de ``padre`` (uno debajo de otro, con ``pack``)."""
+    """Crea sus campos dentro de ``padre`` (uno debajo de otro, con ``pack``).
 
-    def __init__(self, padre, conn, ancho: int = 420, raza_actual_id: int | None = None):
+    ``compacto``: tamaño y pelaje solo aparecen cuando la raza no los define (raza escrita,
+    mestizo, gato), y el pelaje complicado viene en «No». Se usa al agendar a un cliente nuevo.
+    """
+
+    def __init__(self, padre, conn, ancho: int = 420, raza_actual_id: int | None = None, compacto: bool = False):
         self.conn = conn
+        self.compacto = compacto
         todas = list(razas.listar(conn, solo_activas=True))
         if raza_actual_id is not None and raza_actual_id not in {r["id"] for r in todas}:
             todas += [r for r in razas.listar(conn, solo_activas=False) if r["id"] == raza_actual_id]
@@ -38,11 +43,13 @@ class SelectorRaza:
         self.raza.bind("<KeyRelease>", lambda _e: self.actualizar(), add="+")
         self.nota = tema.etiqueta(padre, "", tema.TAM_PEQUENO, color=tema.AZUL_OSCURO, wraplength=ancho + 100)
         self.nota.pack(anchor="w")
-        self.lbl_tam = self._etiqueta(padre, "Tamaño")
-        self.tamano = tema.selector(padre, [ELIJA], ancho=ancho)
+        self.caja_tamano = ctk.CTkFrame(padre, fg_color="transparent")
+        self.caja_tamano.pack(anchor="w", fill="x")
+        self.lbl_tam = self._etiqueta(self.caja_tamano, "Tamaño")
+        self.tamano = tema.selector(self.caja_tamano, [ELIJA], ancho=ancho)
         self.tamano.pack(anchor="w")
-        self.lbl_pel = self._etiqueta(padre, "Pelaje complicado (husky o razas similares)")
-        self.pelaje = tema.selector(padre, [ELIJA], ancho=ancho)
+        self.lbl_pel = self._etiqueta(self.caja_tamano, "Pelaje complicado (husky o razas similares)")
+        self.pelaje = tema.selector(self.caja_tamano, [ELIJA], ancho=ancho)
         self.pelaje.pack(anchor="w")
         self._al_cambiar_especie(limpiar=True)
 
@@ -77,9 +84,16 @@ class SelectorRaza:
             self.nota.configure(text=f"«{texto}» es una raza nueva: se agregará al guardar. Elija el tamaño y el pelaje.")
         else:
             self.nota.configure(text="")
-        con_tamano = r is not None and r["tamano"]
+        con_tamano = bool(r is not None and r["tamano"])
+        if self.compacto:
+            if con_tamano and self.caja_tamano.winfo_manager():
+                self.caja_tamano.pack_forget()
+            elif not con_tamano and not self.caja_tamano.winfo_manager():
+                self.caja_tamano.pack(anchor="w", fill="x", after=self.nota)
         previo_tam = tam_inicial if tam_inicial is not None else self.tam_opc.get(self.tamano.get())
         previo_pel = pel_inicial if pel_inicial is not None else self.pel_opc.get(self.pelaje.get())
+        if self.compacto and not con_tamano and previo_pel is None:
+            previo_pel = 0  # al agendar rápido, «No» salvo que se indique lo contrario
         self.tam_opc.clear()
         self.pel_opc.clear()
         if con_tamano:

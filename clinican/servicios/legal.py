@@ -56,7 +56,7 @@ def aceptar(conn, sesion: Sesion, propietario_id: int, tipos: list[str], origen:
         if dueno is None:
             raise NoEncontrado("No se encontró el propietario.")
         if dueno["provisional"]:
-            raise DatoInvalido("Primero complete los datos del cliente (cédula y dirección) en la pestaña «Datos».")
+            raise DatoInvalido("Primero registre la cédula y la dirección del cliente.")
         for t in tipos:
             fila, texto = texto_vigente(conn, t)
             repo_legal.insertar_consentimiento(conn, propietario_id, None, t, fila["id"], texto, None,
@@ -102,7 +102,7 @@ def estado(conn, propietario_id: int) -> dict[str, sqlite3.Row | None]:
 
 
 def verificar_para_turno(conn, propietario_id: int) -> None:
-    """RN-05 y RN-15: sin términos y datos aceptados (versión vigente) no hay turno."""
+    """RN-15: sin términos y datos aceptados (versión vigente) no se inicia la atención."""
     faltan = reglas.faltantes_para_turno(repo_legal.tipos_aceptados_vigentes(conn, propietario_id))
     if faltan:
         raise DatoInvalido(reglas.mensaje_faltantes(faltan))

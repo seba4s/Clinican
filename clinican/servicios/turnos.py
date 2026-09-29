@@ -162,9 +162,6 @@ def _validar_nuevo(conn, mascota_id, tipo_servicio, fecha, hora, agendado_por, a
         raise NoEncontrado("No se encontró la mascota.")
     if not m["activa"]:
         raise DatoInvalido(f"{m['nombre']} está dada de baja.")
-    if not m["propietario_provisional"]:
-        # RN-15. Un cliente sin registrar acepta al llegar, antes de iniciar la atención.
-        legal.verificar_para_turno(conn, m["propietario_id"])
     persona = repo_personal.por_id(conn, agendado_por) if agendado_por else None
     if persona is None or not persona["activo"]:
         raise DatoInvalido("Elija quién agenda el turno (una persona activa del personal).")
@@ -568,14 +565,15 @@ def _cambiar(conn, sesion, turno_id: int, nuevo: str, campos: dict | None = None
 
 def iniciar_atencion(conn, sesion: Sesion, turno_id: int) -> None:
     """La mascota llegó. Antes de atenderla, el propietario debe estar registrado y tener
-    aceptados los términos y la autorización de datos vigentes (RN-15)."""
+    aceptados los términos y la autorización de datos vigentes (RN-15). Ambas cosas se
+    registran al llegar, en la ficha de servicio; no se piden al agendar."""
     requerir(conn, sesion, _T)
     with transaccion(conn):
         t = _turno(conn, turno_id)
         if t["propietario_provisional"]:
             raise DatoInvalido(f"{t['propietario_nombre']} es un cliente sin registrar. Antes de atender a "
-                               f"{t['mascota_nombre']}, registre sus datos y sus consentimientos "
-                               "(botón «Registrar datos del propietario»).")
+                               f"{t['mascota_nombre']}, abra la ficha de servicio y registre su cédula, su "
+                               "dirección y la aceptación de los términos.")
         legal.verificar_para_turno(conn, t["propietario_id"])
         _cambiar(conn, sesion, turno_id, rt.EN_PROCESO)
 

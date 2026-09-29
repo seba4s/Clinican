@@ -12,7 +12,7 @@ from clinican.dominio.catalogos import TIPOS_SERVICIO
 from clinican.dominio.cupos import CATEGORIAS
 from clinican.dominio.formato import pesos
 from clinican.dominio.propietarios import formato_celular
-from clinican.servicios import turnos
+from clinican.servicios import legal, turnos
 from clinican.servicios.turnos import Abono
 from clinican.ui import dialogos, tema
 
@@ -57,9 +57,13 @@ class PanelTurno(ctk.CTkScrollableFrame):
         if t["motivo_no_atendido"]:
             texto += f" — {rt.MOTIVOS_NO_ATENDIDO[t['motivo_no_atendido']].lower()}"
         tema.insignia(self, texto, fondo).pack(anchor="w", padx=16, pady=(0, 8))
-        if t["propietario_provisional"]:
-            tema.insignia(self, "CLIENTE SIN REGISTRAR: al llegar, registre sus datos y consentimientos",
-                          tema.FUCSIA).pack(anchor="w", padx=16, pady=(0, 8))
+        if t["estado"] in rt.ACTIVOS:
+            if t["propietario_provisional"]:
+                tema.insignia(self, "CLIENTE SIN REGISTRAR: al llegar, sus datos y los términos\nse registran en la "
+                                    "ficha de servicio", tema.FUCSIA).pack(anchor="w", padx=16, pady=(0, 8))
+            elif not all(legal.estado(self.ctx.conn, t["propietario_id"]).values()):
+                tema.insignia(self, "Falta aceptar los términos: se registran al llegar,\nen la ficha de servicio",
+                              tema.VERDE).pack(anchor="w", padx=16, pady=(0, 8))
 
         llamar = t["estado"] in (rt.LISTA, rt.NO_ATENDIDO)
         if llamar:
@@ -127,9 +131,8 @@ class PanelTurno(ctk.CTkScrollableFrame):
     def _acciones(self) -> None:
         self._limpiar()
         e = self.t["estado"]
-        if self.t["propietario_provisional"] and e in rt.ACTIVOS:
-            self._boton("Registrar datos del propietario", lambda: self.ctx.ventana.mostrar(
-                "Propietarios", propietario_id=self.t["propietario_id"], pestana="Datos"))
+        if self.t["propietario_provisional"] and e in rt.ACTIVOS and self.t["servicio_id"]:
+            self._boton("Registrar cliente y términos (ficha)", self._abrir_ficha)
         if e == rt.PENDIENTE:
             self._boton("Registrar abono", self._form_abono)
             if self.t["grupo_id"]:

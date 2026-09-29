@@ -8,7 +8,8 @@ from typing import Callable
 import customtkinter as ctk
 
 from clinican.dominio import ficha as reglas
-from clinican.dominio.catalogos import CONDICIONES, ESTADOS_SERVICIO, TIPOS_SERVICIO, nombre_tamano
+from clinican.dominio.catalogos import CONDICIONES, ESTADOS_SERVICIO, TIPOS_LEGALES, TIPOS_SERVICIO, nombre_tamano
+from clinican.dominio.propietarios import formato_celular
 from clinican.dominio.errores import ErrorClinican
 from clinican.dominio.formato import pesos
 from clinican.servicios import fichas, legal, personal, propietarios
@@ -54,6 +55,7 @@ class PantallaFicha(ctk.CTkFrame):
 
         self._detalles()
         self._precios()
+        self._terminos()
         self._acciones()
         if self.s and (self.estado == reglas.EN_SESIONES or fichas.sesiones(ctx.conn, ctx.sesion, self.sid)):
             self._desenredado()
@@ -213,6 +215,76 @@ class PantallaFicha(ctk.CTkFrame):
         tema.etiqueta(z, "El abono del turno se descuenta al cobrar (saldo = total − abonos).",
                       tema.TAM_PEQUENO, color=tema.GRIS_TEXTO, wraplength=380).pack(anchor="w", padx=16, pady=(6, 0))
 
+    def _terminos(self) -> None:
+        """Al llegar al servicio: datos del cliente sin registrar y aceptación de los términos (RN-15).
+
+        Se guardan junto con la ficha, al pulsar «Guardar ficha».
+        """
+        z = self.der
+        self.registro: dict[str, ctk.CTkEntry] = {}
+        self.acepta: dict[str, ctk.IntVar] = {}
+        pid = self.m["propietario_id"]
+        provisional = bool(self.m["propietario_provisional"])
+        estado = legal.estado(self.ctx.conn, pid)
+        ctk.CTkFrame(z, fg_color=tema.BORDE, height=2).pack(fill="x", padx=16, pady=(14, 4))
+        tema.subtitulo(z, "Términos y condiciones").pack(anchor="w", padx=16, pady=(8, 6))
+        if not provisional and all(estado.values()):
+            t = estado["TERMINOS"]
+            tema.aviso_estado(z, f"Aceptó los términos y la autorización de datos (el {t['aceptado_en'][:10]})",
+                              True).pack(anchor="w", padx=16, pady=(0, 6))
+            return
+        if provisional:
+            tema.aviso_estado(z, "Cliente sin registrar: complete sus datos", False).pack(anchor="w", padx=16, pady=(0, 4))
+            dueno = propietarios.obtener(self.ctx.conn, self.ctx.sesion, pid)
+            for clave, texto, valor in (("nombre", "Nombre del propietario *", dueno["nombre"]),
+                                        ("cedula", "Cédula *", ""),
+                                        ("celular1", "Celular *", formato_celular(dueno["celular1"])),
+                                        ("direccion", "Dirección *", "")):
+                tema.etiqueta(z, texto, negrita=True).pack(anchor="w", padx=16, pady=(8, 2))
+                e = tema.entrada(z, ancho=360)
+                if valor:
+                    e.insert(0, valor)
+                e.pack(anchor="w", padx=16)
+                self.registro[clave] = e
+            tema.etiqueta(z, "Si la cédula ya está registrada, el cliente se une a ese propietario.",
+                          tema.TAM_PEQUENO, color=tema.GRIS_TEXTO, wraplength=380).pack(anchor="w", padx=16, pady=(4, 0))
+        tema.etiqueta(z, "Lea los textos al propietario y marque lo que acepta:", wraplength=380).pack(
+            anchor="w", padx=16, pady=(10, 2))
+        frases = {"TERMINOS": "El propietario acepta los\ntérminos y condiciones",
+                  "DATOS": "El propietario autoriza el\ntratamiento de sus datos"}
+        for tipo, aceptado in estado.items():
+            if aceptado and not provisional:
+                continue
+            fila_texto, texto = legal.texto_vigente(self.ctx.conn, tipo)
+            tema.etiqueta(z, f"{TIPOS_LEGALES[tipo]} (versión {fila_texto['version']})", tema.TAM_PEQUENO,
+                          negrita=True, wraplength=380).pack(anchor="w", padx=16, pady=(8, 2))
+            tema.caja_texto(z, alto=130, solo_lectura=True, texto=texto).pack(fill="x", padx=16)
+            var = ctk.IntVar(value=0)
+            tema.casilla(z, frases[tipo], var).pack(anchor="w", padx=16, pady=(6, 0))
+            self.acepta[tipo] = var
+        tema.etiqueta(z, "Se guarda al pulsar «Guardar ficha». Sin esto no se puede iniciar la atención.",
+                      tema.TAM_PEQUENO, color=tema.GRIS_TEXTO, wraplength=380).pack(anchor="w", padx=16, pady=(6, 0))
+
+    def _guardar_cliente_y_terminos(self) -> list[str] | None:
+        """Registra al cliente (si estaba sin registrar) y los términos marcados.
+        Devuelve lo que se hizo, para avisarlo, o ``None`` si hubo un error."""
+        hecho = []
+        pid = self.m["propietario_id"]
+        if self.registro:
+            v = {k: e.get() for k, e in self.registro.items()}
+            if v["cedula"].strip() or v["direccion"].strip():
+                pid = dialogos.ejecutar(self, propietarios.completar_registro, self.ctx.conn, self.ctx.sesion, pid,
+                                        v["nombre"], v["cedula"], v["celular1"], None, v["direccion"])
+                if pid is dialogos.FALLO:
+                    return None
+                hecho.append("Quedaron registrados los datos del cliente.")
+        tipos = [t for t, var in self.acepta.items() if var.get()]
+        if tipos:
+            if dialogos.ejecutar(self, legal.aceptar, self.ctx.conn, self.ctx.sesion, pid, tipos) is dialogos.FALLO:
+                return None
+            hecho.append("Quedó registrada la aceptación: " + " y ".join(TIPOS_LEGALES[t].lower() for t in tipos) + ".")
+        return hecho
+
     def _acciones(self) -> None:
         z = self.der
         ctk.CTkFrame(z, fg_color=tema.BORDE, height=2).pack(fill="x", padx=16, pady=14)
@@ -367,8 +439,11 @@ class PantallaFicha(ctk.CTkFrame):
             if dialogos.ejecutar(self, legal.registrar_responsabilidad, self.ctx.conn, self.ctx.sesion,
                                  self.mascota_id, d.condiciones) is dialogos.FALLO:
                 return False
+        hecho = self._guardar_cliente_y_terminos()
+        if hecho is None:
+            return False
         if not silencioso:
-            texto = "La ficha quedó guardada."
+            texto = "La ficha quedó guardada." + "".join(f"\n{h}" for h in hecho)
             if aviso:
                 texto += f"\n\nAtención: {aviso}"
             dialogos.aviso(self, "Ficha guardada", texto)
@@ -376,6 +451,11 @@ class PantallaFicha(ctk.CTkFrame):
         return True
 
     def _recargar(self) -> None:
+        s = fichas.obtener(self.ctx.conn, self.ctx.sesion, self.sid) if self.sid else None
+        if s is not None and s["mascota_id"] != self.mascota_id:
+            # Al registrar al cliente se unió con uno que ya existía y la mascota cambió
+            self.ctx.abrir_ficha(s["propietario_id"], s["mascota_id"], self.sid, volver=self.al_volver)
+            return
         if self.al_recargar:
             self.al_recargar(self.sid)
         else:

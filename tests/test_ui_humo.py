@@ -208,11 +208,11 @@ def test_turnos_desde_la_interfaz(app, conn, monkeypatch, admin, empleada):
     ventana = app.vista
     assert ventana.nombre_actual == "Agenda"
 
-    # Sin consentimientos, «Nuevo turno» no deja seguir
+    # Sin consentimientos sí se puede agendar: se aceptan al llegar, en la ficha de servicio
     ventana.mostrar("Nuevo turno", propietario_id=pid)
     app.update()
     nuevo = ventana.pantalla_actual
-    assert not nuevo.plan and not hasattr(nuevo, "zona_horas")
+    assert hasattr(nuevo, "zona_horas")
     legal.aceptar(conn, empleada, pid, ["TERMINOS", "DATOS"])
 
     ventana.mostrar("Nuevo turno", propietario_id=pid, fecha=lunes)
@@ -345,41 +345,67 @@ def test_cliente_nuevo_se_agenda_y_se_registra_al_llegar(app, conn, monkeypatch,
     c["raza"]._al_cambiar_especie()
     c["raza"].raza.set("Gato (sin raza definida)")
     c["raza"].actualizar()
+    assert c["raza"].caja_tamano.winfo_manager()  # raza sin tamaño: se pide el tamaño
     c["raza"].tamano.set("Pequeña")
-    c["raza"].pelaje.set("No")
+    assert c["raza"].pelaje.get() == "No"  # viene en «No»
+    c["tipo"].codigo = "BANO_DESLANADO"
     _boton(nuevo, "Continuar con este cliente").invoke()
     app.update()
     assert nuevo.dueno["provisional"] == 1  # no pidió cédula ni consentimientos
+    mid = conn.execute("SELECT id FROM mascotas WHERE nombre = 'Michi'").fetchone()[0]
+    assert nuevo._seleccionadas() == [(mid, "BANO_DESLANADO")]  # mascota y servicio ya elegidos
     nuevo._horas_individual()
     app.update()
-    mid = conn.execute("SELECT id FROM mascotas WHERE nombre = 'Michi'").fetchone()[0]
+    assert nuevo.zona_horas.winfo_children()
     nuevo.plan = [(mid, "BANO_DESLANADO", lunes, "09:00")]
     nuevo._dibujar()
     nuevo._agendar()
     app.update()
     tid = conn.execute("SELECT id FROM turnos").fetchone()[0]
 
-    # Al llegar: el panel del turno ofrece registrar al propietario
+    # Al llegar: sin registrar no se puede atender; el registro y los términos van en la ficha
     agenda = ventana.pantalla_actual
-    assert "Registrar datos del propietario" in _textos_de_botones(agenda.panel_turno)
-    agenda.panel_turno._hacer(turnos.iniciar_atencion)  # sin registrar no se puede atender
+    agenda.panel_turno._hacer(turnos.iniciar_atencion)
     assert "sin registrar" in mensajes[-1][1]
-    _boton(agenda.panel_turno, "Registrar datos del propietario").invoke()
+    _boton(agenda.panel_turno, "Registrar cliente y términos (ficha)").invoke()
     app.update()
-    detalle = ventana.pantalla_actual.detalle
-    assert detalle.pestanas.get() == "Datos"
-    campos = detalle.campos_datos
-    assert campos["cedula"].get() == ""  # la cédula provisional no se muestra
-    assert campos["celular1"].get() == "311 222 3344"
-    campos["cedula"].insert(0, "52123456")
-    campos["direccion"].insert(0, "Cra 7 # 8-9")
-    _boton(detalle, "Registrar cliente").invoke()
+    ficha = ventana.pantalla_actual
+    assert ficha.registro["cedula"].get() == "" and ficha.registro["celular1"].get() == "311 222 3344"
+    ficha.registro["cedula"].insert(0, "52123456")
+    ficha.registro["direccion"].insert(0, "Cra 7 # 8-9")
+    for var in ficha.acepta.values():
+        var.set(1)
+    ficha._guardar()
     app.update()
+    assert "Quedaron registrados los datos del cliente" in mensajes[-1][1]
     pid = conn.execute("SELECT propietario_id FROM mascotas WHERE id = ?", (mid,)).fetchone()[0]
     assert conn.execute("SELECT provisional, cedula FROM propietarios WHERE id = ?", (pid,)).fetchone()[:] == (0, "52123456")
-    assert ventana.pantalla_actual.detalle.pestanas.get() == "Consentimientos"
-    legal.aceptar(conn, empleada, pid, ["TERMINOS", "DATOS"])
+    assert legal.estado(conn, pid)["TERMINOS"] and legal.estado(conn, pid)["DATOS"]
+    assert not ventana.pantalla_actual.acepta  # ya aceptó: no vuelve a pedirlo
     turnos.iniciar_atencion(conn, empleada, tid)
+    assert app.errores == []
+
+
+def test_ficha_registra_terminos_de_cliente_registrado(app, conn, monkeypatch, admin, empleada):
+    from clinican.servicios import legal
+    from clinican.servicios import propietarios as sp
+    from clinican.ui import dialogos
+
+    monkeypatch.setattr(dialogos, "_mostrar", lambda *a, **k: True)
+    pid = sp.crear(conn, admin, "María Pérez", "1098765432", "3012345678", None, "Calle 10")
+    mid = sp.crear_mascota(conn, admin, pid, "Toby", conn.execute("SELECT id FROM razas WHERE nombre='Shih Tzu'").fetchone()[0])
+    app._entrar(empleada)
+    app.update()
+    app.vista.ctx.abrir_ficha(pid, mid)
+    app.update()
+    f = app.vista.pantalla_actual
+    assert not f.registro and set(f.acepta) == {"TERMINOS", "DATOS"}
+    f.acepta["TERMINOS"].set(1)  # solo acepta los términos
+    f._guardar()
+    app.update()
+    estado = legal.estado(conn, pid)
+    assert estado["TERMINOS"] and estado["DATOS"] is None
+    assert set(app.vista.pantalla_actual.acepta) == {"DATOS"}
     assert app.errores == []
 
 

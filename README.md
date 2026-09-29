@@ -67,12 +67,11 @@ Cuando se consiga un Excel real [A-9], se adapta `clinican/datos/importar_excel.
 
 ## Consentimientos
 
-- Antes de agendar, el propietario registrado debe aceptar la versión vigente de los **términos** y de
-  la **autorización de datos** (Propietarios › Consentimientos). Se guarda la fecha, la versión, quién
-  lo registró y el texto exacto que se le mostró.
-- Un **cliente sin registrar** (ver Turnos) los acepta al llegar: no se puede iniciar la atención de su
-  mascota hasta registrar sus datos y sus consentimientos. En todos los casos, al iniciar la atención
-  se vuelve a comprobar que los consentimientos estén vigentes.
+- Los **términos** y la **autorización de datos** se aceptan **al llegar al servicio**, en la ficha de
+  servicio (sección «Términos y condiciones»), y se guardan al pulsar «Guardar ficha». **No se piden al
+  agendar.** Sin ellos (versión vigente) no se puede iniciar la atención.
+- Se guarda la fecha, la versión, quién lo registró y el texto exacto que se le mostró. También se pueden
+  registrar en Propietarios › Consentimientos.
 - Si la administradora cambia un texto legal (Configuración › Textos legales), se crea una versión
   nueva y todos deben aceptarla otra vez.
 - La declaración de **responsabilidad** se registra por mascota con las condiciones marcadas.
@@ -99,13 +98,13 @@ Se abre desde **Propietarios › Mascotas › + Nueva ficha de servicio** (o con
   con estado (color **y** texto). Los pendientes muestran la cuenta regresiva. Toque un turno para ver
   sus acciones.
 - **Nuevo turno**: propietario → mascotas y tipo de servicio → fecha y hora → ¿quién agenda? → abono.
-  Un propietario registrado necesita los términos y la autorización de datos aceptados para agendar.
-- **Cliente nuevo**: en Nuevo turno, «+ Cliente nuevo: agendar sin registrarlo» pide solo el nombre, el
-  celular y la mascota (especie, raza, tamaño). El cliente queda **sin registrar** (así aparece en la agenda y
-  en Propietarios). Cuando llega, el turno muestra **Registrar datos del propietario**: se completan la cédula
-  y la dirección y luego los consentimientos; recién entonces se puede iniciar la atención. Si la cédula ya
-  existía, el cliente se une a ese propietario y sus mascotas, turnos y fichas pasan a él (una mascota con el
-  mismo nombre se toma como la misma).
+- **Cliente nuevo**: en Nuevo turno, «+ Cliente nuevo: agendar sin registrarlo» pide solo el **nombre del
+  propietario, el celular, el nombre de la mascota, la raza y el tipo de servicio** (el tamaño solo si la raza
+  no lo define, por ejemplo una raza escrita a mano o un gato). El cliente queda **sin registrar** (así aparece
+  en la agenda y en Propietarios). Cuando llega, el turno muestra **Registrar cliente y términos (ficha)**: en
+  la ficha de servicio se completan la cédula y la dirección y se marcan los términos; al guardar la ficha
+  queda registrado y ya se puede iniciar la atención. Si la cédula ya existía, el cliente se une a ese
+  propietario y sus mascotas, turnos y fichas pasan a él (una mascota con el mismo nombre se toma como la misma).
 - Sin abono, el turno queda **pendiente** 30 minutos (configurable) y luego se libera solo. Los
   pendientes no apartan cupo: **gana quien paga primero**, y el sistema avisa a quién llamar.
 - **Varias mascotas**: una franja por mascota, seguidas, desde las 09:00 o las 14:30; si no alcanzan,
@@ -184,7 +183,7 @@ tests\        pruebas automáticas (pytest)
 .venv\Scripts\python -m pytest
 ```
 
-274 pruebas. Las de rutas `C:\...` solo corren en Windows, y la prueba de humo de la interfaz se omite si
+275 pruebas. Las de rutas `C:\...` solo corren en Windows, y la prueba de humo de la interfaz se omite si
 el equipo no tiene pantalla.
 
 ## Notas

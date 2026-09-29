@@ -66,7 +66,7 @@ def test_no_se_atiende_hasta_registrar_y_aceptar(conn, empleada, nuevo):
     t = _agendar(conn, empleada, mid)
     with pytest.raises(DatoInvalido, match="sin registrar"):
         st.iniciar_atencion(conn, empleada, t)
-    with pytest.raises(DatoInvalido, match="Primero complete"):
+    with pytest.raises(DatoInvalido, match="Primero registre la cédula"):
         legal.aceptar(conn, empleada, pid, ["TERMINOS", "DATOS"])
 
     final = sp.completar_registro(conn, empleada, pid, "Carolina Ruiz", "52.123.456", "3112223344", None, "Cra 7 # 8-9")
@@ -109,8 +109,9 @@ def test_completar_un_registrado_se_rechaza(conn, empleada):
         sp.completar_registro(conn, empleada, pid, "María", "1098765432", "3012345678", None, "Calle 10")
 
 
-def test_cliente_registrado_sigue_necesitando_consentimientos_para_agendar(conn, empleada):
+def test_cliente_registrado_sin_consentimientos_tambien_se_agenda(conn, empleada):
     pid = sp.crear(conn, empleada, "María", "1098765432", "3012345678", None, "Calle 10")
     mid = sp.crear_mascota(conn, empleada, pid, "Toby", _raza(conn, "Shih Tzu"))
+    t = _agendar(conn, empleada, mid)
     with pytest.raises(DatoInvalido, match="términos"):
-        _agendar(conn, empleada, mid)
+        st.iniciar_atencion(conn, empleada, t)
