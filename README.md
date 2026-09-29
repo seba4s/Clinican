@@ -3,7 +3,8 @@
 Programa de escritorio para **CLINICAN, Unidad Médica Veterinaria (servicio de peluquería)**.
 Funciona en Windows 11, **sin internet**, con una base de datos local.
 
-La especificación completa está en `ESPECIFICACION_CLINICAN.md`.
+La especificación completa está en `ESPECIFICACION_CLINICAN.md`. El manual para el personal está en
+`MANUAL_USUARIO.md`.
 
 ## Estado del proyecto
 
@@ -13,10 +14,22 @@ La especificación completa está en `ESPECIFICACION_CLINICAN.md`.
 | 2. Propietarios, mascotas y legal | Propietarios, mascotas, razas, textos legales con versiones, consentimientos, plantilla de Excel, pantalla de Configuración | **Terminada** |
 | 3. Ficha y precios | Ficha de servicio, precios sugeridos, extras de baño, desenredado por sesiones | **Terminada** |
 | 4. Turnos | Agenda, franjas, horas extra, bloqueos, cupos, abonos, expiración, quien paga primero, grupos, no asistencia, entrega | **Terminada** |
-| 5. Empaquetado y respaldos | | Pendiente |
+| 5. Empaquetado y respaldos | `construir.bat`, `.exe`, acceso directo, respaldo automático y manual, restaurar, manual de usuario | **Terminada** (falta la prueba de instalación limpia en el PC de la peluquería) |
 | 6. WhatsApp | Solo con autorización | Pendiente |
 
-## Cómo abrir el programa (mientras no exista el .exe)
+## Instalar el programa (.exe)
+
+Se necesita Python 3.11 o superior instalado en el PC (python.org, marcando «Add python.exe to PATH»).
+Copie la carpeta del proyecto en `C:\Clinican` y haga **doble clic en `construir.bat`**. Este archivo:
+
+1. Crea el entorno `.venv` e instala `requirements.txt` (**solo esta primera vez necesita internet**).
+2. Corre las pruebas automáticas y, si pasan, compila `dist\CLINICAN\CLINICAN.exe` con PyInstaller.
+3. Crea el acceso directo **CLINICAN** con el icono del perro en el escritorio.
+
+Después, el programa funciona sin internet. Para actualizarlo, se reemplaza el código y se vuelve a
+ejecutar `construir.bat`: la base de datos (`datos\`) y los respaldos (`respaldos\`) no se tocan.
+
+## Abrir el programa sin compilar (para desarrollo)
 
 Se necesita Python 3.11 o superior. La primera vez, en una ventana de comandos dentro de `C:\Clinican`:
 
@@ -92,7 +105,7 @@ Se abre desde **Propietarios › Mascotas › + Nueva ficha de servicio** (o con
 |---|---|
 | Base de datos | `C:\Clinican\datos\clinican.db` |
 | Registro de errores | `C:\Clinican\datos\clinican.log` |
-| Respaldos (Fase 5) | `C:\Clinican\respaldos\` |
+| Respaldos automáticos | `C:\Clinican\respaldos\` |
 
 La carpeta `datos` está fuera de la carpeta de compilación, así que no se pierde al recompilar.
 Para usar otra carpeta, defina la variable de entorno `CLINICAN_HOME`.
@@ -120,6 +133,20 @@ Todos se cambian desde Configuración (solo la administradora), sin tocar el có
 | A-7 | Un solo PC con varios usuarios | (arquitectura) | — |
 | A-8 | Con aviso a tiempo, el abono se conserva para reprogramar | `abono_se_conserva_con_aviso` | 1 (sí) |
 | A-9 | Importación de Excel se adapta cuando exista un archivo real | (Fase 2) | — |
+| A-10 | Al cancelar, el abono solo se devuelve con esta anticipación; si no, queda a favor o se mueve con el turno | `horas_minimas_devolucion` | 12 |
+
+## Respaldos
+
+- **Automático:** al cerrar el programa y una vez al día (al abrirlo, o cada hora si queda abierto), con la
+  API `sqlite3.Connection.backup`, en `C:\Clinican\respaldos\`. Se conservan los últimos 30
+  (Configuración › Otros › `respaldos_conservar`). Cada copia es un archivo `clinican_auto_AAAA-MM-DD_HHMMSS.db`
+  que se puede abrir solo.
+- **Respaldar ahora** (menú **Respaldo**, todo el personal): copia a una memoria USB u otra carpeta
+  (`clinican_manual_….db`). Recomendado una vez por semana, fuera del computador.
+- **Restaurar** (solo la administradora): se elige una copia de la lista o un archivo de la USB. El programa
+  revisa que sea un respaldo sano de CLINICAN, guarda antes una copia del estado actual
+  (`clinican_antes-de-restaurar_….db`) y, al terminar, pide iniciar sesión de nuevo. Un respaldo de una
+  versión anterior del programa se actualiza solo.
 
 ## Estructura del código
 
@@ -137,6 +164,9 @@ tests\        pruebas automáticas (pytest)
 ```
 .venv\Scripts\python -m pytest
 ```
+
+257 pruebas. Las de rutas `C:\...` solo corren en Windows, y la prueba de humo de la interfaz se omite si
+el equipo no tiene pantalla.
 
 ## Notas
 

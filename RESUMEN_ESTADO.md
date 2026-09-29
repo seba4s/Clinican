@@ -5,8 +5,17 @@ _Fecha: 29 de septiembre de 2026_
 Programa de escritorio (Python + CustomTkinter + SQLite, 100 % sin internet) para la peluquería canina de
 CLINICAN. Se construye por fases según `ESPECIFICACION_CLINICAN.md` (sección 12).
 
-**Estado general:** fases 1 a 4 terminadas. Faltan la 5 (empaquetado y respaldos) y la 6 (WhatsApp, que necesita
-autorización). Las **242 pruebas automáticas pasan** (`.venv\Scripts\python -m pytest`).
+**Estado general:** fases 1 a 5 terminadas en el código. De la 5 solo falta la prueba en el PC real (instalación
+limpia en Windows 11 sin internet). La 6 (WhatsApp) necesita autorización. Las **257 pruebas automáticas pasan**
+(`.venv\Scripts\python -m pytest`).
+
+> **Importante — capa de datos recuperada.** La regla `datos/` del `.gitignore` ignoraba también el paquete
+> `clinican/datos` (conexión, esquema, migraciones, semillas, repositorios y lector de Excel), así que nunca se
+> subió al repositorio y el programa no arrancaba desde el repositorio. Se reconstruyó completo a partir de los
+> servicios, las pruebas y la plantilla de Excel, y el `.gitignore` ahora solo ignora `/datos/` y `/respaldos/`
+> de la raíz. Si en algún PC hay una `clinican.db` creada con la versión anterior, **haga una copia antes** de
+> abrirla con esta versión: el esquema sigue la sección 6 y debería ser compatible, pero no se pudo comparar con
+> el código original perdido.
 
 | Fase | Contenido | Estado |
 |---|---|---|
@@ -14,7 +23,7 @@ autorización). Las **242 pruebas automáticas pasan** (`.venv\Scripts\python -m
 | 2. Propietarios, mascotas y legal | CRUD, razas, textos legales con versiones, consentimientos, plantilla Excel, Configuración | ✅ Terminada |
 | 3. Ficha y precios | Ficha de servicio, precios sugeridos, extras de baño, desenredado por sesiones | ✅ Terminada |
 | 4. Turnos | Agenda, franjas, cupos, abonos, expiración, quien paga primero, grupos, no asistencia, entrega | ✅ Terminada |
-| 5. Empaquetado y respaldos | `construir.bat`, `.exe`, acceso directo, respaldos, manual | ⏳ Pendiente |
+| 5. Empaquetado y respaldos | `construir.bat`, `.exe`, acceso directo, respaldos, manual | ✅ Terminada (falta probar en el PC real) |
 | 6. WhatsApp | API oficial de Meta (sección 14) | ⏳ Pendiente, **necesita autorización** |
 
 ---
@@ -55,25 +64,32 @@ autorización). Las **242 pruebas automáticas pasan** (`.venv\Scripts\python -m
 - No asistencia con o sin aviso de 12 h (RN-10). Servicio imposible (RN-16), mascota lista (RN-17), entrega y cobro con el saldo.
 - Horarios: todos pueden agregar o quitar horas extra; solo la ADMIN bloquea (si no hay turnos activos) y edita la plantilla semanal (RN-11).
 
+### Fase 5 — Empaquetado y respaldos
+- `construir.bat` (doble clic): crea `.venv`, instala `requirements.txt`, corre las pruebas, compila
+  `dist\CLINICAN\CLINICAN.exe` con PyInstaller (modo carpeta, icono y `assets`) y crea el acceso directo del
+  escritorio con el icono del perro.
+- Se probó la misma compilación de PyInstaller en Linux: el programa empaquetado abre, usa `datos\` y
+  `respaldos\` fuera de `dist` y hace su respaldo. Esa prueba encontró que faltaba `PIL._tkinter_finder` (sin él
+  el `.exe` se cerraba al mostrar el logo); ya va incluido en `construir.bat`.
+- Respaldo automático con `sqlite3.Connection.backup` al cerrar y una vez al día en `respaldos\`, conservando
+  los últimos 30 (configurable). Cada copia se verifica con `PRAGMA quick_check`.
+- Pantalla **Respaldo** (pantalla 11): «Respaldar ahora» a una USB u otra carpeta (todo el personal), lista de
+  copias y restaurar (solo ADMIN) desde la lista o desde un archivo. Antes de restaurar se guarda una copia del
+  estado actual; un respaldo de una versión anterior se actualiza solo.
+- `MANUAL_USUARIO.md`: agendar un turno, registrar un abono, atender una mascota, bloquear un día y respaldar.
+
 ### Documentación y pruebas
-- `README.md` con el estado, la instalación para desarrollo, los flujos principales y los supuestos A-1 a A-9.
-- 242 pruebas `pytest`: base de datos, seguridad, permisos, personal, configuración, propietarios, legal, importación, fichas, turnos, rutas y una prueba de humo de la interfaz.
+- `README.md` con el estado, la instalación para desarrollo, los flujos principales y los supuestos A-1 a A-10.
+- 257 pruebas `pytest`: base de datos, seguridad, permisos, personal, configuración, propietarios, legal, importación, fichas, turnos, respaldos y restauración, rutas y una prueba de humo de la interfaz.
 
 ---
 
 ## Lo que falta
 
-### Fase 5 — Empaquetado y respaldos (siguiente paso)
-- [ ] **`construir.bat`**: crear `.venv`, instalar `requirements.txt` y ejecutar PyInstaller en modo carpeta con el icono y `assets`.
-- [ ] Compilar `dist\CLINICAN\CLINICAN.exe` y comprobar que abre y usa `C:\Clinican\datos\clinican.db`.
-- [ ] **Acceso directo en el escritorio** con el icono del perro.
-- [ ] **Respaldo automático** con `sqlite3.Connection.backup` al cerrar la app y una vez al día, en `C:\Clinican\respaldos\`, conservando las últimas 30.
-- [ ] Pantalla **Respaldo** (pantalla 11 de la especificación): botón «Respaldar ahora» hacia otra carpeta o una USB y lista de copias.
-- [ ] **Restaurar** (solo ADMIN), que primero haga una copia del estado actual.
-- [ ] Pruebas de respaldo y restauración (exigidas en la sección 12).
-- [ ] **`MANUAL_USUARIO.md`** (una o dos páginas): agendar un turno, registrar un abono, atender una mascota, bloquear un día y respaldar.
-- [ ] Criterio de aceptación: instalación limpia en Windows 11 sin internet, con el respaldo y la restauración probados.
-- [ ] Actualizar la tabla de estado del `README.md`.
+### Fase 5 — Lo que queda (en el PC de la peluquería)
+- [ ] Ejecutar `construir.bat` en `C:\Clinican` y comprobar que el `.exe` abre y usa `C:\Clinican\datos\clinican.db`.
+- [ ] Criterio de aceptación: con el PC **sin internet**, abrir desde el acceso directo, agendar un turno, cerrar,
+      respaldar a una USB y restaurar esa copia.
 
 ### Fase 6 — WhatsApp (solo con autorización explícita)
 - [ ] Decidir con la usuaria la arquitectura del webhook: un túnel seguro hacia el PC o un servicio pequeño en la nube que se sincronice.
@@ -84,7 +100,6 @@ autorización). Las **242 pruebas automáticas pasan** (`.venv\Scripts\python -m
 
 ### Pendientes externos (no dependen del código)
 - [ ] Conseguir un **Excel real** de mascotas para adaptar `clinican/datos/importar_excel.py` [A-9].
-- [ ] Que la usuaria **confirme los supuestos A-1 a A-9** (sección 13). Ya son configurables, así que cambiarlos no requiere tocar el código.
+- [ ] Que la usuaria **confirme los supuestos A-1 a A-10** (sección 13). Ya son configurables, así que cambiarlos no requiere tocar el código.
 - [ ] Que un **abogado revise los textos legales**: son un borrador y no son asesoría jurídica.
 - [ ] Si aparece el **PNG original del logo**, reemplazar `assets\logo_perro.png`, que hoy se sacó del `.ico`.
-- [ ] Opcional: iniciar un repositorio **git** para el proyecto (hoy no hay control de versiones).
