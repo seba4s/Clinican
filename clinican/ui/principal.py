@@ -50,6 +50,7 @@ def _entradas_menu():
     from clinican.ui.pantalla_nuevo_turno import PantallaNuevoTurno
     from clinican.ui.pantalla_personal import PantallaPersonal
     from clinican.ui.pantalla_propietarios import PantallaPropietarios
+    from clinican.ui.pantalla_respaldo import PantallaRespaldo
 
     # (texto, pantalla, permiso necesario para verla)
     return [
@@ -60,6 +61,7 @@ def _entradas_menu():
         ("Personal", PantallaPersonal, Accion.GESTIONAR_PERSONAL),
         ("Configuración", PantallaConfiguracion, Accion.CAMBIAR_CONFIGURACION),
         ("Auditoría", PantallaAuditoria, Accion.VER_AUDITORIA),
+        ("Respaldo", PantallaRespaldo, Accion.RESPALDAR),
         ("Cambiar mi PIN", PantallaMiPin, Accion.CAMBIAR_PIN_PROPIO),
     ]
 

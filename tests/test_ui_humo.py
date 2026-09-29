@@ -159,7 +159,7 @@ def test_recorrido_admin_y_personal(app, conn):
 
     personal.crear(conn, app.sesion, "Laura", "Asistente de peluquería", "5678")
     principal = app.vista
-    assert set(principal.entradas) == {"Agenda", "Nuevo turno", "Propietarios", "Horarios", "Personal", "Configuración", "Auditoría", "Cambiar mi PIN"}
+    assert set(principal.entradas) == {"Agenda", "Nuevo turno", "Propietarios", "Horarios", "Personal", "Configuración", "Auditoría", "Respaldo", "Cambiar mi PIN"}
     for nombre in principal.entradas:
         principal.mostrar(nombre)
         app.update()
@@ -183,7 +183,7 @@ def test_recorrido_admin_y_personal(app, conn):
     login._entrar()
     app.update()
     assert not app.sesion.es_admin
-    assert set(app.vista.entradas) == {"Agenda", "Nuevo turno", "Propietarios", "Horarios", "Cambiar mi PIN"}
+    assert set(app.vista.entradas) == {"Agenda", "Nuevo turno", "Propietarios", "Horarios", "Respaldo", "Cambiar mi PIN"}
     assert app.errores == []
 
 
@@ -254,4 +254,52 @@ def test_turnos_desde_la_interfaz(app, conn, monkeypatch, admin, empleada):
     app.update()
     assert mensajes[-1][0] == "Hay turnos activos"
     assert app.vista.nombre_actual == "Agenda"
+    assert app.errores == []
+
+
+def _textos_de_botones(widget) -> list[str]:
+    import customtkinter as ctk
+
+    textos = [widget.cget("text")] if isinstance(widget, ctk.CTkButton) else []
+    for hijo in widget.winfo_children():
+        textos += _textos_de_botones(hijo)
+    return textos
+
+
+def test_pantalla_respaldo(app, conn, monkeypatch, tmp_path, admin, empleada):
+    from clinican.servicios import propietarios as sp
+    from clinican.ui import dialogos
+    from clinican.ui.acceso import PantallaInicioSesion
+
+    mensajes = []
+    monkeypatch.setattr(dialogos, "_mostrar", lambda padre, titulo, mensaje, *a, **k: mensajes.append((titulo, mensaje)) or True)
+    monkeypatch.setenv("CLINICAN_HOME", str(tmp_path))
+    sp.crear(conn, admin, "María Pérez", "1098765432", "3012345678", None, "Calle 10")
+
+    # El personal puede respaldar pero no ve los botones de restaurar
+    app._entrar(empleada)
+    app.update()
+    app.vista.mostrar("Respaldo")
+    app.update()
+    pantalla = app.vista.pantalla_actual
+    pantalla._respaldar_en(pantalla.carpeta)
+    app.update()
+    assert mensajes[-1][0] == "Respaldo guardado"
+    assert len(pantalla.tabla.get_children()) == 1
+    assert not any("Restaurar" in t for t in _textos_de_botones(pantalla))
+
+    # La administradora restaura esa copia y vuelve al inicio de sesión
+    sp.crear(conn, admin, "Pedro Gómez", "5555555", "3150000000", None, "Cra 2")
+    app._entrar(admin)
+    app.update()
+    app.vista.mostrar("Respaldo")
+    app.update()
+    pantalla = app.vista.pantalla_actual
+    assert "Restaurar la copia elegida" in _textos_de_botones(pantalla)
+    pantalla.tabla.selection_set(pantalla.tabla.get_children()[0])
+    pantalla._restaurar_elegida()
+    app.update()
+    assert mensajes[-1][0] == "Respaldo restaurado"
+    assert [f[0] for f in conn.execute("SELECT nombre FROM propietarios")] == ["María Pérez"]
+    assert isinstance(app.vista, PantallaInicioSesion) and app.sesion is None
     assert app.errores == []

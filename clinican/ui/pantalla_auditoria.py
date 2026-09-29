@@ -59,6 +59,8 @@ NOMBRES_ACCION = {
     "BLOQUEAR_FRANJA": "Bloqueó franja",
     "DESBLOQUEAR": "Quitó bloqueo",
     "PLANTILLA_FRANJA": "Cambió plantilla semanal",
+    "RESPALDAR": "Hizo un respaldo",
+    "RESTAURAR_RESPALDO": "Restauró un respaldo",
 }
 
 TODAS = "Todas las personas"

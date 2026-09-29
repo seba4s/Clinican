@@ -7,13 +7,15 @@ import sqlite3
 
 import customtkinter as ctk
 
-from clinican.servicios import acceso, configuracion
+from clinican.servicios import acceso, configuracion, respaldos
 from clinican.servicios.base import Sesion
 from clinican.ui import tema
 from clinican.ui.acceso import PantallaInicioSesion, PantallaPrimerArranque
 from clinican.ui.principal import VentanaPrincipal
 
 log = logging.getLogger(__name__)
+
+MS_REVISION_RESPALDO = 60 * 60 * 1000  # cada hora se revisa si ya se hizo el respaldo del día
 
 
 class AplicacionClinican(ctk.CTk):
@@ -32,6 +34,7 @@ class AplicacionClinican(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self.salir)
         self.report_callback_exception = self._error_no_controlado
         self.after(0, self._maximizar)
+        self._revision_respaldo = self.after(MS_REVISION_RESPALDO, self._respaldo_diario)
 
         self.mostrar_acceso()
 
@@ -74,10 +77,33 @@ class AplicacionClinican(ctk.CTk):
             "Si se repite, avise a quien administra el sistema (queda anotado en datos\\clinican.log).",
         )
 
+    def _respaldo_diario(self) -> None:
+        """Sección 10: un respaldo automático al día, aunque el programa no se cierre."""
+        try:
+            respaldos.diario(self.conn)
+        except Exception:
+            log.exception("Falló el respaldo diario")
+        self._revision_respaldo = self.after(MS_REVISION_RESPALDO, self._respaldo_diario)
+
     def salir(self) -> None:
         try:
             if self.sesion is not None:
                 acceso.cerrar_sesion(self.conn, self.sesion)
         except Exception:
             log.exception("No se pudo registrar el cierre de sesión")
+        try:
+            respaldos.automatico(self.conn)  # sección 10: respaldo al cerrar
+        except Exception as e:
+            log.exception("Falló el respaldo al cerrar")
+            from clinican.ui import dialogos
+
+            dialogos.error(self, f"No se pudo guardar el respaldo automático al cerrar:\n{e}\n\n"
+                                 "Los datos están a salvo en la base de datos. Haga un respaldo manual en cuanto pueda.",
+                           titulo="Respaldo no guardado")
         self.destroy()
+
+    def destroy(self):
+        if getattr(self, "_revision_respaldo", None):
+            self.after_cancel(self._revision_respaldo)
+            self._revision_respaldo = None
+        super().destroy()
