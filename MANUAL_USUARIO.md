@@ -75,4 +75,10 @@ El programa guarda un **respaldo automático** al cerrarse y una vez al día, en
 
 ---
 
+## 6. Pasar las fichas antiguas de Excel al programa
+
+En **Propietarios › Importar desde Excel › Fichas antiguas de peluquería**, elija los archivos de Excel de las fichas (puede seleccionar varios a la vez con Ctrl o Shift). El programa muestra cuántas fichas va a pasar y cuáles no, con el motivo (por ejemplo, una raza que no está en la lista). Pulse **Importar**. Si repite un archivo, no se duplica.
+
+---
+
 ¿Algo no funciona? Anote lo que pasó y avise a la administradora. Los errores quedan registrados en `C:\Clinican\datos\clinican.log`.

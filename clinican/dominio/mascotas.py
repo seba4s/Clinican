@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from clinican.dominio.catalogos import TAMANOS
+from clinican.dominio.catalogos import SEXOS, TAMANOS
 from clinican.dominio.errores import DatoInvalido
 
 EDAD_MAX_ANIOS = 30
@@ -36,6 +36,7 @@ def validar_mascota(
     edad_anios: int | None,
     edad_meses: int | None,
     fecha_ultima_visita: str | None,
+    sexo: str | None = None,
 ) -> dict:
     """Valida y normaliza. Devuelve los campos listos para guardar."""
     nombre = " ".join((nombre or "").split())
@@ -52,6 +53,8 @@ def validar_mascota(
         raise DatoInvalido(f"La edad en años debe estar entre 0 y {EDAD_MAX_ANIOS}.")
     if edad_meses is not None and not (0 <= edad_meses <= 11):
         raise DatoInvalido("Los meses de edad deben estar entre 0 y 11.")
+    if sexo is not None and sexo not in SEXOS:
+        raise DatoInvalido("El sexo debe ser hembra o macho.")
     fecha = validar_fecha(fecha_ultima_visita, "La fecha de última visita") if fecha_ultima_visita else None
     if fecha and fecha > date.today().isoformat():
         raise DatoInvalido("La fecha de última visita no puede ser futura.")
@@ -62,6 +65,7 @@ def validar_mascota(
         "edad_anios": edad_anios,
         "edad_meses": edad_meses or 0,
         "fecha_ultima_visita": fecha,
+        "sexo": sexo,
     }
 
 

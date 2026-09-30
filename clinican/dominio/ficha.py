@@ -79,6 +79,11 @@ class DetallesFicha:
     forma_cara: str | None = None
     condiciones: dict[str, bool] = field(default_factory=dict)
     observaciones: str | None = None
+    despunte: bool = False
+    patas_rasuradas: bool = False
+    desparasitacion: bool = False
+    bigotes: int | None = None
+    orejas: int | None = None
     corbatin: int | None = None
     corbatin_color: str | None = None
     monos: int | None = None
@@ -95,6 +100,8 @@ class DetallesFicha:
         self.copete = _si_no(self.copete, "Copete")
         self.barbas = _si_no(self.barbas, "Barbas")
         self.cola_leon = _si_no(self.cola_leon, "Cola de león")
+        self.bigotes = _si_no(self.bigotes, "Bigotes")
+        self.orejas = _si_no(self.orejas, "Orejas")
         self.corbatin = _si_no(self.corbatin, "Corbatín")
         self.monos = _si_no(self.monos, "Moños en las orejas")
         self.corbatin_color = _color(self.corbatin, self.corbatin_color, "corbatín")
@@ -137,6 +144,11 @@ class DetallesFicha:
             "cola_leon": self.cola_leon,
             "cola_estilo": self.cola_estilo,
             "forma_cara": self.forma_cara,
+            "despunte": int(bool(self.despunte)),
+            "patas_rasuradas": int(bool(self.patas_rasuradas)),
+            "desparasitacion": int(bool(self.desparasitacion)),
+            "bigotes": self.bigotes,
+            "orejas": self.orejas,
             "corbatin": self.corbatin,
             "corbatin_color": self.corbatin_color,
             "monos": self.monos,

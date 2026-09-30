@@ -70,7 +70,7 @@ def editar(conn, sesion: Sesion, propietario_id: int, nombre, cedula, celular1, 
 
 
 def crear_provisional(conn, sesion: Sesion, nombre, celular, mascota_nombre, raza_id=None, tamano_manual=None,
-                      pelaje_manual=None, raza_texto=None, especie="PERRO") -> tuple[int, int]:
+                      pelaje_manual=None, raza_texto=None, especie="PERRO", sexo=None) -> tuple[int, int]:
     """Cliente nuevo que se agenda sin registrarlo: solo nombre, celular y su mascota.
 
     La cédula, la dirección y los consentimientos se completan al momento del
@@ -80,7 +80,7 @@ def crear_provisional(conn, sesion: Sesion, nombre, celular, mascota_nombre, raz
     cliente = validar_cliente_provisional(nombre, celular)
     with transaccion(conn):
         datos_m = _datos_mascota(conn, sesion, mascota_nombre, raza_id, tamano_manual, pelaje_manual, None, None,
-                                 None, None, raza_texto, especie)
+                                 None, None, raza_texto, especie, sexo)
         pid = repo.insertar_provisional(conn, cliente["nombre"], cliente["celular1"])
         mid = repo.insertar_mascota(conn, pid, datos_m)
         repo_auditoria.registrar(conn, sesion.personal_id, "CREAR_CLIENTE_SIN_REGISTRAR", "propietarios", pid,
@@ -164,7 +164,7 @@ def mascota(conn, sesion: Sesion, mascota_id: int) -> sqlite3.Row:
 
 
 def _datos_mascota(conn, sesion, nombre, raza_id, tamano_manual, pelaje_manual, edad_anios, edad_meses,
-                   fecha_ultima_visita, observaciones, raza_texto=None, especie="PERRO") -> dict:
+                   fecha_ultima_visita, observaciones, raza_texto=None, especie="PERRO", sexo=None) -> dict:
     """Valida los datos. Con ``raza_texto`` (raza escrita a mano) la raza se busca o se crea.
     Debe llamarse dentro de una transacción."""
     if raza_id:
@@ -180,6 +180,7 @@ def _datos_mascota(conn, sesion, nombre, raza_id, tamano_manual, pelaje_manual, 
         reglas_mascota.entero_opcional(edad_anios, "La edad en años"),
         reglas_mascota.entero_opcional(edad_meses, "Los meses de edad"),
         fecha_ultima_visita or None,
+        sexo or None,
     )
     datos["raza_id"] = raza["id"]
     datos["observaciones"] = (observaciones or "").strip() or None
@@ -188,12 +189,12 @@ def _datos_mascota(conn, sesion, nombre, raza_id, tamano_manual, pelaje_manual, 
 
 def crear_mascota(conn, sesion: Sesion, propietario_id: int, nombre, raza_id=None, tamano_manual=None,
                   pelaje_manual=None, edad_anios=None, edad_meses=None, fecha_ultima_visita=None,
-                  observaciones=None, raza_texto=None, especie="PERRO") -> int:
+                  observaciones=None, raza_texto=None, especie="PERRO", sexo=None) -> int:
     requerir(conn, sesion, _P)
     with transaccion(conn):
         dueno = obtener(conn, sesion, propietario_id)
         datos = _datos_mascota(conn, sesion, nombre, raza_id, tamano_manual, pelaje_manual, edad_anios, edad_meses,
-                               fecha_ultima_visita, observaciones, raza_texto, especie)
+                               fecha_ultima_visita, observaciones, raza_texto, especie, sexo)
         if repo.mascota_con_nombre(conn, propietario_id, datos["nombre"]):
             raise DatoInvalido(f"{dueno['nombre']} ya tiene una mascota llamada «{datos['nombre']}».")
         nueva = repo.insertar_mascota(conn, propietario_id, datos)
@@ -204,12 +205,12 @@ def crear_mascota(conn, sesion: Sesion, propietario_id: int, nombre, raza_id=Non
 
 def editar_mascota(conn, sesion: Sesion, mascota_id: int, nombre, raza_id=None, tamano_manual=None,
                    pelaje_manual=None, edad_anios=None, edad_meses=None, fecha_ultima_visita=None,
-                   observaciones=None, raza_texto=None, especie="PERRO") -> None:
+                   observaciones=None, raza_texto=None, especie="PERRO", sexo=None) -> None:
     requerir(conn, sesion, _P)
     with transaccion(conn):
         antes = mascota(conn, sesion, mascota_id)
         datos = _datos_mascota(conn, sesion, nombre, raza_id, tamano_manual, pelaje_manual, edad_anios, edad_meses,
-                               fecha_ultima_visita, observaciones, raza_texto, especie)
+                               fecha_ultima_visita, observaciones, raza_texto, especie, sexo)
         otra = repo.mascota_con_nombre(conn, antes["propietario_id"], datos["nombre"])
         if otra is not None and otra["id"] != mascota_id:
             raise DatoInvalido(f"El propietario ya tiene otra mascota llamada «{datos['nombre']}».")

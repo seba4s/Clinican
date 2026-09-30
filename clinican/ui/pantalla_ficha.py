@@ -8,7 +8,7 @@ from typing import Callable
 import customtkinter as ctk
 
 from clinican.dominio import ficha as reglas
-from clinican.dominio.catalogos import CONDICIONES, ESTADOS_SERVICIO, TIPOS_LEGALES, TIPOS_SERVICIO, nombre_tamano
+from clinican.dominio.catalogos import CONDICIONES, ESTADOS_SERVICIO, SEXOS, TIPOS_LEGALES, TIPOS_SERVICIO, nombre_tamano
 from clinican.dominio.propietarios import formato_celular
 from clinican.dominio.errores import ErrorClinican
 from clinican.dominio.formato import pesos
@@ -75,7 +75,8 @@ class PantallaFicha(ctk.CTkFrame):
         edad = ""
         if self.m["edad_anios"] is not None:
             edad = f" · {self.m['edad_anios']} años" + (f" y {self.m['edad_meses']} meses" if self.m["edad_meses"] else "")
-        tema.etiqueta(self, f"{self.m['raza_nombre']} · {nombre_tamano(tamano)}{edad}",
+        sexo = f" · {SEXOS[self.m['sexo']]}" if self.m["sexo"] else ""
+        tema.etiqueta(self, f"{self.m['raza_nombre']} · {nombre_tamano(tamano)}{sexo}{edad}",
                       color=tema.GRIS_TEXTO).pack(anchor="w", pady=(0, 10))
 
     def _fila(self, texto: str) -> ctk.CTkFrame:
@@ -100,8 +101,17 @@ class PantallaFicha(ctk.CTkFrame):
         self.largo = tema.Opciones(self.caja_largo, LARGOS, self._al_cambiar, s["largo_maquina"] if s else None)
         self.largo.pack(anchor="w")
 
+        caja = self._fila("Además")
+        self.adicionales = {}
+        for campo, texto in (("despunte", "Despunte"), ("patas_rasuradas", "Patas rasuradas"),
+                             ("desparasitacion", "Desparasitación")):
+            v = ctk.IntVar(value=s[campo] if s else 0)
+            tema.casilla(caja, texto, v).pack(side="left", padx=(0, 18))
+            self.adicionales[campo] = v
+
         self.opc = {}
-        for campo, texto in (("copete", "Copete"), ("barbas", "Barbas"), ("cola_leon", "Cola de león")):
+        for campo, texto in (("copete", "Copete"), ("barbas", "Barbas"), ("bigotes", "Bigotes"), ("orejas", "Orejas"),
+                             ("cola_leon", "Cola de león")):
             caja = self._fila(texto)
             self.opc[campo] = tema.Opciones(caja, SI_NO, self._al_cambiar, s[campo] if s else None)
             self.opc[campo].pack(anchor="w")
@@ -385,6 +395,8 @@ class PantallaFicha(ctk.CTkFrame):
             tipo_servicio=self.tipo.codigo, largo_maquina=largo,
             bano_medicado=bool(self.medicado.get()), bano_antipulgas=bool(self.antipulgas.get()),
             cantidad_banos_extra=cantidad, copete=self.opc["copete"].codigo, barbas=self.opc["barbas"].codigo,
+            bigotes=self.opc["bigotes"].codigo, orejas=self.opc["orejas"].codigo,
+            **{c: bool(v.get()) for c, v in self.adicionales.items()},
             cola_leon=cola, cola_estilo=self.cola_estilo.codigo if bajito and cola == 1 else None,
             forma_cara=self.forma_cara.codigo if bajito else None,
             corbatin=self.accesorios["corbatin"][0].codigo, corbatin_color=self.accesorios["corbatin"][1].get(),

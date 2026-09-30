@@ -39,6 +39,7 @@ NOMBRES_ACCION = {
     "ACEPTAR_DATOS": "Registró autorización de datos",
     "ACEPTAR_RESPONSABILIDAD": "Registró responsabilidad",
     "IMPORTAR_EXCEL": "Importó desde Excel",
+    "IMPORTAR_FICHAS_EXCEL": "Importó fichas antiguas de Excel",
     "CREAR_FICHA": "Creó ficha de servicio",
     "EDITAR_FICHA": "Editó ficha de servicio",
     "ESTADO_FICHA": "Cambió estado de ficha",

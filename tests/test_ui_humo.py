@@ -451,3 +451,37 @@ def test_mascota_con_raza_escrita_y_ficha_con_corbatin(app, conn, monkeypatch, a
     s = fichas.obtener(conn, empleada, conn.execute("SELECT id FROM servicios").fetchone()[0])
     assert (s["corbatin"], s["corbatin_color"], s["monos"], s["monos_color"]) == (1, "Azul", 1, "Rosado")
     assert app.errores == []
+
+
+def test_importar_fichas_antiguas_y_campos_nuevos(app, conn, monkeypatch, tmp_path, empleada):
+    from clinican.ui import dialogos
+    from tests.test_importar_fichas import ficha
+
+    mensajes = []
+    monkeypatch.setattr(dialogos, "_mostrar", lambda padre, titulo, mensaje, *a, **k: mensajes.append((titulo, mensaje)) or True)
+    app._entrar(empleada)
+    app.update()
+    app.vista.mostrar("Propietarios")
+    app.update()
+    pantalla = app.vista.pantalla_actual
+    pantalla.importar_fichas([str(ficha(tmp_path / "lola.xlsx"))])
+    app.update()
+    assert [t for t, _m in mensajes[-2:]] == ["Revisión de las fichas", "Importación terminada"]
+    assert len(pantalla.tabla.get_children()) == 1
+
+    pid = conn.execute("SELECT id FROM propietarios").fetchone()[0]
+    mid, sid = conn.execute("SELECT mascota_id, id FROM servicios").fetchone()
+    app.vista.ctx.abrir_ficha(pid, mid, sid)
+    app.update()
+    f = app.vista.pantalla_actual
+    assert set(f.adicionales) == {"despunte", "patas_rasuradas", "desparasitacion"}
+    assert {"bigotes", "orejas"} <= set(f.opc)
+    assert "Hembra" in _textos_de_etiquetas(f)
+    assert app.errores == []
+
+
+def _textos_de_etiquetas(widget) -> str:
+    import customtkinter as ctk
+
+    texto = widget.cget("text") if isinstance(widget, ctk.CTkLabel) else ""
+    return texto + " ".join(_textos_de_etiquetas(h) for h in widget.winfo_children())

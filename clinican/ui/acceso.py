@@ -60,7 +60,7 @@ class PantallaInicioSesion(_PantallaCentrada):
         self.pin.bind("<Return>", lambda _e: self._entrar())
 
         tema.boton(self.cuerpo, "Entrar", self._entrar, ancho=420).pack(anchor="w", pady=(24, 0))
-        self.after(200, self.pin.focus_set)
+        tema.enfocar_luego(self.pin, 200)
 
     def _entrar(self) -> None:
         try:
@@ -94,7 +94,7 @@ class PantallaPrimerArranque(_PantallaCentrada):
         self.pin2.bind("<Return>", lambda _e: self._crear())
 
         tema.boton(self.cuerpo, "Crear cuenta y entrar", self._crear, ancho=420).pack(anchor="w", pady=(24, 0))
-        self.after(200, self.nombre.focus_set)
+        tema.enfocar_luego(self.nombre, 200)
 
     def _crear(self) -> None:
         if self.pin.get() != self.pin2.get():

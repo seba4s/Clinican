@@ -54,7 +54,7 @@ class PantallaPropietarios(ctk.CTkFrame):
         if propietario_id is not None:
             self.buscar(seleccionar=propietario_id)  # dispara la selección
             self._mostrar_detalle(propietario_id, pestana)
-        self.after(150, self.texto.focus_set)
+        tema.enfocar_luego(self.texto, 150)
 
     # --------------------------------------------------------------- lista
     def buscar(self, seleccionar: int | None = None) -> None:
@@ -117,12 +117,18 @@ class PantallaPropietarios(ctk.CTkFrame):
             self, "Importar mascotas desde Excel",
             "Use la plantilla de importación (una fila por mascota). Primero se revisa el archivo "
             "y se le muestra qué se importará, antes de guardar nada.",
-            [("Elegir archivo lleno", "importar"), ("Guardar plantilla vacía", "plantilla")],
-            detalle="Pasos:\n1. Guarde la plantilla y llénela en Excel.\n2. Vuelva aquí y pulse «Elegir archivo lleno».\n"
-            "3. Revise el reporte y confirme.\n\nLos consentimientos no se importan: cada propietario debe "
-            "aceptarlos antes de su primer turno.",
+            [("Fichas antiguas de peluquería", "fichas"), ("Elegir archivo lleno", "importar"),
+             ("Guardar plantilla vacía", "plantilla")],
+            detalle="FICHAS ANTIGUAS: elija uno o varios archivos de Excel con la ficha de peluquería de CLINICAN "
+            "(una mascota por archivo). Se crean el propietario, la mascota y el servicio realizado con su fecha, "
+            "valor y nota. Volver a importar los mismos archivos no duplica nada.\n\n"
+            "PLANTILLA (una fila por mascota):\n1. Guarde la plantilla y llénela en Excel.\n"
+            "2. Vuelva aquí y pulse «Elegir archivo lleno».\n3. Revise el reporte y confirme.\n\n"
+            "Los consentimientos no se importan: cada propietario los acepta al llegar, en la ficha de servicio.",
         )
-        if eleccion == "importar":
+        if eleccion == "fichas":
+            self._importar_fichas()
+        elif eleccion == "importar":
             self._importar_archivo()
         elif eleccion == "plantilla":
             self._guardar_plantilla()
@@ -156,6 +162,42 @@ class PantallaPropietarios(ctk.CTkFrame):
         dialogos.reporte(self, "Importación terminada", final.resumen(), _detalle(final))
         self.texto.delete(0, "end")
         self.buscar()
+
+
+    def _importar_fichas(self) -> None:
+        rutas = filedialog.askopenfilenames(parent=self, title="Elija las fichas de peluquería (puede elegir varias)",
+                                            filetypes=[("Excel", "*.xlsx")])
+        if rutas:
+            self.importar_fichas(list(rutas))
+
+    def importar_fichas(self, rutas: list[str]) -> None:
+        previo = dialogos.ejecutar(self, importacion.importar_fichas, self.ctx.conn, self.ctx.sesion, rutas,
+                                   solo_validar=True)
+        if previo is dialogos.FALLO:
+            return
+        if previo.fichas_nuevas == 0 and previo.mascotas_nuevas == 0:
+            dialogos.reporte(self, "Nada para importar", previo.resumen(), _detalle_fichas(previo))
+            return
+        if not dialogos.reporte(self, "Revisión de las fichas", previo.resumen(), _detalle_fichas(previo),
+                                si="Importar", no="Cancelar"):
+            return
+        final = dialogos.ejecutar(self, importacion.importar_fichas, self.ctx.conn, self.ctx.sesion, rutas)
+        if final is dialogos.FALLO:
+            return
+        dialogos.reporte(self, "Importación terminada", final.resumen(), _detalle_fichas(final))
+        self.texto.delete(0, "end")
+        self.buscar()
+
+
+def _detalle_fichas(reporte) -> str:
+    partes = []
+    if reporte.rechazados:
+        partes.append("ARCHIVOS RECHAZADOS (no se importan):")
+        partes += [f"  {archivo}: {motivo}" for archivo, motivo in reporte.rechazados]
+    if reporte.avisos:
+        partes.append("\nAVISOS:")
+        partes += [f"  {archivo}: {motivo}" for archivo, motivo in reporte.avisos]
+    return "\n".join(partes) or "Todos los archivos son válidos."
 
 
 def _detalle(reporte) -> str:

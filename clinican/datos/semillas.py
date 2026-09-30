@@ -78,8 +78,40 @@ FRANJAS_MANANA = ["08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30"]
 FRANJAS_TARDE = ["14:30", "15:00", "15:30", "16:00", "16:30"]
 DIAS_ATENCION = range(1, 7)  # lunes a sábado; domingo cerrado
 
-TEXTOS_LEGALES: dict[str, str] = {
-    "TERMINOS": """TÉRMINOS Y CONDICIONES DEL SERVICIO DE PELUQUERÍA — CLINICAN
+# Términos reales de CLINICAN: «Formato autorización para realizar procedimientos de estética»
+# (formato en papel) y las cláusulas de la ficha de peluquería en Excel, más las reglas de abono
+# y agendamiento que aplica el programa. La migración 5 los pone como versión nueva en las bases
+# que todavía tienen el borrador inicial (TERMINOS_BORRADOR).
+TERMINOS_CLINICAN = """AUTORIZACIÓN PARA REALIZAR PROCEDIMIENTOS DE ESTÉTICA — CLINICAN, CENTRO MÉDICO VETERINARIO
+
+Declaro que he sido informado(a) y entiendo perfectamente:
+
+- Que se me ha hecho claridad en cuanto a que aquellas mascotas con problemas de piel, óticos y enfermedades que comprometan su estado de salud no son aptas para realizar procedimientos de estética sin la previa autorización y revisión del médico veterinario de confianza.
+- Las mascotas que ingresen con mal estado del pelaje, enredado, con presencia de motas y suciedad que dificulte la manipulación y adecuada revisión del estado de la piel serán ingresadas al área de estética bajo la responsabilidad del propietario.
+- Los cachorros que ingresen al área de estética deben tener plan de vacunación completo y presentar el carnet debidamente diligenciado, con el fin de evitar la exposición del cachorro al contagio de enfermedades que puedan comprometer su salud.
+- Las hembras gestantes ingresan al área de estética si se encuentran en buena condición de salud y bajo la responsabilidad del propietario.
+- Las mascotas con temperamento agresivo y difícil de manipular deben portar bozal, con el fin de garantizar la seguridad del personal y del resto de mascotas. Ingresan bajo la responsabilidad del propietario.
+- Debo suministrar toda la información que poseo respecto a las condiciones de salud de mi mascota que impidan o interfieran con los procedimientos de estética solicitados.
+- Las mascotas geriátricas ingresan al área de estética si se encuentran estables y en buenas condiciones de salud. Se admite el ingreso bajo la responsabilidad del propietario que ha suministrado toda la información pertinente respecto a la condición de su mascota.
+- Toda mascota con presencia de parásitos externos (pulgas, garrapatas o piojos) debe ser debidamente desparasitada antes de ingresar al área de estética, con el fin de evitar la infestación y contaminación del personal, de los instrumentos de estética y de las mascotas que reciben el servicio.
+
+NUESTRO SERVICIO INCLUYE: corte de uñas, limpieza de oídos, limpieza bucal, drenaje de glándulas anales, baño, cepillado, moños o corbatín y un excelente trato.
+
+CLÁUSULAS
+1. Autorizo el corte descrito en la ficha de servicio y el valor cobrado por CLINICAN. El precio final lo define la estilista el día del servicio, según el estado del pelaje (nudos), la piel, la presencia de pulgas, el tamaño y el comportamiento. Cuando el pelaje tenga nudos extremos, se podrán proponer sesiones de desenredado ({desenredado_sesion} por sesión, una por día).
+2. A toda mascota con pulgas le será realizado obligatoriamente el baño antipulgas o, en caso de ser necesario, se le suministrará una tableta antipulgas, la cual tendrá un costo adicional informado por la empresa.
+3. No se aceptan reclamos después de las 24 horas de la entrega de su mascota.
+4. Pasadas las 4 horas de la llamada para retirar su mascota, el cliente pagará un sobrecargo por concepto de guardería.
+5. CLINICAN no se hace responsable si su mascota sufre repentinamente de un problema cardíaco, neurológico o de cualquier índole.
+6. Toda mascota de edad avanzada que solicite el servicio deberá certificar el buen estado de su salud o pasará primero por la revisión del médico veterinario.
+7. Para el servicio de peluquería o baño deberá solicitar su cita por anticipado, ya sea en CLINICAN o mediante el {whatsapp_numero}.
+8. Abono. El turno se confirma con un abono mínimo de {abono_minimo} por mascota, pagado por Nequi, llave Bre-B o en efectivo en el local. El comprobante se envía al WhatsApp {whatsapp_numero}. Si el abono no se paga, el turno se libera automáticamente después de {minutos_pendiente} minutos, y si otra persona paga primero el mismo turno, se le da prioridad a quien pague primero.
+9. No asistencia. El abono no es reembolsable si no se asiste al turno. Si no se asiste y no se avisa con al menos {horas_minimas_aviso} horas de anticipación, se deberá abonar de nuevo para agendar otro turno.
+10. Si no es posible atender a la mascota por agresividad, problemas de conducta o enfermedades no informadas por el propietario, CLINICAN llamará al propietario para que la retire.
+
+Debido a que he comprendido todo el contenido de este documento y las explicaciones que se me han suministrado, y como tenedor de esta mascota, las ACEPTO y AUTORIZO la realización de los procedimientos, entendiendo que no existe compromiso de resultados por parte del equipo de profesionales de la Unidad Veterinaria CLINICAN."""
+
+TERMINOS_BORRADOR = """TÉRMINOS Y CONDICIONES DEL SERVICIO DE PELUQUERÍA — CLINICAN
 
 1. Responsabilidad. CLINICAN no será responsable en caso de muerte accidental (por ejemplo, un ataque al corazón), ni por conducta agresiva de la mascota, ni en el caso de mascotas de edad avanzada, mascotas que no están acostumbradas a la peluquería, mascotas nerviosas o enfermas. En caso fortuito, CLINICAN hará todo lo que esté en sus manos para que no ocurra ningún imprevisto durante el servicio.
 
@@ -91,7 +123,10 @@ TEXTOS_LEGALES: dict[str, str] = {
 
 5. No asistencia. El abono no es reembolsable en caso de no asistir al turno. Si no se asiste y no se informa con al menos {horas_minimas_aviso} horas de anticipación, se deberá abonar de nuevo para agendar otro turno.
 
-6. Imposibilidad de prestar el servicio. Si no es posible atender a la mascota por agresividad, problemas de conducta o enfermedades no especificadas por el propietario, CLINICAN llamará al propietario para que retire a su mascota de las instalaciones.""",
+6. Imposibilidad de prestar el servicio. Si no es posible atender a la mascota por agresividad, problemas de conducta o enfermedades no especificadas por el propietario, CLINICAN llamará al propietario para que retire a su mascota de las instalaciones."""
+
+TEXTOS_LEGALES: dict[str, str] = {
+    "TERMINOS": TERMINOS_CLINICAN,
     "DATOS": """AUTORIZACIÓN DE TRATAMIENTO DE DATOS PERSONALES (Ley 1581 de 2012)
 
 Autorizo a CLINICAN — Unidad Médica Veterinaria (Calle 18A No. 2-05, Barrio Lorenzo; teléfono y WhatsApp {whatsapp_numero}) para recolectar, almacenar y usar mis datos personales (nombre, cédula, celulares y dirección) con las siguientes finalidades: agendar y prestar el servicio de peluquería, llevar el historial de mi mascota, registrar los abonos y pagos, y contactarme por llamada o WhatsApp sobre mis turnos y el estado de mi mascota.

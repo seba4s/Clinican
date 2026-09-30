@@ -9,6 +9,7 @@ _COLUMNAS = {
     "cantidad_banos_extra", "copete", "barbas", "cola_leon", "cola_estilo", "forma_cara", "cond_agresiva",
     "cond_nudos_extremos", "cond_problemas_piel", "cond_plagas", "cond_edad_avanzada", "estado", "precio_minimo",
     "precio_final", "extras", "total", "observaciones", "corbatin", "corbatin_color", "monos", "monos_color",
+    "despunte", "patas_rasuradas", "desparasitacion", "bigotes", "orejas",
 }
 
 

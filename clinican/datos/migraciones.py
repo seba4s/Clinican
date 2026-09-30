@@ -283,7 +283,34 @@ ALTER TABLE servicios ADD COLUMN monos_color TEXT
                      semillas.RAZAS_GATO)
 
 
-MIGRACIONES = {1: _v1, 2: _v2, 3: _v3, 4: _v4}
+# ---------------------------------------------------------------- versión 5
+# Formato real de CLINICAN (ficha de peluquería en Excel y autorización en papel):
+# - Sexo de la mascota.
+# - Ficha: despunte, patas rasuradas, bigotes, orejas y desparasitación.
+# - Términos: si siguen con el borrador inicial, se crea una versión nueva con el texto real
+#   (quienes aceptaron el borrador deberán aceptar la versión nueva, RN-15).
+
+def _v5(conn: sqlite3.Connection) -> None:
+    from clinican.datos import semillas
+
+    _ejecutar(conn, """
+ALTER TABLE mascotas ADD COLUMN sexo TEXT CHECK (sexo IN ('HEMBRA','MACHO'));
+ALTER TABLE servicios ADD COLUMN despunte INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE servicios ADD COLUMN patas_rasuradas INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE servicios ADD COLUMN desparasitacion INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE servicios ADD COLUMN bigotes INTEGER;
+ALTER TABLE servicios ADD COLUMN orejas INTEGER
+""")
+    vigente = conn.execute(
+        "SELECT version, contenido FROM textos_legales WHERE tipo = 'TERMINOS' AND vigente = 1 ORDER BY version DESC LIMIT 1"
+    ).fetchone()
+    if vigente is not None and vigente[1].strip() == semillas.TERMINOS_BORRADOR.strip():
+        conn.execute("UPDATE textos_legales SET vigente = 0 WHERE tipo = 'TERMINOS'")
+        conn.execute("INSERT INTO textos_legales (tipo, version, contenido, vigente) VALUES ('TERMINOS', ?, ?, 1)",
+                     (vigente[0] + 1, semillas.TERMINOS_CLINICAN))
+
+
+MIGRACIONES = {1: _v1, 2: _v2, 3: _v3, 4: _v4, 5: _v5}
 VERSION_ACTUAL = max(MIGRACIONES)
 
 

@@ -131,7 +131,7 @@ def mascota_con_nombre(conn: sqlite3.Connection, propietario_id: int, nombre: st
 
 
 _CAMPOS_MASCOTA = ("nombre", "raza_id", "tamano_manual", "pelaje_complicado_manual", "edad_anios", "edad_meses",
-                   "fecha_ultima_visita", "observaciones")
+                   "fecha_ultima_visita", "observaciones", "sexo")
 
 
 def insertar_mascota(conn: sqlite3.Connection, propietario_id: int, datos: dict) -> int:

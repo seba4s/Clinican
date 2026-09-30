@@ -7,7 +7,7 @@ from typing import Callable
 
 import customtkinter as ctk
 
-from clinican.dominio.catalogos import CONDICIONES, ESTADOS_SERVICIO, TIPOS_LEGALES, TIPOS_SERVICIO
+from clinican.dominio.catalogos import CONDICIONES, ESTADOS_SERVICIO, SEXOS, TIPOS_LEGALES, TIPOS_SERVICIO
 from clinican.dominio.formato import pesos
 from clinican.dominio.propietarios import formato_celular
 from clinican.servicios import legal, propietarios
@@ -159,6 +159,9 @@ class DetallePropietario(ctk.CTkFrame):
         etiqueta("Nombre *")
         nombre = tema.entrada(z, ancho=420)
         nombre.pack(anchor="w")
+        etiqueta("Sexo")
+        sexo = tema.Opciones(z, {**SEXOS, None: "Sin definir"}, inicial=m["sexo"] if m else None)
+        sexo.pack(anchor="w")
         raza = SelectorRaza(z, self.ctx.conn, raza_actual_id=m["raza_id"] if m else None)
         self.selector_raza = raza
 
@@ -190,7 +193,7 @@ class DetallePropietario(ctk.CTkFrame):
 
         def guardar():
             datos = dict(
-                nombre=nombre.get(), **raza.valores(),
+                nombre=nombre.get(), sexo=sexo.codigo, **raza.valores(),
                 edad_anios=anios.get(), edad_meses=meses.get(),
                 fecha_ultima_visita=ultima.get().strip() or None, observaciones=obs.get("1.0", "end"),
             )
