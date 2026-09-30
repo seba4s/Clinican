@@ -47,21 +47,52 @@ Este paso es el único que necesita internet. Después, para abrir el programa:
 La primera vez aparece un asistente para crear la cuenta de la **administradora** (la jefe).
 Luego ella agrega al resto del personal desde **Personal**.
 
-## Importar mascotas desde Excel
+## Mascotas y razas
+
+- Cada mascota es **perro o gato**. La raza se elige de la lista (filtrada por especie) o se **escribe a mano**.
+- Una raza escrita a mano que no existe se agrega al catálogo al guardar (lo puede hacer todo el personal y
+  queda en la auditoría). Se crea **sin tamaño**, así que cada mascota de esa raza lleva su propio tamaño y
+  pelaje, como el perro mestizo. La administradora puede completarla en Configuración › Razas.
+- «Gato (sin raza definida)» viene en el catálogo y pide elegir tamaño y pelaje.
+
+## Importar desde Excel
+
+### Fichas antiguas de peluquería [A-9]
+
+Las fichas que se llenaban en Excel (un archivo por mascota y visita, con «Fecha», «Mascota», «Raza»,
+«Sexo», «Propietario», «C.C.», «Cel/ Tel», «Dirección», las casillas del corte con X, el valor y la nota)
+se importan en **Propietarios › Importar desde Excel › Fichas antiguas de peluquería**. Se pueden elegir
+**varios archivos a la vez**.
+
+- Por cada ficha se crea (o se reutiliza) el propietario por su cédula, la mascota por su nombre, y la ficha de
+  servicio **realizada** con su fecha, tipo de corte (tijera, máquina 1 cm o ½ cm, baño), baños, despunte,
+  patas rasuradas, desparasitación, cola de león, el **valor** como precio final y la **nota** como observación
+  (se agregan también las casillas marcadas, tal como estaban). La última visita se actualiza.
+- La raza escrita en la ficha se busca en el catálogo («POODLE» → Poodle (Caniche) Toy y Miniatura; también
+  «criollo», «yorki», «french», «shitzu»…). Si no está, o si no tiene tamaño (criollo/mestizo), la ficha se
+  rechaza con el motivo: agregue la raza o registre la mascota a mano y vuelva a importar.
+- Sin cédula, el propietario queda como **cliente sin registrar**. Los nombres en MAYÚSCULAS se pasan a
+  formato normal.
+- Primero se muestra una revisión con los archivos rechazados y el motivo; nada se guarda hasta confirmar.
+  **Volver a importar los mismos archivos no duplica nada.** El lector está en
+  `clinican/datos/importar_fichas_excel.py` y busca los rótulos, no celdas fijas.
+
+### Plantilla (una fila por mascota)
 
 1. En **Propietarios › Importar desde Excel › Guardar plantilla vacía** (o use `plantilla_importacion.xlsx`).
 2. Llene una fila por mascota. Si un propietario tiene varias mascotas, repita su cédula: quedan agrupadas.
 3. Vuelva a **Importar desde Excel › Elegir archivo lleno**. Primero se muestra una revisión con las
    filas rechazadas y el motivo; nada se guarda hasta confirmar.
 
-Los consentimientos no se importan: cada propietario los acepta antes de su primer turno.
-Cuando se consiga un Excel real [A-9], se adapta `clinican/datos/importar_excel.py` (solo la lectura).
+Los consentimientos no se importan: cada propietario los acepta al llegar, en la ficha de servicio.
 
 ## Consentimientos
 
-- Antes de agendar, el propietario debe aceptar la versión vigente de los **términos** y de la
-  **autorización de datos** (Propietarios › Consentimientos). Se guarda la fecha, la versión, quién
-  lo registró y el texto exacto que se le mostró.
+- Los **términos** y la **autorización de datos** se aceptan **al llegar al servicio**, en la ficha de
+  servicio (sección «Términos y condiciones»), y se guardan al pulsar «Guardar ficha». **No se piden al
+  agendar.** Sin ellos (versión vigente) no se puede iniciar la atención.
+- Se guarda la fecha, la versión, quién lo registró y el texto exacto que se le mostró. También se pueden
+  registrar en Propietarios › Consentimientos.
 - Si la administradora cambia un texto legal (Configuración › Textos legales), se crea una versión
   nueva y todos deben aceptarla otra vez.
 - La declaración de **responsabilidad** se registra por mascota con las condiciones marcadas.
@@ -75,6 +106,10 @@ Se abre desde **Propietarios › Mascotas › + Nueva ficha de servicio** (o con
 - Extras: baños extra × valor según tamaño, si el baño es medicado o antipulgas. Un mismo baño que es
   medicado y antipulgas se cobra una vez.
 - Estilo de la cola de león y forma de la cara solo aparecen en corte bajito (máquina 1 cm o ½ cm) [A-5].
+- Como la ficha de Excel de CLINICAN: **despunte**, **patas rasuradas** y **desparasitación** (casillas), y
+  **copete, barbas, bigotes, orejas** y cola de león (se deja / no). La mascota tiene **sexo** (hembra o macho).
+- Accesorios: **corbatín** y **moños en las orejas** (sí / no), cada uno con su color (de la lista o
+  escrito a mano). El color solo se guarda si se le pone el accesorio.
 - Desenredado: la ficha pasa a «revisión de la estilista» y luego a «sesiones de desenredado». Cada sesión
   cuesta el valor configurado, máximo una por día. Al cerrar, se elige el servicio final (o ninguno, y solo
   se cobran las sesiones).
@@ -86,7 +121,13 @@ Se abre desde **Propietarios › Mascotas › + Nueva ficha de servicio** (o con
   con estado (color **y** texto). Los pendientes muestran la cuenta regresiva. Toque un turno para ver
   sus acciones.
 - **Nuevo turno**: propietario → mascotas y tipo de servicio → fecha y hora → ¿quién agenda? → abono.
-  Sin términos y autorización de datos aceptados no se puede agendar.
+- **Cliente nuevo**: en Nuevo turno, «+ Cliente nuevo: agendar sin registrarlo» pide solo el **nombre del
+  propietario, el celular, el nombre de la mascota, la raza y el tipo de servicio** (el tamaño solo si la raza
+  no lo define, por ejemplo una raza escrita a mano o un gato). El cliente queda **sin registrar** (así aparece
+  en la agenda y en Propietarios). Cuando llega, el turno muestra **Registrar cliente y términos (ficha)**: en
+  la ficha de servicio se completan la cédula y la dirección y se marcan los términos; al guardar la ficha
+  queda registrado y ya se puede iniciar la atención. Si la cédula ya existía, el cliente se une a ese
+  propietario y sus mascotas, turnos y fichas pasan a él (una mascota con el mismo nombre se toma como la misma).
 - Sin abono, el turno queda **pendiente** 30 minutos (configurable) y luego se libera solo. Los
   pendientes no apartan cupo: **gana quien paga primero**, y el sistema avisa a quién llamar.
 - **Varias mascotas**: una franja por mascota, seguidas, desde las 09:00 o las 14:30; si no alcanzan,
@@ -132,7 +173,7 @@ Todos se cambian desde Configuración (solo la administradora), sin tocar el có
 | A-6 | Saldo = total − abonos | (regla de cobro, Fase 4) | — |
 | A-7 | Un solo PC con varios usuarios | (arquitectura) | — |
 | A-8 | Con aviso a tiempo, el abono se conserva para reprogramar | `abono_se_conserva_con_aviso` | 1 (sí) |
-| A-9 | Importación de Excel se adapta cuando exista un archivo real | (Fase 2) | — |
+| A-9 | Importación de Excel adaptada al formato real (fichas de peluquería, un archivo por mascota) | (importador de fichas) | — |
 | A-10 | Al cancelar, el abono solo se devuelve con esta anticipación; si no, queda a favor o se mueve con el turno | `horas_minimas_devolucion` | 12 |
 
 ## Respaldos
@@ -165,11 +206,15 @@ tests\        pruebas automáticas (pytest)
 .venv\Scripts\python -m pytest
 ```
 
-257 pruebas. Las de rutas `C:\...` solo corren en Windows, y la prueba de humo de la interfaz se omite si
+292 pruebas. Las de rutas `C:\...` solo corren en Windows, y la prueba de humo de la interfaz se omite si
 el equipo no tiene pantalla.
 
 ## Notas
 
 - El logo `assets\logo_perro.png` se sacó del icono `clinican.ico` (256×256) porque no se tenía el PNG
   original. Si se consigue el archivo original, basta con reemplazarlo con el mismo nombre.
-- Los textos legales son un borrador y **no son asesoría jurídica**; deben revisarlos un abogado.
+- Los **términos** son el texto real de CLINICAN (formato «Autorización para realizar procedimientos de estética»
+  y las cláusulas de la ficha de Excel) más las reglas de abono y agendamiento del programa. En las bases que
+  tenían el borrador inicial se crean como versión nueva (migración 5). La administradora los puede ajustar en
+  Configuración › Textos legales. La autorización de datos y la declaración de responsabilidad siguen siendo un
+  borrador: **no son asesoría jurídica** y deben revisarlos un abogado.

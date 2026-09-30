@@ -14,7 +14,7 @@ def test_version_y_llaves_foraneas(conn):
 
 
 def test_semillas_cargadas(conn):
-    assert conn.execute("SELECT COUNT(*) FROM razas").fetchone()[0] == 13
+    assert conn.execute("SELECT COUNT(*) FROM razas").fetchone()[0] == 14  # 13 de perro + gato
     # 12 franjas por día, lunes a sábado
     assert conn.execute("SELECT COUNT(*) FROM franjas_base").fetchone()[0] == 72
     assert conn.execute("SELECT COUNT(*) FROM franjas_base WHERE dia_semana = 6").fetchone()[0] == 12
@@ -29,7 +29,9 @@ def test_husky_y_mestizo(conn):
     husky = conn.execute("SELECT * FROM razas WHERE nombre = 'Husky'").fetchone()
     assert husky["tamano"] == "GRANDE" and husky["pelaje_complicado"] == 1
     mestizo = conn.execute("SELECT * FROM razas WHERE nombre LIKE 'Perro mestizo%'").fetchone()
-    assert mestizo["tamano"] is None
+    assert mestizo["tamano"] is None and mestizo["especie"] == "PERRO"
+    gato = conn.execute("SELECT * FROM razas WHERE especie = 'GATO'").fetchone()
+    assert gato["nombre"] == "Gato (sin raza definida)" and gato["tamano"] is None
 
 
 def test_migrar_dos_veces_no_duplica(tmp_path):
@@ -39,7 +41,7 @@ def test_migrar_dos_veces_no_duplica(tmp_path):
     c1.commit()
     c1.close()
     c2 = conectar(ruta)
-    assert c2.execute("SELECT COUNT(*) FROM razas").fetchone()[0] == 13
+    assert c2.execute("SELECT COUNT(*) FROM razas").fetchone()[0] == 14
     # Volver a abrir no pisa lo que editó la administradora
     assert c2.execute("SELECT valor FROM config WHERE clave = 'abono_minimo'").fetchone()[0] == "99999"
     c2.close()
@@ -107,3 +109,48 @@ def test_migracion_3_conserva_abonos(tmp_path):
     c2.execute("UPDATE abonos SET estado = 'DEVUELTO'")  # el estado nuevo ya es válido
     assert c2.execute("SELECT valor FROM config WHERE clave='horas_minimas_devolucion'").fetchone()[0] == "12"
     c2.close()
+
+
+def test_migracion_5_cambia_el_borrador_de_terminos(tmp_path):
+    """Una base con el borrador inicial recibe los términos reales como versión nueva."""
+    ruta = tmp_path / "v4.db"
+    c = sqlite3.connect(ruta)
+    c.execute("PRAGMA foreign_keys = ON")
+    c.create_function("sin_tildes", 1, lambda x: x, deterministic=True)
+    c.execute("BEGIN")
+    for n in (1, 2, 3, 4):
+        migraciones.MIGRACIONES[n](c)
+    c.execute("PRAGMA user_version = 4")
+    c.execute("INSERT INTO textos_legales (tipo, version, contenido) VALUES ('TERMINOS', 1, ?)",
+              (semillas.TERMINOS_BORRADOR,))
+    c.commit()
+    c.close()
+    c2 = conectar(ruta)
+    filas = c2.execute("SELECT version, vigente, contenido FROM textos_legales WHERE tipo='TERMINOS' ORDER BY version").fetchall()
+    assert [(f["version"], f["vigente"]) for f in filas] == [(1, 0), (2, 1)]
+    assert filas[1]["contenido"] == semillas.TERMINOS_CLINICAN
+    c2.close()
+
+
+def test_migracion_5_respeta_terminos_editados(tmp_path):
+    ruta = tmp_path / "v4b.db"
+    c = sqlite3.connect(ruta)
+    c.execute("PRAGMA foreign_keys = ON")
+    c.create_function("sin_tildes", 1, lambda x: x, deterministic=True)
+    c.execute("BEGIN")
+    for n in (1, 2, 3, 4):
+        migraciones.MIGRACIONES[n](c)
+    c.execute("PRAGMA user_version = 4")
+    c.execute("INSERT INTO textos_legales (tipo, version, contenido) VALUES ('TERMINOS', 3, 'Texto propio de la jefe')")
+    c.commit()
+    c.close()
+    c2 = conectar(ruta)
+    assert c2.execute("SELECT version, contenido FROM textos_legales WHERE tipo='TERMINOS' AND vigente=1").fetchone()[:] == (
+        3, "Texto propio de la jefe")
+    c2.close()
+
+
+def test_base_nueva_usa_los_terminos_reales(conn):
+    contenido = conn.execute("SELECT contenido FROM textos_legales WHERE tipo='TERMINOS' AND vigente=1").fetchone()[0]
+    assert contenido.startswith("AUTORIZACIÓN PARA REALIZAR PROCEDIMIENTOS DE ESTÉTICA")
+    assert "No se aceptan reclamos después de las 24 horas" in contenido

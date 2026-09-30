@@ -41,7 +41,7 @@ def test_plantilla_tiene_columnas_y_razas(conn, tmp_path):
     libro = load_workbook(ruta)
     assert {"Mascotas", "Razas", "Instrucciones"} <= set(libro.sheetnames)
     assert libro["Mascotas"]["A1"].value.startswith("Cédula del propietario")
-    assert libro["Razas"].max_row == 13
+    assert libro["Razas"].max_row == 14
 
 
 def test_validar_no_guarda(conn, empleada, plantilla):

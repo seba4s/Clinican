@@ -222,6 +222,11 @@ def insignia(padre, texto: str, fondo: str = VERDE) -> ctk.CTkLabel:
                         text_color=BLANCO if fondo == FUCSIA else NEGRO, corner_radius=8, padx=14, pady=6)
 
 
+def enfocar_luego(widget, ms: int = 100) -> None:
+    """Pone el cursor en el campo un momento después, si el campo todavía existe."""
+    widget.after(ms, lambda: widget.winfo_exists() and widget.focus_set())
+
+
 def tarjeta(padre, **kw) -> ctk.CTkFrame:
     return ctk.CTkFrame(padre, fg_color=BLANCO, corner_radius=14, border_width=1, border_color=BORDE, **kw)
 

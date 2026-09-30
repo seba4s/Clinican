@@ -6,8 +6,30 @@ Programa de escritorio (Python + CustomTkinter + SQLite, 100 % sin internet) par
 CLINICAN. Se construye por fases según `ESPECIFICACION_CLINICAN.md` (sección 12).
 
 **Estado general:** fases 1 a 5 terminadas en el código. De la 5 solo falta la prueba en el PC real (instalación
-limpia en Windows 11 sin internet). La 6 (WhatsApp) necesita autorización. Las **257 pruebas automáticas pasan**
+limpia en Windows 11 sin internet). La 6 (WhatsApp) necesita autorización. Las **292 pruebas automáticas pasan**
 (`.venv\Scripts\python -m pytest`).
+
+### Ajustes pedidos al revisar el programa
+- **Agendar sin registrar al cliente.** En Nuevo turno, «+ Cliente nuevo» pide solo nombre del propietario,
+  celular, nombre de la mascota, raza y tipo de servicio. El cliente queda «sin registrar»; al llegar, la cédula
+  y la dirección se completan en la ficha de servicio. Si la cédula ya existía, se une a ese propietario.
+- **Términos al llegar, en la ficha de servicio.** *Cambio a la especificación (RN-05 / RN-15):* ningún cliente
+  acepta los términos al agendar; se aceptan en la ficha de servicio y sin ellos no se inicia la atención.
+- **Gatos y raza escrita a mano.** Cada mascota es perro o gato; la raza se elige o se escribe. Una raza nueva
+  se agrega al catálogo sin tamaño (la mascota lleva el suyo). Nueva raza «Gato (sin raza definida)».
+- **Ficha: corbatín y moños en las orejas**, cada uno con su color.
+- Base de datos: migración 4 (se aplica sola al abrir el programa).
+
+### Adaptado al formato real de CLINICAN (ficha de Excel y autorización en papel)
+- **Términos reales**: el texto del formato «Autorización para realizar procedimientos de estética», las 7 cláusulas
+  de la ficha de Excel y las reglas de abono y no asistencia. En bases con el borrador se crea la versión nueva.
+- **Ficha** con los campos del Excel: despunte, patas rasuradas, desparasitación, bigotes y orejas. **Sexo** de la mascota.
+- **Importador de fichas antiguas** [A-9]: varios archivos a la vez, crea propietario, mascota y el servicio
+  realizado (fecha, corte, valor, nota), sin duplicar al repetir. Probado con la ficha real enviada (el archivo real
+  no se sube al repositorio porque tiene datos personales).
+- Se corrigieron dos errores de la interfaz que podían mostrar «Ocurrió un error inesperado»: el cursor que se ponía
+  en un campo de una pantalla ya cerrada y el selector de raza al escribir.
+- Migración 5.
 
 > **Importante — capa de datos recuperada.** La regla `datos/` del `.gitignore` ignoraba también el paquete
 > `clinican/datos` (conexión, esquema, migraciones, semillas, repositorios y lector de Excel), así que nunca se
@@ -99,7 +121,7 @@ limpia en Windows 11 sin internet). La 6 (WhatsApp) necesita autorización. Las 
 - [ ] Guardar el token fuera del código.
 
 ### Pendientes externos (no dependen del código)
-- [ ] Conseguir un **Excel real** de mascotas para adaptar `clinican/datos/importar_excel.py` [A-9].
+- [x] ~~Conseguir un Excel real~~: recibido (ficha de peluquería); importador adaptado [A-9]. Falta importar todas las fichas.
 - [ ] Que la usuaria **confirme los supuestos A-1 a A-10** (sección 13). Ya son configurables, así que cambiarlos no requiere tocar el código.
 - [ ] Que un **abogado revise los textos legales**: son un borrador y no son asesoría jurídica.
 - [ ] Si aparece el **PNG original del logo**, reemplazar `assets\logo_perro.png`, que hoy se sacó del `.ico`.

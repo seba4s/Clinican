@@ -20,8 +20,8 @@ En la agenda, cada turno tiene un color **y** un texto con su estado:
 
 1. En el menú, pulse **Nuevo turno**.
 2. **Propietario:** escriba la cédula, el nombre, el celular o el nombre de la mascota y pulse **Buscar**. Elija al propietario.
-   - Si no existe, regístrelo antes en **Propietarios › + Nuevo propietario** y agréguele sus mascotas.
-   - Si el programa dice que faltan los **términos** o la **autorización de datos**, pulse **Registrar consentimientos**, lea el texto al propietario, marque las casillas y pulse **Guardar aceptación**. Sin esto no se puede agendar.
+   - **Cliente nuevo:** pulse **+ Cliente nuevo: agendar sin registrarlo**. Escriba el nombre del propietario, su celular y el nombre de la mascota; elija **Perro** o **Gato**, la raza (de la lista, o escríbala si no está) y el **tipo de servicio**. Si la raza no tiene tamaño (raza escrita, mestizo o gato), elija también el tamaño. Pulse **Continuar con este cliente**: sigue directo a la fecha y hora.
+   - No hace falta que el cliente acepte los términos para agendar: se aceptan cuando llegue, en la ficha de servicio.
 3. **Mascotas y tipo de servicio:** marque la mascota (o varias, si vienen juntas) y elija *corte a máquina*, *corte con tijera* o *baño y deslanado*.
 4. **Fecha y hora:** escriba la fecha y pulse **Ver horas disponibles**. Solo aparecen las horas con cupo para esa mascota. Con varias mascotas, pulse **Proponer horario**: el programa las pone seguidas desde las 9:00 (mañana) o las 2:30 (tarde).
 5. **¿Quién agenda?:** aparece su nombre; cámbielo si agendó otra persona.
@@ -39,10 +39,14 @@ En la agenda, cada turno tiene un color **y** un texto con su estado:
 
 ## 3. Atender una mascota
 
-1. Cuando llegue, toque su turno en la **Agenda** y pulse **Llegó: iniciar atención**.
-2. Pulse **Abrir ficha de servicio**: marque el corte, los extras (baño medicado o antipulgas), las condiciones de la mascota y escriba el **precio final**. El programa sugiere el precio mínimo y avisa si el precio es menor. Pulse **Guardar ficha** y luego **← Volver**.
-3. Al terminar, pulse **Mascota lista: avisar al dueño**. En pantalla aparecen los celulares del dueño: llame y pulse **Registrar que ya se llamó**.
-4. Cuando la recojan, pulse **Entregar y cobrar saldo**. El programa muestra el total, lo abonado y el **saldo a cobrar**.
+1. Cuando llegue, toque su turno en la **Agenda** y pulse **Abrir ficha de servicio** (o **Registrar cliente y términos (ficha)** si dice **CLIENTE SIN REGISTRAR**).
+2. En la ficha, en **Términos y condiciones** (a la derecha):
+   - Si es un cliente sin registrar, escriba su **cédula** y su **dirección**. (Si la cédula ya estaba registrada, el programa lo une con ese propietario y sus mascotas.)
+   - Lea los textos al propietario y marque **acepta los términos y condiciones** y **autoriza el tratamiento de sus datos**.
+3. Marque el corte, el **corbatín** y los **moños en las orejas** (con su color), los extras (baño medicado o antipulgas) y las condiciones de la mascota. Pulse **Guardar ficha** y luego **← Volver**.
+4. Pulse **Llegó: iniciar atención**. (Sin los términos aceptados, el programa no deja iniciarla.) El **precio final** se escribe en la ficha cuando se sepa. El programa sugiere el precio mínimo y avisa si el precio es menor. Pulse **Guardar ficha** y luego **← Volver**.
+5. Al terminar, pulse **Mascota lista: avisar al dueño**. En pantalla aparecen los celulares del dueño: llame y pulse **Registrar que ya se llamó**.
+6. Cuando la recojan, pulse **Entregar y cobrar saldo**. El programa muestra el total, lo abonado y el **saldo a cobrar**.
 
 Otros casos, desde la tarjeta del turno:
 - **No asistió:** escriba cuándo avisó el dueño (si avisó). Con aviso de al menos 12 horas, el abono queda a su favor para otro turno; si no, se pierde y deberá abonar de nuevo.
@@ -68,6 +72,12 @@ El programa guarda un **respaldo automático** al cerrarse y una vez al día, en
 3. Elija la memoria USB y acepte. El programa confirma dónde quedó la copia (un archivo `clinican_manual_…db`).
 
 **Restaurar** (solo la administradora, en caso de daño o de cambio de computador): en **Respaldo**, elija una copia de la lista y pulse **Restaurar la copia elegida**, o use **Restaurar desde un archivo (USB)…**. Antes de restaurar, el programa guarda una copia del estado actual por si hay que deshacerlo. Después, todos deben iniciar sesión de nuevo.
+
+---
+
+## 6. Pasar las fichas antiguas de Excel al programa
+
+En **Propietarios › Importar desde Excel › Fichas antiguas de peluquería**, elija los archivos de Excel de las fichas (puede seleccionar varios a la vez con Ctrl o Shift). El programa muestra cuántas fichas va a pasar y cuáles no, con el motivo (por ejemplo, una raza que no está en la lista). Pulse **Importar**. Si repite un archivo, no se duplica.
 
 ---
 

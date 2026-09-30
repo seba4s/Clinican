@@ -10,11 +10,12 @@ from clinican.dominio.catalogos import TIPOS_LEGALES, TIPOS_SERVICIO
 from clinican.dominio.errores import ErrorClinican
 from clinican.dominio.formato import pesos
 from clinican.dominio.franjas import JORNADAS, MANANA, TARDE
-from clinican.dominio.propietarios import formato_celular
+from clinican.dominio.propietarios import cedula_visible, formato_celular
 from clinican.servicios import legal, personal, propietarios, turnos
 from clinican.servicios.turnos import Abono
 from clinican.ui import dialogos, tema
 from clinican.ui.panel_turno import MEDIOS, SelectorHoras, avisar_liberados, datos_pago
+from clinican.ui.selector_raza import SelectorRaza
 
 SIN_ABONO = "SIN_ABONO"
 
@@ -87,7 +88,7 @@ class PantallaNuevoTurno(ctk.CTkFrame):
             fila = ctk.CTkFrame(caja, fg_color="transparent")
             fila.pack(fill="x")
             d = self.dueno
-            tema.etiqueta(fila, f"{d['nombre']} · C.C. {d['cedula']} · {formato_celular(d['celular1'])}",
+            tema.etiqueta(fila, f"{d['nombre']} · C.C. {cedula_visible(d)} · {formato_celular(d['celular1'])}",
                           negrita=True).pack(side="left")
             tema.boton(fila, "Cambiar", self._quitar_dueno, estilo="secundario", ancho=130).pack(side="left", padx=12)
             return
@@ -95,8 +96,13 @@ class PantallaNuevoTurno(ctk.CTkFrame):
         fila.pack(fill="x")
         busqueda = tema.entrada(fila, ancho=460, placeholder_text="Cédula, nombre, celular o mascota")
         busqueda.pack(side="left")
-        resultados = ctk.CTkFrame(caja, fg_color="transparent")
+        # height=1: un CTkFrame vacío mide 200 px y dejaría un hueco antes de tener resultados
+        resultados = ctk.CTkFrame(caja, fg_color="transparent", height=1)
         resultados.pack(fill="x", pady=6)
+        self.zona_cliente_nuevo = ctk.CTkFrame(caja, fg_color="transparent", height=1)
+        self.zona_cliente_nuevo.pack(fill="x")
+        tema.boton(self.zona_cliente_nuevo, "+ Cliente nuevo: agendar sin registrarlo", self._form_cliente_nuevo,
+                   estilo="secundario", ancho=420).pack(anchor="w", pady=(4, 0))
 
         def buscar(_e=None):
             for h in resultados.winfo_children():
@@ -105,18 +111,65 @@ class PantallaNuevoTurno(ctk.CTkFrame):
             if filas is dialogos.FALLO:
                 return
             if not filas:
-                tema.etiqueta(resultados, "No se encontró. Regístrelo primero en Propietarios.",
-                              color=tema.ROJO_ERROR).pack(anchor="w")
-                tema.boton(resultados, "Ir a Propietarios", lambda: self.ctx.ventana.mostrar("Propietarios"),
-                           estilo="secundario", ancho=220).pack(anchor="w", pady=4)
+                tema.etiqueta(resultados, "No se encontró. Si es un cliente nuevo, agéndelo con «Cliente nuevo»; "
+                                          "sus datos completos se registran cuando llegue.",
+                              color=tema.ROJO_ERROR, wraplength=800).pack(anchor="w")
             for f in filas[:8]:
-                texto = f"{f['nombre']} · C.C. {f['cedula']} · {f['mascotas'] or 'sin mascotas'}"
+                texto = f"{f['nombre']} · C.C. {cedula_visible(f)} · {f['mascotas'] or 'sin mascotas'}"
                 tema.boton(resultados, texto, lambda i=f["id"]: self._elegir_dueno(i), estilo="secundario",
                            ancho=700, anchor="w").pack(anchor="w", pady=3)
 
         busqueda.bind("<Return>", buscar)
         tema.boton(fila, "Buscar", buscar, ancho=130).pack(side="left", padx=10)
-        self.after(100, busqueda.focus_set)
+        tema.enfocar_luego(busqueda)
+
+    def _form_cliente_nuevo(self) -> None:
+        """Cliente nuevo: solo nombre, celular y su mascota. El registro se completa al atenderlo."""
+        z = self.zona_cliente_nuevo
+        for hijo in z.winfo_children():
+            hijo.destroy()
+        marco = ctk.CTkFrame(z, fg_color=tema.VERDE_SUAVE, corner_radius=12)
+        marco.pack(fill="x", pady=(6, 0))
+        cuerpo = ctk.CTkFrame(marco, fg_color="transparent")
+        cuerpo.pack(fill="x", padx=16, pady=12)
+        tema.etiqueta(cuerpo, "Cliente nuevo (sin registrar)", tema.TAM_SUBTITULO, negrita=True).pack(anchor="w")
+        tema.etiqueta(cuerpo, "Solo se piden estos datos para agendar. La cédula, la dirección y la aceptación de "
+                              "los términos se registran cuando llegue, en la ficha de servicio.",
+                      color=tema.GRIS_TEXTO, wraplength=760).pack(anchor="w", pady=(2, 0))
+        campos = {}
+        for clave, texto in (("nombre", "Nombre del propietario *"), ("celular", "Celular *"),
+                             ("mascota", "Nombre de la mascota *")):
+            tema.etiqueta(cuerpo, texto, negrita=True).pack(anchor="w", pady=(10, 4))
+            campos[clave] = tema.entrada(cuerpo, ancho=420)
+            campos[clave].pack(anchor="w")
+        raza = SelectorRaza(cuerpo, self.ctx.conn, compacto=True)
+        tema.etiqueta(cuerpo, "Tipo de servicio *", negrita=True).pack(anchor="w", pady=(10, 4))
+        tipo = tema.Opciones(cuerpo, TIPOS_SERVICIO, inicial="MAQUINA")
+        tipo.pack(anchor="w")
+        self.cliente_nuevo = {**campos, "raza": raza, "tipo": tipo}
+
+        def continuar():
+            r = dialogos.ejecutar(self, propietarios.crear_provisional, self.ctx.conn, self.ctx.sesion,
+                                  campos["nombre"].get(), campos["celular"].get(), campos["mascota"].get(),
+                                  **raza.valores())
+            if r is dialogos.FALLO:
+                return
+            pid, mid = r
+            d = dialogos.ejecutar(self, propietarios.obtener, self.ctx.conn, self.ctx.sesion, pid)
+            if d is dialogos.FALLO:
+                return
+            # Sigue directo a la fecha y hora, con la mascota y el servicio ya elegidos
+            self.dueno = d
+            self.usar_a_favor.set(0)
+            self.elegidas = {mid: {"var": ctk.IntVar(value=1), "tipo": tipo.codigo or "MAQUINA",
+                                   "nombre": campos["mascota"].get().strip()}}
+            self._reiniciar_plan()
+
+        botones = ctk.CTkFrame(cuerpo, fg_color="transparent")
+        botones.pack(anchor="w", pady=(16, 0))
+        tema.boton(botones, "Continuar con este cliente", continuar, ancho=320).pack(side="left")
+        tema.boton(botones, "Cancelar", self._dibujar, estilo="secundario", ancho=160).pack(side="left", padx=12)
+        tema.enfocar_luego(campos["nombre"])
 
     def _elegir_dueno(self, propietario_id: int) -> None:
         d = dialogos.ejecutar(self, propietarios.obtener, self.ctx.conn, self.ctx.sesion, propietario_id)
@@ -133,17 +186,19 @@ class PantallaNuevoTurno(ctk.CTkFrame):
         self._reiniciar_plan()
 
     def _paso_consentimientos(self) -> bool:
-        try:
-            legal.verificar_para_turno(self.ctx.conn, self.dueno["id"])
-        except ErrorClinican:
-            estado = legal.estado(self.ctx.conn, self.dueno["id"])
-            faltan = ", ".join(TIPOS_LEGALES[t].lower() for t, v in estado.items() if v is None)
-            caja = ctk.CTkFrame(self.cuerpo, fg_color="transparent")
-            caja.pack(fill="x", padx=20, pady=10)
-            tema.insignia(caja, f"No se puede agendar: falta aceptar {faltan}.", tema.FUCSIA).pack(anchor="w")
-            tema.boton(caja, "Registrar consentimientos", lambda: self.ctx.ventana.mostrar(
-                "Propietarios", propietario_id=self.dueno["id"], pestana="Consentimientos"), ancho=320).pack(anchor="w", pady=8)
-            return False
+        """Solo informa: los términos se aceptan al llegar, en la ficha de servicio (no bloquean el agendamiento)."""
+        if self.dueno["provisional"]:
+            tema.insignia(self.cuerpo, "Cliente sin registrar: cuando llegue, en la ficha de servicio se registran su "
+                                       "cédula, su dirección y la aceptación de los términos.", tema.VERDE).pack(
+                anchor="w", padx=20, pady=(8, 0))
+        else:
+            try:
+                legal.verificar_para_turno(self.ctx.conn, self.dueno["id"])
+            except ErrorClinican:
+                estado = legal.estado(self.ctx.conn, self.dueno["id"])
+                faltan = " y ".join(TIPOS_LEGALES[t].lower() for t, v in estado.items() if v is None)
+                tema.insignia(self.cuerpo, f"Falta aceptar {faltan}: se registra cuando llegue, en la ficha de "
+                                           "servicio.", tema.VERDE).pack(anchor="w", padx=20, pady=(8, 0))
         if self.dueno["requiere_nuevo_abono"]:
             tema.insignia(self.cuerpo, "Este propietario no asistió sin avisar a tiempo: debe pagar un abono nuevo.",
                           tema.FUCSIA).pack(anchor="w", padx=20, pady=(8, 0))
@@ -155,6 +210,9 @@ class PantallaNuevoTurno(ctk.CTkFrame):
         if not lista:
             tema.etiqueta(caja, "Este propietario no tiene mascotas activas. Agréguelas en Propietarios.",
                           color=tema.ROJO_ERROR).pack(anchor="w")
+            tema.boton(caja, "Ir a sus mascotas", lambda: self.ctx.ventana.mostrar(
+                "Propietarios", propietario_id=self.dueno["id"], pestana="Mascotas"), estilo="secundario",
+                ancho=240).pack(anchor="w", pady=4)
             return False
         anteriores = self.elegidas
         self.elegidas = {}

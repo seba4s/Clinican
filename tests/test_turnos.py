@@ -131,11 +131,16 @@ def test_cupo_configurable(conn, admin, empleada):
 
 # ========================================================== RN-05 / RN-15
 
-def test_sin_consentimientos_no_se_agenda(conn, empleada):
+def test_sin_consentimientos_se_agenda_pero_no_se_atiende(conn, empleada):
+    """RN-15 (ajustada): los términos se aceptan al llegar, en la ficha de servicio."""
     pid = _dueno(conn, empleada, consentir=False)
     mid = _mascota(conn, empleada, pid=pid)
-    with pytest.raises(DatoInvalido, match="términos"):
-        st.crear_turno(conn, empleada, mid, "MAQUINA", LUNES, "09:00", empleada.personal_id, ahora=AHORA)
+    t = st.crear_turno(conn, empleada, mid, "MAQUINA", LUNES, "09:00", empleada.personal_id, Abono(20000, "NEQUI"),
+                       ahora=AHORA).turnos[0]
+    with pytest.raises(DatoInvalido, match="iniciar la atención.*términos"):
+        st.iniciar_atencion(conn, empleada, t)
+    legal.aceptar(conn, empleada, pid, ["TERMINOS", "DATOS"])
+    st.iniciar_atencion(conn, empleada, t)
 
 
 def test_turno_nace_pendiente_con_plazo_y_ficha(conn, empleada):

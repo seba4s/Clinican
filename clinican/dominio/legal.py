@@ -5,7 +5,8 @@ from __future__ import annotations
 from clinican.dominio.catalogos import CONDICIONES, TIPOS_LEGALES
 from clinican.dominio.errores import DatoInvalido
 
-# Aceptaciones que deben existir antes de crear un turno.
+# Aceptaciones que deben existir antes de atender una mascota (se registran al llegar,
+# en la ficha de servicio; no se piden al agendar).
 REQUERIDOS_PARA_TURNO = ("TERMINOS", "DATOS")
 
 
@@ -17,8 +18,8 @@ def faltantes_para_turno(textos_aceptados_vigentes: set[str]) -> list[str]:
 def mensaje_faltantes(faltan: list[str]) -> str:
     nombres = " y ".join(TIPOS_LEGALES[t].lower() for t in faltan)
     return (
-        f"No se puede agendar: el propietario debe aceptar primero {nombres} (versión vigente). "
-        "Regístrelo en Propietarios › Consentimientos."
+        f"No se puede iniciar la atención: el propietario debe aceptar primero {nombres} (versión vigente). "
+        "Regístrelo en la ficha de servicio, en «Términos y condiciones»."
     )
 
 

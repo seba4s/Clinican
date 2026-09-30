@@ -22,16 +22,19 @@ def por_nombre(conn: sqlite3.Connection, nombre: str) -> sqlite3.Row | None:
     return conn.execute("SELECT * FROM razas WHERE sin_tildes(nombre) = sin_tildes(?)", (limpio,)).fetchone()
 
 
-def insertar(conn: sqlite3.Connection, nombre: str, tamano: str | None, pelaje_complicado: bool) -> int:
-    cur = conn.execute("INSERT INTO razas (nombre, tamano, pelaje_complicado) VALUES (?, ?, ?)",
-                       (nombre, tamano, int(bool(pelaje_complicado))))
+def insertar(conn: sqlite3.Connection, nombre: str, tamano: str | None, pelaje_complicado: bool,
+             especie: str = "PERRO") -> int:
+    cur = conn.execute("INSERT INTO razas (nombre, tamano, pelaje_complicado, especie) VALUES (?, ?, ?, ?)",
+                       (nombre, tamano, int(bool(pelaje_complicado)), especie))
     return cur.lastrowid
 
 
 def actualizar(conn: sqlite3.Connection, raza_id: int, nombre: str, tamano: str | None,
-               pelaje_complicado: bool, activa: bool) -> None:
-    conn.execute("UPDATE razas SET nombre = ?, tamano = ?, pelaje_complicado = ?, activa = ? WHERE id = ?",
-                 (nombre, tamano, int(bool(pelaje_complicado)), int(bool(activa)), raza_id))
+               pelaje_complicado: bool, activa: bool, especie: str | None = None) -> None:
+    conn.execute(
+        "UPDATE razas SET nombre = ?, tamano = ?, pelaje_complicado = ?, activa = ?, especie = COALESCE(?, especie) "
+        "WHERE id = ?",
+        (nombre, tamano, int(bool(pelaje_complicado)), int(bool(activa)), especie, raza_id))
 
 
 def mascotas_sin_tamano_si_quita(conn: sqlite3.Connection, raza_id: int) -> int:

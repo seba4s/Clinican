@@ -162,7 +162,8 @@ class PantallaAgenda(ctk.CTkFrame):
         lineas = [
             (f"{t['hora']} · {t['mascota_nombre']}", True, tema.TAM_NORMAL),
             (f"{t['raza_nombre']} · {TIPOS_SERVICIO.get(t['tipo_servicio'], '')}", False, tema.TAM_PEQUENO),
-            (f"{t['propietario_nombre']} · {formato_celular(t['celular1'])}", False, tema.TAM_PEQUENO),
+            (f"{t['propietario_nombre']}{' (sin registrar)' if t['propietario_provisional'] else ''} · "
+             f"{formato_celular(t['celular1'])}", False, tema.TAM_PEQUENO),
             ((f"Abono: {pesos(t['abonado'])} ✔" if t["abonado"] else "Sin abono ✖")
              + f"   ·   Agendó: {t['agendado_por_nombre']}", False, tema.TAM_PEQUENO),
         ]

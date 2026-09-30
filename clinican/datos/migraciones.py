@@ -262,7 +262,55 @@ CREATE INDEX ix_abonos_turno ON abonos(turno_id)
 """)
 
 
-MIGRACIONES = {1: _v1, 2: _v2, 3: _v3}
+# ---------------------------------------------------------------- versión 4
+# - Propietarios «sin registrar»: se agenda solo con nombre y celular; la cédula
+#   y la dirección se completan al momento del servicio.
+# - Especie de la raza (perro o gato) y la raza «Gato (sin raza definida)».
+# - Ficha: corbatín y moños en las orejas, con su color.
+
+def _v4(conn: sqlite3.Connection) -> None:
+    from clinican.datos import semillas
+
+    _ejecutar(conn, """
+ALTER TABLE propietarios ADD COLUMN provisional INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE razas ADD COLUMN especie TEXT NOT NULL DEFAULT 'PERRO' CHECK (especie IN ('PERRO','GATO'));
+ALTER TABLE servicios ADD COLUMN corbatin INTEGER;
+ALTER TABLE servicios ADD COLUMN corbatin_color TEXT;
+ALTER TABLE servicios ADD COLUMN monos INTEGER;
+ALTER TABLE servicios ADD COLUMN monos_color TEXT
+""")
+    conn.executemany("INSERT OR IGNORE INTO razas (nombre, tamano, pelaje_complicado, especie) VALUES (?, ?, ?, ?)",
+                     semillas.RAZAS_GATO)
+
+
+# ---------------------------------------------------------------- versión 5
+# Formato real de CLINICAN (ficha de peluquería en Excel y autorización en papel):
+# - Sexo de la mascota.
+# - Ficha: despunte, patas rasuradas, bigotes, orejas y desparasitación.
+# - Términos: si siguen con el borrador inicial, se crea una versión nueva con el texto real
+#   (quienes aceptaron el borrador deberán aceptar la versión nueva, RN-15).
+
+def _v5(conn: sqlite3.Connection) -> None:
+    from clinican.datos import semillas
+
+    _ejecutar(conn, """
+ALTER TABLE mascotas ADD COLUMN sexo TEXT CHECK (sexo IN ('HEMBRA','MACHO'));
+ALTER TABLE servicios ADD COLUMN despunte INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE servicios ADD COLUMN patas_rasuradas INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE servicios ADD COLUMN desparasitacion INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE servicios ADD COLUMN bigotes INTEGER;
+ALTER TABLE servicios ADD COLUMN orejas INTEGER
+""")
+    vigente = conn.execute(
+        "SELECT version, contenido FROM textos_legales WHERE tipo = 'TERMINOS' AND vigente = 1 ORDER BY version DESC LIMIT 1"
+    ).fetchone()
+    if vigente is not None and vigente[1].strip() == semillas.TERMINOS_BORRADOR.strip():
+        conn.execute("UPDATE textos_legales SET vigente = 0 WHERE tipo = 'TERMINOS'")
+        conn.execute("INSERT INTO textos_legales (tipo, version, contenido, vigente) VALUES ('TERMINOS', ?, ?, 1)",
+                     (vigente[0] + 1, semillas.TERMINOS_CLINICAN))
+
+
+MIGRACIONES = {1: _v1, 2: _v2, 3: _v3, 4: _v4, 5: _v5}
 VERSION_ACTUAL = max(MIGRACIONES)
 
 

@@ -167,3 +167,37 @@ def test_raza_inactiva_no_se_lista(conn, admin):
     razas.editar(conn, admin, shih, "Shih Tzu", "PEQUENA", False, activa=False)
     assert "Shih Tzu" not in [r["nombre"] for r in razas.listar(conn)]
     assert "Shih Tzu" in [r["nombre"] for r in razas.listar(conn, solo_activas=False)]
+
+
+# ------------------------------------------------- gatos y raza escrita a mano
+
+def test_gato(conn, empleada, dueno):
+    gato = _raza(conn, "Gato (sin raza definida)")
+    with pytest.raises(DatoInvalido, match="tamaño"):
+        sp.crear_mascota(conn, empleada, dueno, "Michi", gato, pelaje_manual=0)
+    mid = sp.crear_mascota(conn, empleada, dueno, "Michi", gato, tamano_manual="PEQUENA", pelaje_manual=0)
+    m = sp.mascota(conn, empleada, mid)
+    assert m["especie"] == "GATO" and sp.perfil(m) == {"tamano": "PEQUENA", "pelaje_complicado": False}
+
+
+def test_personal_escribe_una_raza_nueva(conn, empleada, dueno):
+    mid = sp.crear_mascota(conn, empleada, dueno, "Rocky", raza_texto="  Beagle ", tamano_manual="MEDIANA",
+                           pelaje_manual=0)
+    m = sp.mascota(conn, empleada, mid)
+    assert (m["raza_nombre"], m["raza_tamano"], m["especie"]) == ("Beagle", None, "PERRO")
+    assert "Beagle" in [r["nombre"] for r in razas.listar(conn)]
+    # Si ya existe (sin importar tildes ni mayúsculas) se usa la misma
+    otro = sp.crear_mascota(conn, empleada, dueno, "Canela", raza_texto="beagle", tamano_manual="PEQUENA",
+                            pelaje_manual=0)
+    assert sp.mascota(conn, empleada, otro)["raza_id"] == m["raza_id"]
+    gato = sp.crear_mascota(conn, empleada, dueno, "Garfield", raza_texto="Persa", especie="GATO",
+                            tamano_manual="PEQUENA", pelaje_manual=1)
+    assert sp.mascota(conn, empleada, gato)["especie"] == "GATO"
+
+
+def test_raza_escrita_exige_tamano_y_no_queda_suelta(conn, empleada, dueno):
+    with pytest.raises(DatoInvalido, match="tamaño"):
+        sp.crear_mascota(conn, empleada, dueno, "Rocky", raza_texto="Beagle", pelaje_manual=0)
+    assert conn.execute("SELECT COUNT(*) FROM razas WHERE nombre = 'Beagle'").fetchone()[0] == 0
+    with pytest.raises(DatoInvalido, match="raza"):
+        sp.crear_mascota(conn, empleada, dueno, "Rocky", raza_texto="   ")

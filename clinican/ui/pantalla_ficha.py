@@ -8,13 +8,15 @@ from typing import Callable
 import customtkinter as ctk
 
 from clinican.dominio import ficha as reglas
-from clinican.dominio.catalogos import CONDICIONES, ESTADOS_SERVICIO, TIPOS_SERVICIO, nombre_tamano
+from clinican.dominio.catalogos import CONDICIONES, ESTADOS_SERVICIO, SEXOS, TIPOS_LEGALES, TIPOS_SERVICIO, nombre_tamano
+from clinican.dominio.propietarios import formato_celular
 from clinican.dominio.errores import ErrorClinican
 from clinican.dominio.formato import pesos
 from clinican.servicios import fichas, legal, personal, propietarios
 from clinican.ui import dialogos, tema
 
 SI_NO = {1: "Se deja", 0: "No", None: "Sin definir"}
+SI_NO_ACCESORIO = {1: "Sí", 0: "No", None: "Sin definir"}
 LARGOS = {None: "Sin definir", **reglas.LARGOS}
 
 
@@ -53,6 +55,7 @@ class PantallaFicha(ctk.CTkFrame):
 
         self._detalles()
         self._precios()
+        self._terminos()
         self._acciones()
         if self.s and (self.estado == reglas.EN_SESIONES or fichas.sesiones(ctx.conn, ctx.sesion, self.sid)):
             self._desenredado()
@@ -72,7 +75,8 @@ class PantallaFicha(ctk.CTkFrame):
         edad = ""
         if self.m["edad_anios"] is not None:
             edad = f" · {self.m['edad_anios']} años" + (f" y {self.m['edad_meses']} meses" if self.m["edad_meses"] else "")
-        tema.etiqueta(self, f"{self.m['raza_nombre']} · {nombre_tamano(tamano)}{edad}",
+        sexo = f" · {SEXOS[self.m['sexo']]}" if self.m["sexo"] else ""
+        tema.etiqueta(self, f"{self.m['raza_nombre']} · {nombre_tamano(tamano)}{sexo}{edad}",
                       color=tema.GRIS_TEXTO).pack(anchor="w", pady=(0, 10))
 
     def _fila(self, texto: str) -> ctk.CTkFrame:
@@ -97,8 +101,17 @@ class PantallaFicha(ctk.CTkFrame):
         self.largo = tema.Opciones(self.caja_largo, LARGOS, self._al_cambiar, s["largo_maquina"] if s else None)
         self.largo.pack(anchor="w")
 
+        caja = self._fila("Además")
+        self.adicionales = {}
+        for campo, texto in (("despunte", "Despunte"), ("patas_rasuradas", "Patas rasuradas"),
+                             ("desparasitacion", "Desparasitación")):
+            v = ctk.IntVar(value=s[campo] if s else 0)
+            tema.casilla(caja, texto, v).pack(side="left", padx=(0, 18))
+            self.adicionales[campo] = v
+
         self.opc = {}
-        for campo, texto in (("copete", "Copete"), ("barbas", "Barbas"), ("cola_leon", "Cola de león")):
+        for campo, texto in (("copete", "Copete"), ("barbas", "Barbas"), ("bigotes", "Bigotes"), ("orejas", "Orejas"),
+                             ("cola_leon", "Cola de león")):
             caja = self._fila(texto)
             self.opc[campo] = tema.Opciones(caja, SI_NO, self._al_cambiar, s[campo] if s else None)
             self.opc[campo].pack(anchor="w")
@@ -111,6 +124,22 @@ class PantallaFicha(ctk.CTkFrame):
         self.forma_cara = tema.Opciones(self.caja_cara, {None: "Sin definir", **reglas.FORMAS_CARA}, None,
                                         s["forma_cara"] if s else None)
         self.forma_cara.pack(anchor="w")
+
+        # Accesorios: corbatín y moños en las orejas, con el color que se escoja
+        self.accesorios = {}
+        for campo, texto in (("corbatin", "Corbatín"), ("monos", "Moños en las orejas")):
+            caja = self._fila(texto)
+            fila = ctk.CTkFrame(caja, fg_color="transparent")
+            fila.pack(anchor="w")
+            lleva = tema.Opciones(fila, SI_NO_ACCESORIO, lambda c=campo: self._al_cambiar_accesorio(c),
+                                  s[campo] if s else None)
+            lleva.pack(side="left")
+            tema.etiqueta(fila, "Color:").pack(side="left", padx=(16, 6))
+            color = tema.selector(fila, reglas.COLORES, ancho=200, editable=True)
+            color.set((s[f"{campo}_color"] if s else None) or "")
+            color.pack(side="left")
+            self.accesorios[campo] = (lleva, color)
+            self._al_cambiar_accesorio(campo)
 
         caja = self._fila("Baños extra (se cobran según el tamaño)")
         self.medicado = ctk.IntVar(value=s["bano_medicado"] if s else 0)
@@ -152,9 +181,14 @@ class PantallaFicha(ctk.CTkFrame):
             if self.estado == reglas.CANCELADO:
                 self.obs.configure(state="disabled")
 
+    def _al_cambiar_accesorio(self, campo: str) -> None:
+        """El color solo se escoge si se le pone el accesorio."""
+        lleva, color = self.accesorios[campo]
+        color.configure(state="normal" if lleva.codigo == 1 and not self.realizado else "disabled")
+
     def _bloquear_detalles(self) -> None:
         for w in (self.fecha, self.tipo, self.largo, self.cola_estilo, self.forma_cara, self.cantidad,
-                  self.chk_resp, *self.opc.values()):
+                  self.chk_resp, *self.opc.values(), *(w for par in self.accesorios.values() for w in par)):
             w.configure(state="disabled")
         for hijo in self.izq.winfo_children():
             for nieto in hijo.winfo_children():
@@ -190,6 +224,76 @@ class PantallaFicha(ctk.CTkFrame):
             self.lbl[clave].pack(side="right", padx=6)
         tema.etiqueta(z, "El abono del turno se descuenta al cobrar (saldo = total − abonos).",
                       tema.TAM_PEQUENO, color=tema.GRIS_TEXTO, wraplength=380).pack(anchor="w", padx=16, pady=(6, 0))
+
+    def _terminos(self) -> None:
+        """Al llegar al servicio: datos del cliente sin registrar y aceptación de los términos (RN-15).
+
+        Se guardan junto con la ficha, al pulsar «Guardar ficha».
+        """
+        z = self.der
+        self.registro: dict[str, ctk.CTkEntry] = {}
+        self.acepta: dict[str, ctk.IntVar] = {}
+        pid = self.m["propietario_id"]
+        provisional = bool(self.m["propietario_provisional"])
+        estado = legal.estado(self.ctx.conn, pid)
+        ctk.CTkFrame(z, fg_color=tema.BORDE, height=2).pack(fill="x", padx=16, pady=(14, 4))
+        tema.subtitulo(z, "Términos y condiciones").pack(anchor="w", padx=16, pady=(8, 6))
+        if not provisional and all(estado.values()):
+            t = estado["TERMINOS"]
+            tema.aviso_estado(z, f"Aceptó los términos y la autorización de datos (el {t['aceptado_en'][:10]})",
+                              True).pack(anchor="w", padx=16, pady=(0, 6))
+            return
+        if provisional:
+            tema.aviso_estado(z, "Cliente sin registrar: complete sus datos", False).pack(anchor="w", padx=16, pady=(0, 4))
+            dueno = propietarios.obtener(self.ctx.conn, self.ctx.sesion, pid)
+            for clave, texto, valor in (("nombre", "Nombre del propietario *", dueno["nombre"]),
+                                        ("cedula", "Cédula *", ""),
+                                        ("celular1", "Celular *", formato_celular(dueno["celular1"])),
+                                        ("direccion", "Dirección *", "")):
+                tema.etiqueta(z, texto, negrita=True).pack(anchor="w", padx=16, pady=(8, 2))
+                e = tema.entrada(z, ancho=360)
+                if valor:
+                    e.insert(0, valor)
+                e.pack(anchor="w", padx=16)
+                self.registro[clave] = e
+            tema.etiqueta(z, "Si la cédula ya está registrada, el cliente se une a ese propietario.",
+                          tema.TAM_PEQUENO, color=tema.GRIS_TEXTO, wraplength=380).pack(anchor="w", padx=16, pady=(4, 0))
+        tema.etiqueta(z, "Lea los textos al propietario y marque lo que acepta:", wraplength=380).pack(
+            anchor="w", padx=16, pady=(10, 2))
+        frases = {"TERMINOS": "El propietario acepta los\ntérminos y condiciones",
+                  "DATOS": "El propietario autoriza el\ntratamiento de sus datos"}
+        for tipo, aceptado in estado.items():
+            if aceptado and not provisional:
+                continue
+            fila_texto, texto = legal.texto_vigente(self.ctx.conn, tipo)
+            tema.etiqueta(z, f"{TIPOS_LEGALES[tipo]} (versión {fila_texto['version']})", tema.TAM_PEQUENO,
+                          negrita=True, wraplength=380).pack(anchor="w", padx=16, pady=(8, 2))
+            tema.caja_texto(z, alto=130, solo_lectura=True, texto=texto).pack(fill="x", padx=16)
+            var = ctk.IntVar(value=0)
+            tema.casilla(z, frases[tipo], var).pack(anchor="w", padx=16, pady=(6, 0))
+            self.acepta[tipo] = var
+        tema.etiqueta(z, "Se guarda al pulsar «Guardar ficha». Sin esto no se puede iniciar la atención.",
+                      tema.TAM_PEQUENO, color=tema.GRIS_TEXTO, wraplength=380).pack(anchor="w", padx=16, pady=(6, 0))
+
+    def _guardar_cliente_y_terminos(self) -> list[str] | None:
+        """Registra al cliente (si estaba sin registrar) y los términos marcados.
+        Devuelve lo que se hizo, para avisarlo, o ``None`` si hubo un error."""
+        hecho = []
+        pid = self.m["propietario_id"]
+        if self.registro:
+            v = {k: e.get() for k, e in self.registro.items()}
+            if v["cedula"].strip() or v["direccion"].strip():
+                pid = dialogos.ejecutar(self, propietarios.completar_registro, self.ctx.conn, self.ctx.sesion, pid,
+                                        v["nombre"], v["cedula"], v["celular1"], None, v["direccion"])
+                if pid is dialogos.FALLO:
+                    return None
+                hecho.append("Quedaron registrados los datos del cliente.")
+        tipos = [t for t, var in self.acepta.items() if var.get()]
+        if tipos:
+            if dialogos.ejecutar(self, legal.aceptar, self.ctx.conn, self.ctx.sesion, pid, tipos) is dialogos.FALLO:
+                return None
+            hecho.append("Quedó registrada la aceptación: " + " y ".join(TIPOS_LEGALES[t].lower() for t in tipos) + ".")
+        return hecho
 
     def _acciones(self) -> None:
         z = self.der
@@ -291,8 +395,12 @@ class PantallaFicha(ctk.CTkFrame):
             tipo_servicio=self.tipo.codigo, largo_maquina=largo,
             bano_medicado=bool(self.medicado.get()), bano_antipulgas=bool(self.antipulgas.get()),
             cantidad_banos_extra=cantidad, copete=self.opc["copete"].codigo, barbas=self.opc["barbas"].codigo,
+            bigotes=self.opc["bigotes"].codigo, orejas=self.opc["orejas"].codigo,
+            **{c: bool(v.get()) for c, v in self.adicionales.items()},
             cola_leon=cola, cola_estilo=self.cola_estilo.codigo if bajito and cola == 1 else None,
             forma_cara=self.forma_cara.codigo if bajito else None,
+            corbatin=self.accesorios["corbatin"][0].codigo, corbatin_color=self.accesorios["corbatin"][1].get(),
+            monos=self.accesorios["monos"][0].codigo, monos_color=self.accesorios["monos"][1].get(),
             condiciones={c: bool(v.get()) for c, v in self.condiciones.items()},
             observaciones=self.obs.get("1.0", "end"),
         )
@@ -343,8 +451,11 @@ class PantallaFicha(ctk.CTkFrame):
             if dialogos.ejecutar(self, legal.registrar_responsabilidad, self.ctx.conn, self.ctx.sesion,
                                  self.mascota_id, d.condiciones) is dialogos.FALLO:
                 return False
+        hecho = self._guardar_cliente_y_terminos()
+        if hecho is None:
+            return False
         if not silencioso:
-            texto = "La ficha quedó guardada."
+            texto = "La ficha quedó guardada." + "".join(f"\n{h}" for h in hecho)
             if aviso:
                 texto += f"\n\nAtención: {aviso}"
             dialogos.aviso(self, "Ficha guardada", texto)
@@ -352,6 +463,11 @@ class PantallaFicha(ctk.CTkFrame):
         return True
 
     def _recargar(self) -> None:
+        s = fichas.obtener(self.ctx.conn, self.ctx.sesion, self.sid) if self.sid else None
+        if s is not None and s["mascota_id"] != self.mascota_id:
+            # Al registrar al cliente se unió con uno que ya existía y la mascota cambió
+            self.ctx.abrir_ficha(s["propietario_id"], s["mascota_id"], self.sid, volver=self.al_volver)
+            return
         if self.al_recargar:
             self.al_recargar(self.sid)
         else:
