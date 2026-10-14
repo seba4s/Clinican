@@ -6,8 +6,16 @@ Programa de escritorio (Python + CustomTkinter + SQLite, 100 % sin internet) par
 CLINICAN. Se construye por fases según `ESPECIFICACION_CLINICAN.md` (sección 12).
 
 **Estado general:** fases 1 a 5 terminadas en el código. De la 5 solo falta la prueba en el PC real (instalación
-limpia en Windows 11 sin internet). La 6 (WhatsApp) necesita autorización. Las **292 pruebas automáticas pasan**
+limpia en Windows 11 sin internet). La 6 (WhatsApp) necesita autorización. Las **293 pruebas automáticas pasan** (2 más solo corren en Windows)
 (`.venv\Scripts\python -m pytest`).
+
+### Auditoría de diseño (skill `apple-design`)
+Informe completo en `AUDITORIA_DISENO.md`. Cambios aplicados: bordes de campos con contraste 4,2 : 1; botones
+alcanzables con Tab, con foco visible y Enter/Espacio; avisos de «guardado» que no interrumpen; botones de
+confirmación con verbos; atajos Ctrl+1…9 y Ctrl+Q; título de la ventana con la sección; opción «Tamaño de letra y
+botones» (Configuración › Pantalla); menú que se desplaza; cursor de mano y de espera. Prueba automática del
+contraste de la paleta. No se aplicó (por decisión de marca o por ser de otra plataforma): modo oscuro, barra de
+menús nativa, lector de pantalla.
 
 ### Ajustes pedidos al revisar el programa
 - **Agendar sin registrar al cliente.** En Nuevo turno, «+ Cliente nuevo» pide solo nombre del propietario,

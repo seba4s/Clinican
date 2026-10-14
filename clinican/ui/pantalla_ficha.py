@@ -458,7 +458,10 @@ class PantallaFicha(ctk.CTkFrame):
             texto = "La ficha quedó guardada." + "".join(f"\n{h}" for h in hecho)
             if aviso:
                 texto += f"\n\nAtención: {aviso}"
-            dialogos.aviso(self, "Ficha guardada", texto)
+            if aviso:
+                dialogos.aviso(self, "Ficha guardada", texto)  # trae una advertencia que hay que leer
+            else:
+                dialogos.exito(self, "Ficha guardada", texto)
             self._recargar()
         return True
 
@@ -475,7 +478,7 @@ class PantallaFicha(ctk.CTkFrame):
 
     def _cambiar_estado(self, nuevo: str) -> None:
         if nuevo == reglas.CANCELADO and not dialogos.confirmar(
-            self, "Cancelar ficha", "¿Cancelar esta ficha de servicio? Ya no se podrá editar.", si="Sí, cancelar ficha"
+            self, "Cancelar ficha", "¿Cancelar esta ficha de servicio? Ya no se podrá editar.", si="Cancelar ficha", no="Conservar ficha"
         ):
             return
         if nuevo != reglas.CANCELADO and not self._guardar(silencioso=True):
@@ -490,7 +493,7 @@ class PantallaFicha(ctk.CTkFrame):
             dialogos.aviso(self, "Elija una sesión", "Seleccione en la lista la sesión que desea anular.")
             return
         if dialogos.confirmar(self, "Anular sesión", "¿Anular la sesión seleccionada? Quedará registrado en la auditoría.",
-                              si="Sí, anular"):
+                              si="Anular"):
             if dialogos.ejecutar(self, fichas.anular_sesion, self.ctx.conn, self.ctx.sesion, int(sel[0])) is not dialogos.FALLO:
                 self._recargar()
 

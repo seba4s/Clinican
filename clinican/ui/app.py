@@ -21,6 +21,7 @@ MS_REVISION_RESPALDO = 60 * 60 * 1000  # cada hora se revisa si ya se hizo el re
 class AplicacionClinican(ctk.CTk):
     def __init__(self, conn: sqlite3.Connection):
         tema.configurar()
+        tema.aplicar_escala(configuracion.valores(conn).get("tamano_interfaz", "Normal"))
         super().__init__(fg_color=tema.FONDO)
         self.conn = conn
         self.sesion: Sesion | None = None
@@ -28,7 +29,7 @@ class AplicacionClinican(ctk.CTk):
 
         self.title("CLINICAN — Peluquería canina")
         self.geometry("1280x800")
-        self.minsize(1100, 700)
+        self.ajustar_minimo()
         tema.poner_icono(self)
         tema.configurar_tablas(self)
         self.protocol("WM_DELETE_WINDOW", self.salir)
@@ -37,6 +38,10 @@ class AplicacionClinican(ctk.CTk):
         self._revision_respaldo = self.after(MS_REVISION_RESPALDO, self._respaldo_diario)
 
         self.mostrar_acceso()
+
+    def ajustar_minimo(self) -> None:
+        """El tamaño mínimo de la ventana crece con el tamaño de letra elegido."""
+        self.minsize(round(1100 * tema._factor), round(700 * tema._factor))
 
     def _maximizar(self) -> None:
         try:
@@ -52,6 +57,7 @@ class AplicacionClinican(ctk.CTk):
 
     def mostrar_acceso(self) -> None:
         self.sesion = None
+        self.title("CLINICAN — Peluquería canina")
         config = configuracion.valores(self.conn)
         if acceso.necesita_primer_arranque(self.conn):
             self._cambiar_vista(PantallaPrimerArranque(self, self.conn, config, self._entrar))

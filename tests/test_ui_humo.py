@@ -82,7 +82,7 @@ def test_pantallas_fase2(app, conn, monkeypatch, admin):
     config.widgets["abono_minimo"][1].insert(0, "25.000")
     config._guardar_valores()
     assert conn.execute("SELECT valor FROM config WHERE clave='abono_minimo'").fetchone()[0] == "25000"
-    assert mensajes[-1][0] == "Configuración guardada"
+    assert dialogos.ULTIMOS[-1][0] == "Configuración guardada"
     assert app.errores == []
 
 
@@ -377,7 +377,7 @@ def test_cliente_nuevo_se_agenda_y_se_registra_al_llegar(app, conn, monkeypatch,
         var.set(1)
     ficha._guardar()
     app.update()
-    assert "Quedaron registrados los datos del cliente" in mensajes[-1][1]
+    assert "Quedaron registrados los datos del cliente" in dialogos.ULTIMOS[-1][1]
     pid = conn.execute("SELECT propietario_id FROM mascotas WHERE id = ?", (mid,)).fetchone()[0]
     assert conn.execute("SELECT provisional, cedula FROM propietarios WHERE id = ?", (pid,)).fetchone()[:] == (0, "52123456")
     assert legal.estado(conn, pid)["TERMINOS"] and legal.estado(conn, pid)["DATOS"]
@@ -485,3 +485,94 @@ def _textos_de_etiquetas(widget) -> str:
 
     texto = widget.cget("text") if isinstance(widget, ctk.CTkLabel) else ""
     return texto + " ".join(_textos_de_etiquetas(h) for h in widget.winfo_children())
+
+
+# ------------------------------------------------------------ auditoría de diseño
+def _contraste(a: str, b: str) -> float:
+    def luz(h):
+        c = [int(h.lstrip("#")[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+        c = [x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in c]
+        return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    claro, oscuro = sorted((luz(a), luz(b)), reverse=True)
+    return (claro + 0.05) / (oscuro + 0.05)
+
+
+def test_contraste_de_la_paleta():
+    """Texto normal ≥ 4,5:1; texto en negrita grande ≥ 3:1; bordes de campos ≥ 3:1."""
+    from clinican.ui import tema
+
+    for texto, fondo in [
+        (tema.NEGRO, tema.VERDE), (tema.NEGRO, tema.GRIS_BOTON), (tema.NEGRO, tema.FONDO),
+        (tema.GRIS_TEXTO, tema.BLANCO), (tema.GRIS_TEXTO, tema.FONDO), (tema.ROJO_ERROR, tema.BLANCO),
+        (tema.AZUL_OSCURO, tema.BLANCO), (tema.INACTIVO, tema.BLANCO), (tema.NEGRO, tema.AZUL),
+        (tema.NEGRO, tema.FUCSIA),
+    ]:
+        assert _contraste(texto, fondo) >= 4.5, (texto, fondo)
+    assert _contraste(tema.BLANCO, tema.FUCSIA) >= 3.0  # solo en negrita y letra grande
+    assert _contraste(tema.BORDE_CAMPO, tema.BLANCO) >= 3.0
+    assert _contraste(tema.BORDE_CAMPO, tema.FONDO) >= 3.0
+
+
+def test_teclado_atajos_foco_y_avisos(app, conn, admin, monkeypatch):
+    from clinican.ui import dialogos, tema
+
+    app._entrar(admin)
+    app.update()
+    principal = app.vista
+
+    # Ctrl+número cambia de sección y la barra de título dice dónde está
+    assert app.bind("<Control-Key-3>") and app.bind("<Control-q>")  # los atajos están registrados
+    principal.mostrar("Propietarios")
+    assert app.title() == "Propietarios — CLINICAN"
+
+    # los botones entran en el orden de Tab y muestran el foco
+    boton = principal.botones_menu["Agenda"]
+    assert str(boton.cget("cursor")) == "hand2"
+    assert str(tk.Frame.cget(boton, "takefocus")) in ("1", "True", "true")
+    app.deiconify()
+    try:
+        app.update()
+        tk.Misc.focus_set(boton)
+        app.update()
+        assert boton.cget("border_width") == 3  # el foco se ve
+        pulsado = []
+        boton.configure(command=lambda: pulsado.append(1))
+        boton.event_generate("<space>")
+        boton.event_generate("<Return>")
+        assert len(pulsado) == 2  # Espacio y Enter activan el botón
+        principal.botones_menu["Propietarios"].invoke()
+        tk.Misc.focus_set(principal.botones_menu["Propietarios"])
+        app.update()
+        assert boton.cget("border_width") == 0  # al salir, el borde se quita
+    finally:
+        app.withdraw()
+
+    # «Guardado»: un aviso que no interrumpe y se quita solo; no abre ventana modal
+    abiertas = []
+    monkeypatch.setattr(dialogos, "_mostrar", lambda *a, **k: abiertas.append(a) or True)
+    dialogos.exito(principal, "Guardado", "Los datos quedaron actualizados.")
+    app.update()
+    assert principal._aviso is not None and not abiertas
+    assert dialogos.ULTIMOS[-1] == ("Guardado", "Los datos quedaron actualizados.")
+    principal._ocultar_aviso()
+    assert principal._aviso is None
+
+    # sin ventana principal, el aviso de éxito cae a un aviso normal
+    dialogos.registrar_notificador(None)
+    dialogos.exito(principal, "Guardado", "x")
+    assert abiertas
+    dialogos.registrar_notificador(principal.notificar)
+
+
+def test_tamano_de_la_interfaz(app, conn, admin):
+    from clinican.servicios import configuracion
+    from clinican.ui import tema
+
+    try:
+        configuracion.guardar(conn, admin, {"tamano_interfaz": "Grande"})
+        assert tema.aplicar_escala(configuracion.valores(conn)["tamano_interfaz"]) == 1.15
+        tema.configurar_tablas(app)
+        app.update()
+    finally:
+        tema.aplicar_escala("Normal")
+        tema.configurar_tablas(app)

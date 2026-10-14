@@ -101,7 +101,7 @@ class PantallaPersonal(ctk.CTkFrame):
             if r is dialogos.FALLO:
                 return
             self._cargar()
-            dialogos.aviso(self, "Persona agregada", f"{nombre.get().strip()} ya puede iniciar sesión con su PIN.")
+            dialogos.exito(self, "Persona agregada", f"{nombre.get().strip()} ya puede iniciar sesión con su PIN.")
             self._modo_nuevo()
 
         tema.boton(self.panel, "Guardar persona", guardar, ancho=340).pack(anchor="w", padx=20, pady=(22, 18))
@@ -159,7 +159,7 @@ class PantallaPersonal(ctk.CTkFrame):
         r = dialogos.ejecutar(self, funcion, self.ctx.conn, self.ctx.sesion, *args)
         if r is dialogos.FALLO:
             return
-        dialogos.aviso(self, "Listo", aviso)
+        dialogos.exito(self, "Listo", aviso)
         if args and args[0] == self.ctx.sesion.personal_id:
             self.ctx.refrescar_menu()  # su propio nombre cambió en el encabezado
             return
@@ -171,7 +171,7 @@ class PantallaPersonal(ctk.CTkFrame):
         if dialogos.confirmar(
             self, "Desactivar persona",
             f"¿Desactivar a {f['nombre']}? No podrá iniciar sesión, pero su historial se conserva.",
-            si="Sí, desactivar",
+            si="Desactivar",
         ):
             self._accion(personal.desactivar, f["id"], aviso=f"{f['nombre']} quedó inactiva.")
 
@@ -186,5 +186,5 @@ class PantallaPersonal(ctk.CTkFrame):
         r = dialogos.ejecutar(self, personal.transferir_administracion, self.ctx.conn, self.ctx.sesion, f["id"], pin)
         if r is dialogos.FALLO:
             return
-        dialogos.aviso(self, "Administración entregada", f"Ahora {f['nombre']} es la administradora.")
+        dialogos.exito(self, "Administración entregada", f"Ahora {f['nombre']} es la administradora.")
         self.ctx.refrescar_menu()

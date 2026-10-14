@@ -39,4 +39,4 @@ class PantallaMiPin(ctk.CTkFrame):
         for e in (self.actual, self.nuevo, self.repetir):
             e.delete(0, "end")
         if r is not dialogos.FALLO:
-            dialogos.aviso(self, "PIN cambiado", "Su PIN quedó cambiado. Úselo la próxima vez que inicie sesión.")
+            dialogos.exito(self, "PIN cambiado", "Su PIN quedó cambiado. Úselo la próxima vez que inicie sesión.")

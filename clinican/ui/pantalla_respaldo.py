@@ -135,7 +135,7 @@ class PantallaRespaldo(ctk.CTkFrame):
             f"La copia tiene {resumen['propietarios']} propietario(s), {resumen['mascotas']} mascota(s) y "
             f"{resumen['turnos']} turno(s).\n\nAntes se guardará una copia del estado actual. Después deberán "
             "iniciar sesión de nuevo. ¿Continuar?",
-            si="Sí, restaurar",
+            si="Restaurar",
         ):
             return
         previa = dialogos.ejecutar(self, respaldos.restaurar, self.ctx.conn, self.ctx.sesion, ruta)

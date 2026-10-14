@@ -10,7 +10,7 @@ import customtkinter as ctk
 from clinican.dominio.permisos import Accion
 from clinican.servicios import configuracion
 from clinican.servicios.base import Sesion
-from clinican.ui import tema
+from clinican.ui import dialogos, tema
 
 
 @dataclass
@@ -75,6 +75,9 @@ class VentanaPrincipal(ctk.CTkFrame):
         self.pantalla_actual: ctk.CTkFrame | None = None
         self.nombre_actual = "Agenda"
         self._revision = None
+        self._aviso = None
+        self._aviso_id = None
+        self._atajos: list[str] = []
 
         config = self.ctx.config()
         self._encabezado(config)
@@ -82,14 +85,16 @@ class VentanaPrincipal(ctk.CTkFrame):
 
         centro = ctk.CTkFrame(self, fg_color=tema.FONDO, corner_radius=0)
         centro.pack(fill="both", expand=True)
-        self.menu = ctk.CTkFrame(centro, fg_color=tema.BLANCO, corner_radius=0, width=250)
+        # Con letra grande o pantalla baja, el menú se desplaza en vez de cortar opciones.
+        self.menu = ctk.CTkScrollableFrame(centro, fg_color=tema.BLANCO, corner_radius=0, width=232,
+                                           scrollbar_button_color=tema.BORDE_CAMPO)
         self.menu.pack(side="left", fill="y")
-        self.menu.pack_propagate(False)
         self.contenido = ctk.CTkFrame(centro, fg_color=tema.FONDO, corner_radius=0)
         self.contenido.pack(side="left", fill="both", expand=True, padx=28, pady=22)
 
         self._construir_menu()
         self._programar_revision()
+        dialogos.registrar_notificador(self.notificar)
 
     # ------------------------------------------------- expiración (RN-07)
     def _programar_revision(self) -> None:
@@ -114,7 +119,63 @@ class VentanaPrincipal(ctk.CTkFrame):
         if self._revision:
             self.after_cancel(self._revision)
             self._revision = None
+        if self._aviso_id:
+            self.after_cancel(self._aviso_id)
+            self._aviso_id = None
+        dialogos.registrar_notificador(None)
+        self._quitar_atajos()
         super().destroy()
+
+    # ------------------------------------------------ avisos que no interrumpen
+    def notificar(self, titulo: str, mensaje: str = "") -> None:
+        """Confirma una acción con un aviso breve sobre la barra inferior; se quita solo.
+
+        No interrumpe el trabajo (a diferencia de una ventana de aviso) y no depende
+        solo del color: lleva la marca ✔ y el texto."""
+        self._ocultar_aviso()
+        marco = ctk.CTkFrame(self, fg_color=tema.VERDE_SUAVE, border_color=tema.VERDE_HOVER,
+                             border_width=2, corner_radius=12, cursor="hand2")
+        primera = mensaje.strip().splitlines()[0] if mensaje.strip() else ""
+        tema.etiqueta(marco, f"✔ {titulo}", negrita=True).pack(anchor="w", padx=18, pady=(10, 0 if primera else 10))
+        if primera:
+            tema.etiqueta(marco, primera, tema.TAM_PEQUENO, wraplength=620).pack(anchor="w", padx=18, pady=(0, 10))
+        marco.place(relx=0.5, rely=1.0, y=-62, anchor="s")
+        marco.lift()
+        for w in (marco, *marco.winfo_children()):
+            w.bind("<Button-1>", lambda _e: self._ocultar_aviso())
+        self._aviso = marco
+        self._aviso_id = self.after(5000, self._ocultar_aviso)
+
+    def _ocultar_aviso(self) -> None:
+        if self._aviso_id:
+            self.after_cancel(self._aviso_id)
+            self._aviso_id = None
+        if self._aviso is not None:
+            self._aviso.destroy()
+            self._aviso = None
+
+    # ------------------------------------------------------ atajos de teclado
+    def _quitar_atajos(self) -> None:
+        raiz = self.winfo_toplevel()
+        for secuencia in self._atajos:
+            try:
+                raiz.unbind(secuencia)
+            except Exception:
+                pass
+        self._atajos = []
+
+    def _poner_atajos(self) -> None:
+        """Ctrl+1, Ctrl+2… llevan a cada sección del menú; Ctrl+Q cierra la sesión."""
+        self._quitar_atajos()
+        raiz = self.winfo_toplevel()
+        for numero, nombre in enumerate(self.entradas, start=1):
+            if numero > 9:
+                break
+            secuencia = f"<Control-Key-{numero}>"
+            raiz.bind(secuencia, lambda _e, n=nombre: self.mostrar(n))
+            self._atajos.append(secuencia)
+        raiz.bind("<Control-q>", lambda _e: self._cerrar_sesion())
+        self._atajos.append("<Control-q>")
 
     # ------------------------------------------------------------ partes fijas
     def _encabezado(self, config: dict[str, str]) -> None:
@@ -160,6 +221,10 @@ class VentanaPrincipal(ctk.CTkFrame):
             b = tema.boton(self.menu, texto, lambda t=texto: self.mostrar(t), estilo="secundario", ancho=210, anchor="w")
             b.pack(padx=20, pady=5)
             self.botones_menu[texto] = b
+        tema.etiqueta(self.menu, "Teclado: Ctrl + número va a cada sección.\nCtrl + Q cierra la sesión.",
+                      tema.TAM_PEQUENO - 2, color=tema.GRIS_TEXTO, wraplength=210).pack(
+            anchor="w", padx=20, pady=16)
+        self._poner_atajos()
         destino = self.nombre_actual if self.nombre_actual in self.entradas else next(iter(self.entradas))
         self.mostrar(destino)
 
@@ -167,13 +232,22 @@ class VentanaPrincipal(ctk.CTkFrame):
         """Muestra una pantalla del menú. ``kwargs`` permite abrirla en un punto concreto."""
         self._resaltar(nombre)
         self.nombre_actual = nombre
+        self._titulo_ventana(nombre)
         self._poner(lambda padre: self.entradas[nombre](padre, self.ctx, **kwargs))
 
     def abrir(self, fabrica, menu: str | None = None) -> None:
         """Abre una pantalla que no está en el menú (por ejemplo, una ficha)."""
         if menu:
             self._resaltar(menu)
+            self._titulo_ventana(menu)
         self._poner(fabrica)
+
+    def _titulo_ventana(self, seccion: str) -> None:
+        """La barra de título dice dónde está la persona: «Agenda — CLINICAN»."""
+        try:
+            self.winfo_toplevel().title(f"{seccion} — CLINICAN")
+        except Exception:
+            pass
 
     def _resaltar(self, nombre: str) -> None:
         for texto, b in self.botones_menu.items():

@@ -6,6 +6,8 @@ negrita; letra grande; botones de al menos 40 px de alto; solo modo claro.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+
 import tkinter as tk
 from tkinter import ttk
 
@@ -24,7 +26,10 @@ AZUL = "#0EBCDE"
 AZUL_OSCURO = "#087F97"  # para enlaces sobre blanco (mejor contraste)
 FONDO = "#F4F5F2"
 BLANCO = "#FFFFFF"
-BORDE = "#CFD2C8"
+BORDE = "#CFD2C8"  # solo decorativo (tarjetas y separadores)
+BORDE_CAMPO = "#7A7D72"  # bordes de campos y controles: 4,2:1 sobre blanco (mínimo 3:1)
+INACTIVO = "#6B6975"  # texto de elementos inactivos: 5,4:1 sobre blanco
+BORDE_FOCO = "#14121D"
 GRIS_TEXTO = "#4A4854"
 GRIS_BOTON = "#E6E7E2"
 GRIS_BOTON_HOVER = "#D5D7D0"
@@ -59,6 +64,59 @@ def configurar() -> None:
     _cache_logo.clear()  # las imágenes pertenecen a una ventana raíz concreta
     ctk.set_appearance_mode("light")
     ctk.set_default_color_theme("green")
+
+
+ESCALAS = {"Normal": 1.0, "Grande": 1.15, "Muy grande": 1.3}
+
+
+def aplicar_escala(nombre: str) -> float:
+    """Agranda o achica toda la interfaz (letra, botones y tablas). Devuelve el factor."""
+    factor = ESCALAS.get(nombre, 1.0)
+    _quitar_widgets_destruidos()
+    ctk.set_widget_scaling(factor)
+    ctk.set_window_scaling(1.0)
+    global _factor
+    _factor = factor
+    return factor
+
+
+_factor = 1.0
+
+
+def _quitar_widgets_destruidos() -> None:
+    """CustomTkinter conserva algunos widgets ya destruidos (los menús de las listas
+    desplegables) y falla al reescalarlos; se sacan antes de cambiar el tamaño."""
+    try:
+        from customtkinter.windows.widgets.scaling.scaling_tracker import ScalingTracker
+    except ImportError:  # otra versión de CustomTkinter: no hay nada que limpiar
+        return
+    for lista in ScalingTracker.window_widgets_dict.values():
+        for callback in list(lista):
+            widget = getattr(callback, "__self__", None)
+            try:
+                existe = widget is None or bool(widget.winfo_exists())
+            except Exception:
+                existe = False
+            if not existe:
+                lista.remove(callback)
+
+
+@contextmanager
+def ocupado(widget: tk.Misc):
+    """Cursor de espera mientras dura una tarea larga (importar, respaldar)."""
+    raiz = widget.winfo_toplevel()
+    try:
+        raiz.configure(cursor="watch")
+        raiz.update_idletasks()
+    except tk.TclError:
+        pass
+    try:
+        yield
+    finally:
+        try:
+            raiz.configure(cursor="")
+        except tk.TclError:
+            pass
 
 
 def fuente(tam: int = TAM_NORMAL, negrita: bool = False) -> ctk.CTkFont:
@@ -114,7 +172,7 @@ def etiqueta(padre, texto: str = "", tam: int = TAM_NORMAL, negrita: bool = Fals
 def entrada(padre, ancho: int = 320, oculto: bool = False, **kw) -> ctk.CTkEntry:
     return ctk.CTkEntry(
         padre, width=ancho, height=ALTO_ENTRADA, font=fuente(), text_color=NEGRO,
-        fg_color=BLANCO, border_color=BORDE, border_width=2, show="•" if oculto else "", **kw,
+        fg_color=BLANCO, border_color=BORDE_CAMPO, border_width=2, show="•" if oculto else "", **kw,
     )
 
 
@@ -127,23 +185,52 @@ def selector(padre, valores: list[str], ancho: int = 320, editable: bool = False
         values=valores, **kw,
     )
     if editable:
-        return ctk.CTkComboBox(padre, fg_color=BLANCO, border_color=BORDE, border_width=2, **comun)
+        return ctk.CTkComboBox(padre, fg_color=BLANCO, border_color=BORDE_CAMPO, border_width=2, **comun)
     return ctk.CTkOptionMenu(padre, fg_color=BLANCO, **comun)
 
 
 def boton(padre, texto: str, comando, estilo: str = "primario", ancho: int = 200, **kw) -> ctk.CTkButton:
     """Estilos: primario (lima, texto negro), peligro (fucsia, texto blanco en
-    negrita), secundario (gris claro, texto negro)."""
+    negrita), secundario (gris claro, texto negro).
+
+    Se puede usar solo con el teclado: Tab llega al botón, se ve un borde
+    oscuro mientras tiene el foco y Enter o Espacio lo activan.
+    """
     colores = {
         "primario": (VERDE, VERDE_HOVER, NEGRO),
         "peligro": (FUCSIA, FUCSIA_HOVER, BLANCO),
         "secundario": (GRIS_BOTON, GRIS_BOTON_HOVER, NEGRO),
     }[estilo]
-    return ctk.CTkButton(
+    b = ctk.CTkButton(
         padre, text=texto, command=comando, width=ancho, height=ALTO_BOTON,
         fg_color=colores[0], hover_color=colores[1], text_color=colores[2],
-        font=fuente(TAM_NORMAL, True), corner_radius=10, **kw,
+        font=fuente(TAM_NORMAL, True), corner_radius=10, cursor="hand2",
+        border_color=BORDE_FOCO, border_width=0, **kw,
     )
+    hacer_enfocable(b)
+    return b
+
+
+def hacer_enfocable(b: ctk.CTkButton) -> None:
+    """Teclado: el botón entra en el orden de Tab, muestra el foco y responde a Enter y Espacio."""
+    tk.Frame.configure(b, takefocus=True)
+
+    def _foco(activo: bool):
+        if b.winfo_exists():
+            b.configure(border_width=3 if activo else 0)
+
+    def _activar(_e=None):
+        if str(b.cget("state")) != "disabled":
+            b.invoke()
+        return "break"
+
+    # El foco de teclado lo tiene el marco del botón: se enlaza con Tk directamente
+    # (el ``bind`` de CustomTkinter solo escucha el dibujo y el texto interiores).
+    tk.Misc.bind(b, "<FocusIn>", lambda _e=None: _foco(True), add="+")
+    tk.Misc.bind(b, "<FocusOut>", lambda _e=None: _foco(False), add="+")
+    tk.Misc.bind(b, "<Return>", _activar, add="+")
+    tk.Misc.bind(b, "<space>", _activar, add="+")
+    b.bind("<Button-1>", lambda _e=None: tk.Misc.focus_set(b), add="+")
 
 
 class Opciones(ctk.CTkSegmentedButton):
@@ -174,7 +261,7 @@ def casilla(padre, texto: str, variable=None, comando=None, **kw) -> ctk.CTkChec
     return ctk.CTkCheckBox(
         padre, text=texto, variable=variable, command=comando, font=fuente(), text_color=NEGRO,
         fg_color=VERDE, hover_color=VERDE_HOVER, checkmark_color=NEGRO, border_color=NEGRO,
-        checkbox_width=28, checkbox_height=28, onvalue=1, offvalue=0, **kw,
+        checkbox_width=28, checkbox_height=28, onvalue=1, offvalue=0, cursor="hand2", **kw,
     )
 
 
@@ -182,14 +269,14 @@ def interruptor(padre, texto: str, variable=None, comando=None) -> ctk.CTkSwitch
     return ctk.CTkSwitch(
         padre, text=texto, variable=variable, command=comando, font=fuente(), text_color=NEGRO,
         progress_color=FUCSIA, button_color=NEGRO, button_hover_color=GRIS_TEXTO,
-        switch_width=56, switch_height=28, onvalue=1, offvalue=0,
+        switch_width=56, switch_height=28, onvalue=1, offvalue=0, cursor="hand2",
     )
 
 
 def caja_texto(padre, alto: int = 160, solo_lectura: bool = False, texto: str = "", **kw) -> ctk.CTkTextbox:
     caja = ctk.CTkTextbox(
         padre, height=alto, font=fuente(TAM_PEQUENO + 1), text_color=NEGRO, fg_color=BLANCO,
-        border_color=BORDE, border_width=2, wrap="word", **kw,
+        border_color=BORDE_CAMPO, border_width=2, wrap="word", **kw,
     )
     if texto:
         caja.insert("1.0", texto)
@@ -232,15 +319,16 @@ def tarjeta(padre, **kw) -> ctk.CTkFrame:
 
 
 def configurar_tablas(raiz: tk.Misc) -> None:
-    """Estilo de las tablas (ttk.Treeview) con letra grande."""
+    """Estilo de las tablas (ttk.Treeview) con letra grande; sigue el tamaño de la interfaz."""
     estilo = ttk.Style(raiz)
+    letra = round(14 * _factor)
     estilo.theme_use("clam")
     estilo.configure(
-        "Clinican.Treeview", font=(FAMILIA, 14), rowheight=38, background=BLANCO,
+        "Clinican.Treeview", font=(FAMILIA, letra), rowheight=round(38 * _factor), background=BLANCO,
         fieldbackground=BLANCO, foreground=NEGRO, bordercolor=BORDE, borderwidth=1,
     )
     estilo.configure(
-        "Clinican.Treeview.Heading", font=(FAMILIA, 14, "bold"), background=VERDE,
+        "Clinican.Treeview.Heading", font=(FAMILIA, letra, "bold"), background=VERDE,
         foreground=NEGRO, relief="flat", padding=(8, 8),
     )
     estilo.map("Clinican.Treeview.Heading", background=[("active", VERDE_HOVER)])
@@ -262,7 +350,7 @@ def tabla(padre, columnas: list[tuple[str, str, int]], alto: int = 12) -> ttk.Tr
     arbol.configure(yscrollcommand=barra.set)
     arbol.pack(side="left", fill="both", expand=True)
     barra.pack(side="right", fill="y")
-    arbol.tag_configure("inactivo", foreground="#8A8894")
+    arbol.tag_configure("inactivo", foreground=INACTIVO)
     arbol.tag_configure("par", background="#F8F9F5")
     arbol.marco = marco  # para ubicarlo con pack/grid
     return arbol
