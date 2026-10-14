@@ -132,13 +132,13 @@ class PantallaHorarios(ctk.CTkFrame):
 
     def _bloquear_franja(self, hora: str) -> None:
         if not dialogos.confirmar(self, "Bloquear franja", f"¿Bloquear la franja de las {hora} del {self.fecha.isoformat()}?",
-                                  si="Sí, bloquear"):
+                                  si="Bloquear"):
             return
         self._con_turnos(horarios.bloquear_franja, self.fecha.isoformat(), hora)
 
     def _bloquear_dias(self, desde: str, hasta: str, motivo: str) -> None:
         texto = desde if desde == hasta else f"del {desde} al {hasta}"
-        if not dialogos.confirmar(self, "Bloquear", f"¿Bloquear {texto}? No se podrán agendar turnos.", si="Sí, bloquear"):
+        if not dialogos.confirmar(self, "Bloquear", f"¿Bloquear {texto}? No se podrán agendar turnos.", si="Bloquear"):
             return
         self._con_turnos(horarios.bloquear_dias, desde, hasta, motivo)
 
@@ -156,7 +156,7 @@ class PantallaHorarios(ctk.CTkFrame):
         except ErrorClinican as e:
             dialogos.error(self, str(e))
             return
-        dialogos.aviso(self, "Bloqueado", "Listo. El bloqueo quedó guardado.")
+        dialogos.exito(self, "Franja bloqueada", "El bloqueo quedó guardado.")
         self._franjas_fecha()
         if self.admin:
             self._bloqueos()

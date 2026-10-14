@@ -82,10 +82,22 @@ class PantallaConfiguracion(ctk.CTkFrame):
         if r is dialogos.FALLO:
             return
         if not r:
-            dialogos.aviso(self, "Sin cambios", "No había cambios para guardar.")
+            dialogos.exito(self, "Sin cambios", "No había cambios para guardar.")
             return
+        if "tamano_interfaz" in r:
+            self._aplicar_tamano()
         nombres = "\n".join(f"• {cc.POR_CLAVE[c].etiqueta}" for c in r)
-        dialogos.aviso(self, "Configuración guardada", f"Se cambiaron {len(r)} valor(es):\n{nombres}")
+        dialogos.exito(self, "Configuración guardada", f"Se cambiaron {len(r)} valor(es):\n{nombres}")
+
+    def _aplicar_tamano(self) -> None:
+        """Aplica el nuevo tamaño de la interfaz sin cerrar el programa."""
+        valor = configuracion.valores(self.ctx.conn).get("tamano_interfaz", "Normal")
+        tema.aplicar_escala(valor)
+        tema.configurar_tablas(self)
+        raiz = self.winfo_toplevel()
+        if hasattr(raiz, "ajustar_minimo"):
+            raiz.ajustar_minimo()
+        self.ctx.refrescar_menu()
 
     # ============================================================== razas
     def _razas(self, seleccionar: int | None = None) -> None:
@@ -142,7 +154,7 @@ class PantallaConfiguracion(ctk.CTkFrame):
                                             bool(activa.get()), especie=especie.codigo)
                     rid = r["id"]
                 if res is not dialogos.FALLO:
-                    dialogos.aviso(self, "Raza guardada", f"Se guardó la raza «{nombre.get().strip()}».")
+                    dialogos.exito(self, "Raza guardada", f"Se guardó la raza «{nombre.get().strip()}».")
                     self._razas(seleccionar=rid)
 
             tema.boton(panel, "Guardar raza", guardar, ancho=340).pack(anchor="w", pady=(20, 6))
@@ -201,10 +213,10 @@ class PantallaConfiguracion(ctk.CTkFrame):
             self, "Crear versión nueva",
             f"Se creará una versión nueva de «{TIPOS_LEGALES[tipo]}». Todos los propietarios deberán aceptarla "
             "de nuevo antes de su próximo turno. ¿Continuar?",
-            si="Sí, crear versión",
+            si="Crear versión",
         ):
             return
         r = dialogos.ejecutar(self, legal.nueva_version, self.ctx.conn, self.ctx.sesion, tipo, self.caja_legal.get("1.0", "end"))
         if r is not dialogos.FALLO:
-            dialogos.aviso(self, "Versión guardada", f"Ahora está vigente la versión {r}.")
+            dialogos.exito(self, "Versión guardada", f"Ahora está vigente la versión {r}.")
             self._cargar_texto()

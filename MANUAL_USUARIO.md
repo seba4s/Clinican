@@ -82,3 +82,15 @@ En **Propietarios › Importar desde Excel › Fichas antiguas de peluquería**,
 ---
 
 ¿Algo no funciona? Anote lo que pasó y avise a la administradora. Los errores quedan registrados en `C:\Clinican\datos\clinican.log`.
+
+---
+
+## 7. Teclado, avisos y tamaño de letra
+
+- **Teclado:** con **Tab** se pasa de un botón o campo al siguiente; el botón activo tiene un borde oscuro y se
+  pulsa con **Enter** o **Espacio**. **Ctrl + 1, 2, 3…** abre cada sección del menú y **Ctrl + Q** cierra la sesión.
+- **Avisos:** cuando algo se guarda aparece un cuadro verde con ✔ sobre la barra fucsia y se quita solo (o con un
+  clic). No hay que pulsar nada. Las ventanas con «Entendido» quedan solo para lo que hay que leer con calma.
+- **Letra más grande:** la administradora puede ir a **Configuración › Pantalla › Tamaño de letra y botones**
+  y elegir Normal, Grande o Muy grande. Se aplica al guardar.
+

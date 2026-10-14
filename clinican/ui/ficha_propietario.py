@@ -103,7 +103,7 @@ class DetallePropietario(ctk.CTkFrame):
                                    "aquí o en la ficha de servicio al llegar.")
                     self.al_guardar(r, P_CONSENT)
                     return
-                dialogos.aviso(self, "Guardado", "Los datos del propietario quedaron actualizados.")
+                dialogos.exito(self, "Guardado", "Los datos del propietario quedaron actualizados.")
                 self.al_guardar(f["id"], P_DATOS)
 
         texto = "Crear propietario" if f is None else ("Registrar cliente" if self.provisional else "Guardar cambios")
@@ -203,7 +203,7 @@ class DetallePropietario(ctk.CTkFrame):
                 res = dialogos.ejecutar(self, propietarios.editar_mascota, self.ctx.conn, self.ctx.sesion, m["id"], **datos)
             if res is dialogos.FALLO:
                 return
-            dialogos.aviso(self, "Mascota guardada", f"Se guardó a {nombre.get().strip()}.")
+            dialogos.exito(self, "Mascota guardada", f"Se guardó a {nombre.get().strip()}.")
             self.al_guardar(self.pid, P_MASCOTAS, res if m is None else m["id"])
 
         botones = ctk.CTkFrame(z, fg_color="transparent")
@@ -218,7 +218,7 @@ class DetallePropietario(ctk.CTkFrame):
         activar = not m["activa"]
         if not activar and not dialogos.confirmar(
             self, "Dar de baja", f"¿Dar de baja a {m['nombre']}? No aparecerá para nuevos turnos; su historial se conserva.",
-            si="Sí, dar de baja",
+            si="Dar de baja",
         ):
             return
         r = dialogos.ejecutar(self, propietarios.fijar_mascota_activa, self.ctx.conn, self.ctx.sesion, m["id"], activar)
@@ -283,7 +283,7 @@ class DetallePropietario(ctk.CTkFrame):
                 tipos = [t for t, v in variables.items() if v.get()]
                 r = dialogos.ejecutar(self, legal.aceptar, self.ctx.conn, self.ctx.sesion, self.pid, tipos)
                 if r is not dialogos.FALLO:
-                    dialogos.aviso(self, "Aceptación guardada", "Quedó registrada con la fecha y la versión del texto.")
+                    dialogos.exito(self, "Aceptación guardada", "Quedó registrada con la fecha y la versión del texto.")
                     self.al_guardar(self.pid, P_CONSENT)
 
             tema.boton(z, "Guardar aceptación", guardar, ancho=300).pack(anchor="w", padx=16, pady=(16, 6))
@@ -317,7 +317,7 @@ class DetallePropietario(ctk.CTkFrame):
             r = dialogos.ejecutar(self, legal.registrar_responsabilidad, self.ctx.conn, self.ctx.sesion,
                                   por_nombre[mascota.get()], condiciones)
             if r is not dialogos.FALLO:
-                dialogos.aviso(self, "Declaración guardada", "La declaración de responsabilidad quedó registrada con su fecha.")
+                dialogos.exito(self, "Declaración guardada", "La declaración de responsabilidad quedó registrada con su fecha.")
                 self.al_guardar(self.pid, P_CONSENT)
 
         tema.boton(z, "Guardar declaración", guardar, ancho=300).pack(anchor="w", padx=16, pady=(14, 6))

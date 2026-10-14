@@ -37,6 +37,7 @@ _G_ABONO = "Abonos y tiempos"
 _G_CUPOS = "Cupos por franja"
 _G_SUPUESTOS = "Supuestos por confirmar"
 _G_OTROS = "Otros"
+_G_PANTALLA = "Pantalla"
 
 CLAVES: list[ClaveConfig] = [
     ClaveConfig("negocio_nombre", "Nombre del negocio", TEXTO, _G_NEGOCIO),
@@ -83,6 +84,11 @@ CLAVES: list[ClaveConfig] = [
     ClaveConfig("personal_dia_lunes_viernes", "Personas que atienden de lunes a viernes", ENTERO, _G_OTROS),
     ClaveConfig("personal_dia_sabado", "Personas que atienden los sábados", ENTERO, _G_OTROS),
     ClaveConfig("respaldos_conservar", "Número de respaldos automáticos que se conservan", ENTERO, _G_OTROS),
+    ClaveConfig(
+        "tamano_interfaz", "Tamaño de letra y botones", OPCION, _G_PANTALLA,
+        opciones=("Normal", "Grande", "Muy grande"),
+        ayuda="Agranda todo el programa en este computador. Se aplica al guardar.",
+    ),
 ]
 
 POR_CLAVE: dict[str, ClaveConfig] = {c.clave: c for c in CLAVES}

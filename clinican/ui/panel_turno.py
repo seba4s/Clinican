@@ -298,7 +298,7 @@ class PanelTurno(ctk.CTkScrollableFrame):
             r = dialogos.ejecutar(self, turnos.no_asistio, self.ctx.conn, self.ctx.sesion, self.tid, aviso)
             if r is dialogos.FALLO:
                 return
-            dialogos.aviso(self, "Registrado", rt.ESTADOS[r] + (
+            dialogos.exito(self, "Registrado", rt.ESTADOS[r] + (
                 ". El propietario deberá pagar un abono nuevo para agendar." if r == rt.NO_ASISTIO_SIN_AVISO
                 else ". El abono queda a favor para reprogramar."))
             self.al_cambiar(self.tid)
@@ -339,7 +339,7 @@ class PanelTurno(ctk.CTkScrollableFrame):
             return
         mensaje = (f"Total del servicio: {pesos(cuenta['total'])}\nAbonado: {pesos(cuenta['abonado'])}\n\n"
                    f"SALDO A COBRAR: {pesos(cuenta['saldo'])}")
-        if dialogos.confirmar(self, "Entregar y cobrar", mensaje, si="Cobré el saldo y entregué", no="Volver"):
+        if dialogos.confirmar(self, "Entregar y cobrar", mensaje, si="Cobré el saldo y entregué", no="Cancelar"):
             self._hacer(turnos.entregar)
 
     def _cancelar(self) -> None:
@@ -348,7 +348,7 @@ class PanelTurno(ctk.CTkScrollableFrame):
             return
         if not op["abonado"]:
             if dialogos.confirmar(self, "Cancelar turno", f"¿Cancelar el turno de {self.t['mascota_nombre']}?",
-                                  si="Sí, cancelar turno"):
+                                  si="Cancelar turno", no="Conservar turno"):
                 self._hacer(turnos.cancelar, rt.A_FAVOR)
             return
         opciones = [("Dejar el abono a favor", rt.A_FAVOR)]

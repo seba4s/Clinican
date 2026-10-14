@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections import deque
 from typing import Callable
 
 import customtkinter as ctk
@@ -15,7 +16,7 @@ log = logging.getLogger(__name__)
 
 class _Dialogo(ctk.CTkToplevel):
     def __init__(self, padre, titulo: str, mensaje: str, botones: list[tuple[str, str, object]],
-                 con_pin: bool = False, detalle: str | None = None):
+                 con_pin: bool = False, detalle: str | None = None, enter_acepta: bool = False):
         super().__init__(padre)
         self.title(titulo)
         self.configure(fg_color=tema.BLANCO)
@@ -38,8 +39,15 @@ class _Dialogo(ctk.CTkToplevel):
 
         fila = ctk.CTkFrame(self, fg_color=tema.BLANCO)
         fila.pack(padx=32, pady=(8, 28), anchor="e")
+        self.botones = []
         for texto, estilo, valor in botones:
-            tema.boton(fila, texto, lambda v=valor: self._cerrar(v), estilo=estilo, ancho=150).pack(side="left", padx=(12, 0))
+            b = tema.boton(fila, texto, lambda v=valor: self._cerrar(v), estilo=estilo, ancho=150)
+            b.pack(side="left", padx=(12, 0))
+            self.botones.append(b)
+        if enter_acepta and not con_pin:
+            # Solo en avisos informativos: Enter los cierra. En las confirmaciones Enter no
+            # decide por la persona; se llega al botón con Tab o con el ratón.
+            self.bind("<Return>", lambda _e: self._cerrar(botones[0][2]))
 
         self.protocol("WM_DELETE_WINDOW", lambda: self._cerrar(None))
         self.bind("<Escape>", lambda _e: self._cerrar(None))
@@ -54,7 +62,12 @@ class _Dialogo(ctk.CTkToplevel):
         except Exception:  # la ventana aún no es visible
             self.after(50, self._tomar_foco)
             return
-        (self.pin or self).focus_force()
+        if self.pin is not None:
+            self.pin.focus_force()
+        else:
+            self.focus_force()
+            if self.botones:
+                self.botones[0].focus_set()  # el foco visible queda en la primera opción
 
     def _centrar(self, padre):
         raiz = padre.winfo_toplevel()
@@ -77,14 +90,37 @@ def _mostrar(padre, *args, **kw):
 
 
 def aviso(padre, titulo: str, mensaje: str) -> None:
-    _mostrar(padre, titulo, mensaje, [("Entendido", "primario", True)])
+    """Aviso que interrumpe. Solo para información que la persona debe leer o copiar
+    (una ruta, un dato para el cliente); para «quedó guardado» use :func:`exito`."""
+    _mostrar(padre, titulo, mensaje, [("Entendido", "primario", True)], enter_acepta=True)
+
+
+# Avisos de éxito mostrados (los más recientes), útil para depurar y para las pruebas.
+ULTIMOS: deque[tuple[str, str]] = deque(maxlen=30)
+_notificador: Callable[[str, str], None] | None = None
+
+
+def registrar_notificador(funcion: Callable[[str, str], None] | None) -> None:
+    """La ventana principal registra aquí cómo mostrar los avisos sin interrumpir."""
+    global _notificador
+    _notificador = funcion
+
+
+def exito(padre, titulo: str, mensaje: str = "") -> None:
+    """Confirma algo hecho sin interrumpir: un aviso breve en la ventana que se quita solo.
+    Si no hay ventana principal, usa un aviso normal."""
+    ULTIMOS.append((titulo, mensaje))
+    if _notificador is not None:
+        _notificador(titulo, mensaje)
+    else:
+        aviso(padre, titulo, mensaje or titulo)
 
 
 def error(padre, mensaje: str, titulo: str = "No se pudo completar") -> None:
-    _mostrar(padre, titulo, mensaje, [("Entendido", "peligro", True)])
+    _mostrar(padre, titulo, mensaje, [("Entendido", "peligro", True)], enter_acepta=True)
 
 
-def confirmar(padre, titulo: str, mensaje: str, si: str = "Sí, continuar", no: str = "No, volver") -> bool:
+def confirmar(padre, titulo: str, mensaje: str, si: str = "Continuar", no: str = "Cancelar") -> bool:
     return _mostrar(padre, titulo, mensaje, [(si, "primario", True), (no, "secundario", False)]) is True
 
 
@@ -114,7 +150,8 @@ def ejecutar(padre, funcion: Callable, *args, **kwargs):
     Devuelve el resultado, o ``FALLO`` si hubo error.
     """
     try:
-        return funcion(*args, **kwargs)
+        with tema.ocupado(padre):  # cursor de espera: importar o respaldar puede tardar unos segundos
+            return funcion(*args, **kwargs)
     except ErrorClinican as e:
         error(padre, str(e))
     except Exception:
