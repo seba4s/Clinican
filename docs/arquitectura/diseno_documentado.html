@@ -93,7 +93,7 @@
   <div>
     <dl>
       <dt>Grupo</dt><dd>5B</dd>
-      <dt>Integrantes</dt><dd>Sebastian Lopez Benavides<br>[Integrante 2]<br>[Integrante 3]</dd>
+      <dt>Autor</dt><dd>Sebastian Lopez Benavides</dd>
       <dt>Entregables</dt><dd>1 · Diseño documentado (este documento)<br>2 · Esqueleto funcional (repositorio <span class="mono">seba4s/Clinican</span>)</dd>
       <dt>Versión</dt><dd>1.0 · noviembre de 2026</dd>
     </dl>
@@ -217,8 +217,8 @@ porque restringen decisiones que tomamos por los primeros.</p>
   <tr><td><b>Estímulo</b></td><td>Agenda un turno nuevo y consulta la agenda del día</td><td>Dos turnos pendientes piden el último cupo GRANDE de las 10:00; se registra el abono de uno mientras el temporizador de expiración revisa los vencidos</td><td>Decide enviar los recordatorios por SMS en vez de WhatsApp</td></tr>
   <tr><td><b>Artefacto</b></td><td>Agenda: servicio de turnos y base de datos</td><td>Reglas de cupo y servicio de turnos</td><td>Módulo de notificaciones</td></tr>
   <tr><td><b>Entorno</b></td><td>Operación normal, sin conexión a internet desde hace horas</td><td>Operación normal, franja con un cupo libre</td><td>Tiempo de desarrollo, sistema en producción</td></tr>
-  <tr><td><b>Respuesta</b></td><td>El turno queda guardado y se muestra; ninguna parte del flujo espera a la red</td><td>El primer abono confirma su turno; el otro pendiente pasa a LIBERADO con motivo «otro pagó primero» y se avisa al personal</td><td>Se escribe un adaptador nuevo que implementa el puerto <code>Notificador</code> y se elige en la configuración</td></tr>
-  <tr><td><b>Medida</b></td><td>100 % de los casos de uso de la agenda funcionan sin red; respuesta &lt; 2 s</td><td>0 franjas con ocupación mayor que su cupo; verificado por pruebas automáticas que reproducen la carrera</td><td>0 líneas cambiadas en <code>dominio</code> y en el servicio de turnos; &lt; 1 día-persona</td></tr>
+  <tr><td><b>Respuesta</b></td><td>El turno queda guardado y se muestra; ninguna parte del flujo espera a la red</td><td>El primer abono confirma su turno; el otro pendiente pasa a LIBERADO con motivo «otro pagó primero» y se avisa al personal</td><td>Se escribe un adaptador nuevo que implementa el puerto <code>Notificador</code> y se conecta en el arranque (<code>main.py</code>)</td></tr>
+  <tr><td><b>Medida</b></td><td>100 % de los casos de uso de la agenda funcionan sin red; respuesta &lt; 2 s</td><td>0 franjas con ocupación mayor que su cupo; verificado por pruebas automáticas que reproducen la carrera</td><td>0 líneas cambiadas en la agenda (servicio de turnos y reglas de cupo); solo el adaptador y su nombre en la lista de canales; &lt; 1 día-persona</td></tr>
 </table>
 
 <table class="no-partir">
@@ -295,7 +295,7 @@ distinto.</p>
   <tr><td><b>T3 · Reglas en un núcleo puro y máquina de estados</b> (integridad)</td><td>E2</td><td>Categoría de cupo, cupos libres, precios y transiciones de estado son funciones del <code>dominio</code> sin acceso a la base, probadas aisladamente.</td><td>Algo de duplicación: la consulta trae datos y el dominio decide.</td></tr>
   <tr><td><b>T4 · Respaldo verificado y recuperación al iniciar</b> (disponibilidad)</td><td>E4</td><td>Respaldo diario y al cerrar, con la API de copia de SQLite y verificación <code>quick_check</code>; se conservan los últimos N. Al restaurar, primero se guarda lo actual. Al abrir, se liberan los turnos vencidos.</td><td>Espacio en disco; el cierre tarda un poco más.</td></tr>
   <tr><td><b>T5 · Encapsular con un puerto</b> (modificabilidad)</td><td>E3</td><td>El puerto <code>Notificador</code> se define en <code>servicios</code> y los adaptadores (WhatsApp de Meta, archivo o consola) viven en <code>adaptadores</code>.</td><td>Una indirección más: hay que leer dos archivos para seguir un envío.</td></tr>
-  <tr><td><b>T6 · Intermediario persistente (bandeja de salida)</b> (modificabilidad y disponibilidad)</td><td>E1, E3</td><td>Los recordatorios se guardan en la tabla de salida en la misma transacción del turno. Un despachador periódico los envía cuando hay red y reintenta los fallidos.</td><td>Latencia de entrega y una tabla que puede crecer si la red falta por días.</td></tr>
+  <tr><td><b>T6 · Intermediario persistente (bandeja de salida)</b> (modificabilidad y disponibilidad)</td><td>E1, E3</td><td>Los recordatorios se guardan en la tabla de salida en la misma transacción del turno. Un despachador, en un hilo aparte con su propia conexión, los envía cada minuto cuando hay red y reintenta los fallidos con espera creciente.</td><td>Latencia de entrega y una tabla que puede crecer si la red falta por días.</td></tr>
   <tr><td><b>T7 · Restringir dependencias</b> (modificabilidad)</td><td>E3</td><td>Una prueba automática falla si una capa importa a otra que no debe: por ejemplo, si <code>ui</code> importa <code>datos</code>, o si <code>dominio</code> importa cualquier otra capa.</td><td>Más fricción al programar: no se puede «tomar un atajo» aunque sea más rápido.</td></tr>
   <tr><td><b>T8 · Autenticar, autorizar y auditar</b> (seguridad)</td><td>E5</td><td>PIN con hash y sal, una tabla de permisos que solo consulta la capa de servicios, consentimientos versionados y registro de auditoría.</td><td>Usabilidad: hay que escribir el PIN y aceptar los términos en la ficha.</td></tr>
 </table>
@@ -470,8 +470,8 @@ del contenedor «Aplicación de escritorio» y hacia dónde apuntan las dependen
   <text x="68" y="256" class="s">bandeja de salida.</text>
   <rect x="425" y="200" width="335" height="66" rx="6" fill="#fff4dc" stroke="#8a5a00"/>
   <text x="443" y="224" class="t">Adaptadores · clinican/adaptadores</text>
-  <text x="443" y="242" class="s">Implementan Notificador: WhatsApp (Meta)</text>
-  <text x="443" y="256" class="s">y archivo de registro.</text>
+  <text x="443" y="242" class="s">Implementan Notificador: WhatsApp (Meta),</text>
+  <text x="443" y="256" class="s">archivo y consola. Despachador en un hilo.</text>
   <rect x="50" y="300" width="710" height="62" rx="6" fill="#f5f6f2" stroke="#16151c"/>
   <text x="70" y="325" class="t">Dominio · clinican/dominio</text>
   <text x="70" y="343" class="s">Reglas puras: cupos, precios, estados del turno, legal, recordatorios. No importa ninguna otra capa.</text>
@@ -484,7 +484,7 @@ del contenedor «Aplicación de escritorio» y hacia dónde apuntan las dependen
   <line x1="592" y1="266" x2="592" y2="298" stroke="#333" stroke-width="1.4" marker-end="url(#f3)"/>
   <path d="M50,45 H28 V331 H48" fill="none" stroke="#333" stroke-width="1.2" stroke-dasharray="2 3" marker-end="url(#f3)"/>
   <text x="34" y="190" class="lb" transform="rotate(-90 34 190)" text-anchor="middle">solo tipos y formatos</text>
-  <text x="50" y="390" class="s" style="fill:#a3123a;font-weight:700">Prohibido (lo verifica una prueba): ui → datos · ui → adaptadores · servicios → ui · servicios → adaptadores · dominio → cualquier capa</text>
+  <text x="50" y="390" class="s" style="fill:#a3123a;font-weight:700">Prohibido (lo verifica una prueba): ui → datos · ui → adaptadores · servicios → ui · servicios → adaptadores · adaptadores → datos · dominio → cualquiera</text>
 </svg>
 <figcaption><b>Figura 3.</b> Capas. Flecha = «depende de» (importa). Todas apuntan hacia el dominio. La flecha
 punteada de la izquierda es la única dependencia que salta una capa: la presentación usa del dominio solo
@@ -562,9 +562,9 @@ puede expirar justo cuando se registra su abono, y varios pendientes compiten po
 pide plantillas aprobadas, conexión y un token. La Ley 1581 exige autorización antes de contactar al dueño.</p>
 <h4>Decisión</h4>
 <ul>
-  <li>Al confirmar un turno, el servicio de turnos guarda un recordatorio en la tabla de salida, en la misma transacción. Solo si el dueño tiene autorización de datos vigente.</li>
-  <li>Un despachador periódico lee los pendientes y los entrega a un <code>Notificador</code>, un puerto definido en <code>servicios</code>. Marca cada uno como enviado o reintenta con espera creciente.</li>
-  <li>Los adaptadores viven en <code>adaptadores</code>: <code>WhatsAppMeta</code> (HTTPS a la Graph API) y <code>NotificadorArchivo</code> (escribe el mensaje en un archivo, para pruebas y para operar sin cuenta de Meta). El adaptador activo se elige en la configuración al arrancar.</li>
+  <li>Al confirmar o mover un turno, el servicio de turnos guarda un recordatorio en la tabla de salida, en la misma transacción.</li>
+  <li>Un despachador, en un hilo aparte con su propia conexión, lee los pendientes cada minuto y los entrega a un <code>Notificador</code>, un puerto definido en <code>servicios</code>. Justo antes de enviar, el dominio revisa si todavía tiene sentido: el turno sigue confirmado, no ha empezado y el dueño tiene autorización de datos vigente (Ley 1581). Si no, lo descarta con su motivo. Si el canal falla, reintenta con espera creciente.</li>
+  <li>Los adaptadores viven en <code>adaptadores</code>: <code>NotificadorWhatsApp</code> (HTTPS a la Graph API, con plantilla aprobada) y <code>NotificadorArchivo</code> (escribe el mensaje en un archivo, para operar sin cuenta de Meta). <code>main.py</code> elige uno según el canal de la configuración y se lo pasa al despachador; las capas internas no importan ningún adaptador.</li>
 </ul>
 <h4>Alternativas descartadas</h4>
 <ul>
@@ -574,7 +574,7 @@ pide plantillas aprobadas, conexión y un token. La Ley 1581 exige autorización
 </ul>
 <h4>Consecuencias</h4>
 <ul>
-  <li>Buena: un canal nuevo es un adaptador nuevo; agenda y dominio no cambian (E3).</li>
+  <li>Buena: un canal nuevo es un adaptador nuevo y su nombre en la lista de canales; la agenda y sus reglas no cambian (E3).</li>
   <li>Buena: sin red, los recordatorios se acumulan y salen cuando vuelve la conexión; nada se pierde porque está en la misma base y en los mismos respaldos.</li>
   <li>Mala: el recordatorio puede llegar tarde si la red falta mucho tiempo. Uno vencido no se envía y queda marcado.</li>
   <li>Mala: entrega «al menos una vez»: si se cae justo después de enviar y antes de marcar, el dueño puede recibir el mensaje dos veces.</li>
@@ -605,19 +605,22 @@ de la misma capa de servicios sin reescribir las reglas.</p>
 punta a punta sin abrir ventanas y muestra cada capa en acción:</p>
 <p class="mono" style="background:var(--fondo);padding:6pt 10pt;border-radius:4pt">python -m clinican.demo</p>
 <ol>
-  <li>Crea una base de datos temporal (migraciones y semillas).</li>
-  <li>Agenda dos turnos que compiten por el último cupo GRANDE, registra el abono de uno y muestra cómo el otro se libera (D2).</li>
-  <li>Muestra el recordatorio que quedó en la bandeja de salida y lo despacha con el adaptador de archivo, sin internet (D1 y D3).</li>
-  <li>Cambia el adaptador por otro sin tocar la agenda (D3).</li>
+  <li><b>Estructura:</b> lee el código fuente y muestra de qué capa depende cada una, y que no hay atajos (ADR-001).</li>
+  <li><b>D2:</b> con una base temporal, dos labradores piden el último cupo GRANDE de las 10:00. Gana quien paga primero, el otro se libera y un abono tardío se rechaza (ADR-002).</li>
+  <li><b>D1:</b> el despachador intenta enviar el recordatorio sin internet; queda pendiente con su error, y mientras tanto se agenda otro turno sin esperar (ADR-003).</li>
+  <li><b>D3:</b> vuelve la red y el recordatorio sale por archivo; luego el mismo mensaje sale por un canal SMS escrito dentro de la demo y por consola, sin tocar la agenda. El recordatorio de un dueño sin autorización de datos se descarta (Ley 1581).</li>
 </ol>
-<p>La regla de capas se comprueba con <code>pytest tests/test_arquitectura.py</code>, y el programa completo se
-abre con <code>python main.py</code>. Las instrucciones están en <code>INSTRUCCIONES.md</code>.</p>
+<p>La regla de capas se comprueba con <code>python -m pytest tests/test_arquitectura.py</code>: analiza los
+<i>imports</i> de cada archivo y además verifica que solo la capa de datos ejecute SQL. Incluye casos que
+plantan un atajo a propósito para demostrar que la prueba lo detecta. El programa completo, con ventanas, se
+abre con <code>python main.py</code>. Las instrucciones están en <code>INSTRUCCIONES.md</code>, y el proyecto
+tiene 323 pruebas automáticas.</p>
 
 <table>
   <tr><th style="width:12%">Driver</th><th style="width:22%">Decisión</th><th style="width:16%">Tácticas</th><th>Dónde está en el código</th><th style="width:20%">Cómo se comprueba</th></tr>
-  <tr><td>D1</td><td>ADR-001, ADR-003</td><td>T1, T4, T6</td><td><code>datos/conexion.py</code>, <code>servicios/respaldos.py</code>, bandeja de salida</td><td>Demo con la red desconectada; pruebas de respaldos</td></tr>
-  <tr><td>D2</td><td>ADR-002</td><td>T2, T3</td><td><code>dominio/cupos.py</code>, <code>dominio/turnos.py</code>, <code>servicios/turnos.py</code></td><td>Pruebas de cupos y de carreras; paso 2 de la demo</td></tr>
-  <tr><td>D3</td><td>ADR-003</td><td>T5, T6, T7</td><td>Puerto en <code>servicios/notificaciones.py</code>; <code>adaptadores/</code></td><td>Paso 4 de la demo; <code>test_arquitectura.py</code></td></tr>
+  <tr><td>D1</td><td>ADR-001, ADR-003</td><td>T1, T4, T6</td><td><code>datos/conexion.py</code>, <code>datos/archivo_bd.py</code>, <code>servicios/respaldos.py</code>, <code>datos/repo_notificaciones.py</code></td><td><code>tests/test_notificaciones.py</code>, <code>tests/test_respaldos.py</code>; parte 3 de la demo</td></tr>
+  <tr><td>D2</td><td>ADR-002</td><td>T2, T3</td><td><code>dominio/cupos.py</code>, <code>dominio/turnos.py</code>, <code>servicios/turnos.py</code></td><td><code>tests/test_turnos.py</code>; parte 2 de la demo</td></tr>
+  <tr><td>D3</td><td>ADR-003</td><td>T5, T6, T7</td><td>Puerto en <code>servicios/notificaciones.py</code>; <code>adaptadores/</code>; <code>dominio/notificaciones.py</code>; raíz de composición en <code>main.py</code></td><td><code>tests/test_notificaciones.py</code>, <code>tests/test_arquitectura.py</code>; partes 1 y 4 de la demo</td></tr>
 </table>
 
 <!-- ================================================================ 11 -->

@@ -93,3 +93,10 @@ def insertar_sesion(conn: sqlite3.Connection, servicio_id: int, fecha: str, prec
 
 def borrar_sesion(conn: sqlite3.Connection, sesion_id: int) -> None:
     conn.execute("DELETE FROM sesiones_desenredado WHERE id = ?", (sesion_id,))
+
+
+def existe_importado(conn: sqlite3.Connection, mascota_id: int, fecha: str) -> bool:
+    """True si ya hay una visita importada de Excel para esa mascota y fecha."""
+    return conn.execute(
+        "SELECT 1 FROM servicios WHERE mascota_id = ? AND fecha = ? AND observaciones LIKE '%[Importada de Excel%'",
+        (mascota_id, fecha)).fetchone() is not None

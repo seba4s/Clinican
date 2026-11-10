@@ -57,9 +57,20 @@ def main() -> int:
         respaldos.diario(conn)  # sección 10: un respaldo automático al día
     except Exception:
         log.exception("Falló el respaldo diario al iniciar")
+    # Raíz de composición (ADR-003): aquí, y solo aquí, se elige el adaptador del puerto
+    # Notificador. Las capas internas no saben si el canal es WhatsApp o un archivo.
+    from clinican.adaptadores import notificador_para
+    from clinican.adaptadores.despachador import Despachador
+    from clinican.servicios import configuracion
+
+    canal = configuracion.valores(conn).get("canal_notificaciones", "ARCHIVO")
+    despachador = Despachador(lambda: conectar(rutas.ruta_bd()), notificador_para(canal, rutas.carpeta_datos()))
+    despachador.iniciar()
+    log.info("Recordatorios por el canal %s", despachador.notificador.nombre)
     try:
         AplicacionClinican(conn).mainloop()
     finally:
+        despachador.detener()
         conn.close()
         log.info("CLINICAN cerrado.")
     return 0

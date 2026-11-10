@@ -10,6 +10,9 @@ import sqlite3
 
 CONFIG_INICIAL: dict[str, str] = {
     "tamano_interfaz": "Normal",
+    # Recordatorios (ADR-003)
+    "canal_notificaciones": "ARCHIVO",
+    "recordatorio_horas_antes": "24",
     # Negocio y pagos (sección 1)
     "negocio_nombre": "CLINICAN",
     "negocio_descripcion": "Unidad Médica Veterinaria — Servicio de Peluquería",

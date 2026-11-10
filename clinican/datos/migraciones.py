@@ -310,7 +310,33 @@ ALTER TABLE servicios ADD COLUMN orejas INTEGER
                      (vigente[0] + 1, semillas.TERMINOS_CLINICAN))
 
 
-MIGRACIONES = {1: _v1, 2: _v2, 3: _v3, 4: _v4, 5: _v5}
+# ---------------------------------------------------------------- versión 6
+# Bandeja de salida de notificaciones (ADR-003): los recordatorios se guardan en la misma
+# transacción que confirma el turno y un despachador los entrega cuando hay conexión.
+
+def _v6(conn: sqlite3.Connection) -> None:
+    _ejecutar(conn, """
+CREATE TABLE notificaciones_salida (
+    id                INTEGER PRIMARY KEY,
+    turno_id          INTEGER NOT NULL REFERENCES turnos(id) ON DELETE CASCADE,
+    plantilla         TEXT NOT NULL,
+    enviar_desde      TEXT NOT NULL,
+    estado            TEXT NOT NULL DEFAULT 'PENDIENTE' CHECK (estado IN ('PENDIENTE','ENVIADO','DESCARTADO')),
+    intentos          INTEGER NOT NULL DEFAULT 0,
+    siguiente_intento TEXT,
+    ultimo_error      TEXT,
+    canal             TEXT,
+    destino           TEXT,
+    texto             TEXT,
+    creado_en         TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    cerrado_en        TEXT,
+    UNIQUE (turno_id, plantilla)
+);
+CREATE INDEX idx_salida_pendientes ON notificaciones_salida (estado, enviar_desde)
+""")
+
+
+MIGRACIONES = {1: _v1, 2: _v2, 3: _v3, 4: _v4, 5: _v5, 6: _v6}
 VERSION_ACTUAL = max(MIGRACIONES)
 
 

@@ -53,3 +53,13 @@ def entero_pesos(texto, etiqueta: str = "El valor") -> int:
     if not _RE_ENTERO.match(texto):
         raise DatoInvalido(f"{etiqueta} debe ser un número entero sin decimales, por ejemplo 45000.")
     return int(texto.replace("$", "").replace(".", "").strip())
+
+
+_DIAS = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+_MESES = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre",
+          "octubre", "noviembre", "diciembre")
+
+
+def fecha_larga(dia) -> str:
+    """date(2026, 11, 12) -> "jueves 12 de noviembre"."""
+    return f"{_DIAS[dia.weekday()]} {dia.day} de {_MESES[dia.month - 1]}"

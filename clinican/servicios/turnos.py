@@ -24,7 +24,7 @@ from clinican.dominio.ficha import DetallesFicha
 from clinican.dominio.formato import entero_pesos, pesos
 from clinican.dominio.mascotas import tamano_efectivo, validar_fecha, pelaje_complicado_efectivo
 from clinican.dominio.permisos import Accion
-from clinican.servicios import horarios, legal
+from clinican.servicios import horarios, legal, notificaciones
 from clinican.servicios.base import Sesion, requerir
 
 _T = Accion.AGENDAR_TURNOS
@@ -280,6 +280,8 @@ def _confirmar_si_alcanza(conn, sesion, turno_id: int, ahora: datetime, forzar: 
             "cliente pagó primero. Ofrezca otra hora (puede mover este turno)."
         )
     repo.actualizar(conn, turno_id, {"estado": rt.CONFIRMADO, "pendiente_hasta": None})
+    # ADR-003: el recordatorio queda en la bandeja de salida en esta misma transacción.
+    notificaciones.programar_recordatorio(conn, turno_id, t["fecha"], t["hora"], ahora)
     detalle = _nombre(t)
     if vigente < minimo:
         detalle += f" — confirmado por verificación del personal con abono de {pesos(vigente)} (mínimo {pesos(minimo)})"
@@ -504,6 +506,7 @@ def mover(conn, sesion: Sesion, turno_id: int, fecha: str, hora: str, ahora: dat
                                  f"{t['mascota_nombre']}: {t['fecha']} {t['hora']} → {fecha} {hora}")
         resultado = Resultado([turno_id])
         if t["estado"] == rt.CONFIRMADO:
+            notificaciones.programar_recordatorio(conn, turno_id, fecha, hora, ahora)
             config = repo_config.todas(conn)
             if not reglas_cupos.hay_cupo(repo.ocupados(conn, fecha, hora), t["categoria_cupo"], config):
                 for otro in repo.pendientes_en(conn, fecha, hora, t["categoria_cupo"], turno_id):

@@ -38,6 +38,8 @@ _G_CUPOS = "Cupos por franja"
 _G_SUPUESTOS = "Supuestos por confirmar"
 _G_OTROS = "Otros"
 _G_PANTALLA = "Pantalla"
+_G_RECORDATORIOS = "Recordatorios"
+CANALES = ("ARCHIVO", "WHATSAPP")
 
 CLAVES: list[ClaveConfig] = [
     ClaveConfig("negocio_nombre", "Nombre del negocio", TEXTO, _G_NEGOCIO),
@@ -85,6 +87,13 @@ CLAVES: list[ClaveConfig] = [
     ClaveConfig("personal_dia_sabado", "Personas que atienden los sábados", ENTERO, _G_OTROS),
     ClaveConfig("respaldos_conservar", "Número de respaldos automáticos que se conservan", ENTERO, _G_OTROS),
     ClaveConfig(
+        "canal_notificaciones", "Canal de los recordatorios", OPCION, _G_RECORDATORIOS, opciones=CANALES,
+        ayuda="ARCHIVO = se guardan en datos\\recordatorios.txt (sin internet). WHATSAPP = API de Meta; "
+              "necesita la cuenta configurada. Se aplica al volver a abrir el programa.",
+    ),
+    ClaveConfig("recordatorio_horas_antes", "Horas antes del turno para enviar el recordatorio", ENTERO,
+                _G_RECORDATORIOS),
+    ClaveConfig(
         "tamano_interfaz", "Tamaño de letra y botones", OPCION, _G_PANTALLA,
         opciones=("Normal", "Grande", "Muy grande"),
         ayuda="Agranda todo el programa en este computador. Se aplica al guardar.",
@@ -110,7 +119,8 @@ def normalizar(clave: str, valor: str) -> str:
         numero = _entero(valor, meta.etiqueta)
         if meta.clave.startswith("cupo_") and numero < 1:
             raise DatoInvalido(f"«{meta.etiqueta}» debe ser al menos 1.")
-        if meta.clave in ("minutos_pendiente", "segundos_revision_expiracion", "respaldos_conservar") and numero < 1:
+        if meta.clave in ("minutos_pendiente", "segundos_revision_expiracion", "respaldos_conservar",
+                          "recordatorio_horas_antes") and numero < 1:
             raise DatoInvalido(f"«{meta.etiqueta}» debe ser al menos 1.")
         return str(numero)
     if meta.tipo == HORA:

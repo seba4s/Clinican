@@ -20,8 +20,7 @@ from datetime import datetime
 from pathlib import Path
 
 from clinican import rutas
-from clinican.datos import migraciones, repo_auditoria, repo_config, repo_personal, semillas
-from clinican.datos.conexion import preparar
+from clinican.datos import archivo_bd, migraciones, repo_auditoria, repo_config, repo_personal
 from clinican.dominio.errores import DatoInvalido
 from clinican.dominio.permisos import Accion
 from clinican.servicios.base import Sesion, requerir
@@ -61,11 +60,6 @@ class Respaldo:
 # ------------------------------------------------------------------ copias
 
 
-def _es_memoria(conn: sqlite3.Connection) -> bool:
-    principal = next((f for f in conn.execute("PRAGMA database_list") if f[1] == "main"), None)
-    return principal is None or not principal[2]
-
-
 def _ruta_libre(carpeta: Path, tipo: str, ahora: datetime) -> Path:
     base = f"clinican_{tipo}_{ahora.strftime(_FORMATO_FECHA)}"
     ruta = carpeta / f"{base}.db"
@@ -79,11 +73,7 @@ def _ruta_libre(carpeta: Path, tipo: str, ahora: datetime) -> Path:
 def _verificar(ruta: Path) -> None:
     """Revisa que el archivo sea una base de datos sana. Lanza ``DatoInvalido`` si no."""
     try:
-        c = sqlite3.connect(f"{ruta.resolve().as_uri()}?mode=ro", uri=True)
-        try:
-            resultado = c.execute("PRAGMA quick_check").fetchone()[0]
-        finally:
-            c.close()
+        resultado = archivo_bd.revision_integridad(ruta)
     except sqlite3.DatabaseError as e:
         raise DatoInvalido(f"El archivo no es una base de datos válida: {e}") from None
     if resultado != "ok":
@@ -102,11 +92,7 @@ def copiar(conn: sqlite3.Connection, carpeta: Path, tipo: str, ahora: datetime |
     ruta = _ruta_libre(carpeta, tipo, ahora or datetime.now())
     temporal = ruta.with_suffix(".db.tmp")
     try:
-        destino = sqlite3.connect(temporal)
-        try:
-            conn.backup(destino)
-        finally:
-            destino.close()
+        archivo_bd.copiar(conn, temporal)
         _verificar(temporal)
         temporal.replace(ruta)
     except OSError as e:
@@ -157,7 +143,7 @@ def automatico(conn: sqlite3.Connection, carpeta: Path | None = None, ahora: dat
 
     Devuelve la ruta del respaldo, o ``None`` si la base es temporal (en memoria).
     """
-    if _es_memoria(conn):
+    if archivo_bd.es_memoria(conn):
         return None
     carpeta = Path(carpeta or rutas.carpeta_respaldos())
     ruta = copiar(conn, carpeta, AUTOMATICO, ahora)
@@ -201,20 +187,15 @@ def revisar(ruta: Path | str) -> dict:
     if not ruta.is_file():
         raise DatoInvalido(f"No se encontró el archivo {ruta}.")
     _verificar(ruta)
-    c = sqlite3.connect(f"{ruta.resolve().as_uri()}?mode=ro", uri=True)
-    try:
-        tablas = {f[0] for f in c.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
-        if not _TABLAS_MINIMAS <= tablas:
-            raise DatoInvalido("El archivo no es un respaldo de CLINICAN.")
-        version = c.execute("PRAGMA user_version").fetchone()[0]
-        if version > migraciones.VERSION_ACTUAL:
-            raise DatoInvalido("El respaldo es de una versión más nueva de CLINICAN. Actualice el programa primero.")
-        if c.execute("SELECT COUNT(*) FROM personal WHERE activo = 1").fetchone()[0] == 0:
-            raise DatoInvalido("El respaldo no tiene personal activo: nadie podría iniciar sesión.")
-        conteo = {t: c.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in ("propietarios", "mascotas", "turnos")}
-    finally:
-        c.close()
-    return {"version": version, **conteo}
+    contadas = ("propietarios", "mascotas", "turnos")
+    datos = archivo_bd.resumen(ruta, contadas)
+    if not _TABLAS_MINIMAS <= datos["tablas"]:
+        raise DatoInvalido("El archivo no es un respaldo de CLINICAN.")
+    if datos["version"] > migraciones.VERSION_ACTUAL:
+        raise DatoInvalido("El respaldo es de una versión más nueva de CLINICAN. Actualice el programa primero.")
+    if datos["personal_activo"] == 0:
+        raise DatoInvalido("El respaldo no tiene personal activo: nadie podría iniciar sesión.")
+    return {"version": datos["version"], **{t: datos[t] for t in contadas}}
 
 
 def restaurar(conn: sqlite3.Connection, sesion: Sesion, origen: Path | str, carpeta: Path | None = None,
@@ -232,14 +213,7 @@ def restaurar(conn: sqlite3.Connection, sesion: Sesion, origen: Path | str, carp
     carpeta = Path(carpeta or rutas.carpeta_respaldos())
     copia_previa = copiar(conn, carpeta, ANTES_DE_RESTAURAR, ahora)
 
-    fuente = sqlite3.connect(f"{origen.resolve().as_uri()}?mode=ro", uri=True)
-    try:
-        fuente.backup(conn)  # copia el respaldo dentro de la base abierta
-    finally:
-        fuente.close()
-    preparar(conn)
-    migraciones.migrar(conn)  # un respaldo antiguo se pone al día
-    semillas.sembrar(conn)
+    archivo_bd.cargar_desde(conn, origen)  # copia el respaldo dentro de la base abierta y lo pone al día
     quien = sesion.personal_id if repo_personal.por_id(conn, sesion.personal_id) else None
     repo_auditoria.registrar(conn, quien, "RESTAURAR_RESPALDO", "respaldos", None,
                              f"Restaurado desde {origen}; copia previa en {copia_previa}")
