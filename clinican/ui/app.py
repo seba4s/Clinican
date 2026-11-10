@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-import sqlite3
+from typing import TYPE_CHECKING
 
 import customtkinter as ctk
 
@@ -12,6 +12,9 @@ from clinican.servicios.base import Sesion
 from clinican.ui import tema
 from clinican.ui.acceso import PantallaInicioSesion, PantallaPrimerArranque
 from clinican.ui.principal import VentanaPrincipal
+
+if TYPE_CHECKING:  # solo para la anotación: la interfaz nunca usa la base de datos directamente
+    import sqlite3
 
 log = logging.getLogger(__name__)
 

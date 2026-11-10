@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>CLINICAN — Diseño documentado</title>
+<style>
+  @page { size: A4; margin: 18mm 17mm 18mm 17mm;
+    @bottom-right { content: counter(page); } }
+  :root {
+    --tinta: #16151c; --gris: #4b4a55; --suave: #6b6a75; --linea: #d4d6cf; --fondo: #f5f6f2;
+    --verde: #7f9a1e; --verde-claro: #eef4d6; --azul: #1e5aa8; --azul-claro: #e6eef9;
+    --rojo: #a3123a; --ambar: #8a5a00; --ambar-claro: #fff4dc;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: "Charter", "Bitstream Charter", "DejaVu Serif", serif; color: var(--tinta);
+         font-size: 10.6pt; line-height: 1.5; margin: 0; }
+  h1, h2, h3, h4, .sans, table, figcaption, .etiqueta { font-family: "Inter", "Liberation Sans", sans-serif; }
+  h1 { font-size: 26pt; line-height: 1.1; margin: 0 0 6pt; letter-spacing: -0.5pt; }
+  h2 { font-size: 15pt; margin: 22pt 0 6pt; padding-top: 4pt; border-top: 2px solid var(--tinta);
+       break-after: avoid; }
+  h2 .num { color: var(--verde); margin-right: 6pt; }
+  h3 { font-size: 11.5pt; margin: 14pt 0 4pt; break-after: avoid; }
+  h4 { font-size: 10pt; margin: 10pt 0 2pt; break-after: avoid; text-transform: uppercase;
+       letter-spacing: .6pt; color: var(--gris); }
+  p { margin: 0 0 7pt; }
+  ul, ol { margin: 0 0 8pt; padding-left: 16pt; }
+  li { margin-bottom: 2pt; }
+  code, .mono { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; font-size: 8.8pt; }
+  code { background: var(--fondo); padding: 0 3pt; border-radius: 3pt; }
+  .salto { break-before: page; }
+  .no-partir { break-inside: avoid; }
+  table { width: 100%; border-collapse: collapse; font-size: 8.8pt; line-height: 1.35; margin: 4pt 0 10pt; }
+  th { text-align: left; background: var(--tinta); color: #fff; font-weight: 600; padding: 4pt 6pt; }
+  td { border-bottom: 1px solid var(--linea); padding: 4pt 6pt; vertical-align: top; }
+  tr { break-inside: avoid; }
+  .etiqueta { font-size: 7.5pt; letter-spacing: 1.2pt; text-transform: uppercase; color: var(--suave); }
+  .nota { border-left: 3px solid var(--azul); background: var(--azul-claro); padding: 6pt 10pt;
+          margin: 8pt 0 10pt; font-size: 9.8pt; break-inside: avoid; }
+  .aviso { border-left: 3px solid var(--ambar); background: var(--ambar-claro); padding: 6pt 10pt;
+           margin: 8pt 0 10pt; font-size: 9.8pt; break-inside: avoid; }
+  figure { margin: 8pt 0 12pt; break-inside: avoid; }
+  figcaption { font-size: 8.5pt; color: var(--gris); margin-top: 4pt; }
+  svg text { font-family: "Inter", "Liberation Sans", sans-serif; }
+  .chip { display: inline-block; font-family: "Inter", sans-serif; font-size: 7.6pt; font-weight: 700;
+          padding: 0 5pt; border-radius: 8pt; border: 1px solid currentColor; white-space: nowrap; }
+  .A { color: var(--rojo); } .M { color: var(--ambar); } .B { color: var(--suave); }
+  .prio { background: var(--verde-claro); }
+
+  /* Portada */
+  .portada { height: 255mm; display: flex; flex-direction: column; justify-content: space-between; }
+  .portada .marca { border-top: 6px solid var(--verde); padding-top: 10pt; }
+  .portada h1 { font-size: 34pt; margin-top: 18pt; }
+  .portada .sub { font-family: "Inter", sans-serif; font-size: 13pt; color: var(--gris); margin-top: 8pt; }
+  .portada dl { font-family: "Inter", sans-serif; font-size: 10pt; display: grid;
+                grid-template-columns: 34mm 1fr; gap: 4pt 10pt; margin: 0; }
+  .portada dt { color: var(--suave); }
+  .portada dd { margin: 0; }
+  .indice { columns: 2; font-family: "Inter", sans-serif; font-size: 9.5pt; padding-left: 14pt; }
+
+  /* Árbol de utilidad */
+  .arbol { font-family: "Inter", sans-serif; font-size: 8.8pt; line-height: 1.35; }
+  .arbol ul { list-style: none; margin: 0; padding-left: 16pt; position: relative; }
+  .arbol > ul { padding-left: 0; }
+  .arbol li { position: relative; margin: 0; padding: 2pt 0 2pt 12pt; break-inside: avoid; }
+  .arbol ul ul li::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+                            border-left: 1px solid #9a9ca3; }
+  .arbol ul ul li:last-child::before { bottom: auto; height: 10pt; }
+  .arbol ul ul li::after { content: ""; position: absolute; left: 0; top: 10pt; width: 9pt;
+                           border-top: 1px solid #9a9ca3; }
+  .arbol .raiz { font-weight: 700; font-size: 10pt; }
+  .arbol .atributo { font-weight: 700; }
+  .arbol .refina { color: var(--gris); font-weight: 600; }
+  .arbol .hoja { display: block; padding: 2pt 6pt; border-radius: 4pt; }
+  .arbol .hoja.prio { outline: 1.5px solid var(--verde); }
+  .leyenda { font-family: "Inter", sans-serif; font-size: 8.3pt; color: var(--gris);
+             display: flex; gap: 14pt; flex-wrap: wrap; margin: 6pt 0 10pt; }
+  .adr { border: 1px solid var(--linea); border-radius: 6pt; padding: 8pt 12pt 4pt; margin: 10pt 0 14pt; }
+  .adr h3 { margin-top: 2pt; }
+  .adr h4 { color: var(--verde); }
+  .estado { font-family: "Inter", sans-serif; font-size: 8.5pt; color: var(--gris); margin-bottom: 4pt; }
+</style>
+</head>
+<body>
+
+<!-- ================================================================ PORTADA -->
+<section class="portada">
+  <div class="marca">
+    <div class="etiqueta">Arquitectura de Software · Momento evaluativo 3 · Proyecto integrador</div>
+    <h1>CLINICAN<br>Diseño documentado</h1>
+    <div class="sub">Sistema de gestión de citas y fichas para la peluquería canina de la veterinaria CLINICAN, en Pasto.</div>
+  </div>
+  <div>
+    <dl>
+      <dt>Grupo</dt><dd>5B</dd>
+      <dt>Autor</dt><dd>Sebastian Lopez Benavides</dd>
+      <dt>Entregables</dt><dd>1 · Diseño documentado (este documento)<br>2 · Esqueleto funcional (repositorio <span class="mono">seba4s/Clinican</span>)</dd>
+      <dt>Versión</dt><dd>1.0 · noviembre de 2026</dd>
+    </dl>
+    <h3 style="margin-top:24pt">Contenido</h3>
+    <ol class="indice">
+      <li>El dominio y sus drivers</li>
+      <li>Árbol de utilidad y restricciones</li>
+      <li>Escenarios de calidad</li>
+      <li>Estilo arquitectónico elegido</li>
+      <li>Contextos delimitados</li>
+      <li>Tácticas aplicadas</li>
+      <li>Diagramas C4 (niveles 1 y 2) y vista de capas</li>
+      <li>Decisiones de arquitectura (ADR-001 a 003)</li>
+      <li>Riesgos identificados</li>
+      <li>Esqueleto funcional y trazabilidad</li>
+      <li>Cambios respecto a la propuesta</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ================================================================ 1 -->
+<h2 class="salto"><span class="num">1</span>El dominio y sus drivers</h2>
+<p>CLINICAN atiende mascotas con cita previa. La recepción agenda los turnos, el personal de peluquería los
+atiende y registra en una ficha lo que se hizo, y la administradora define precios, cupos, horarios y
+personal. El dueño de la mascota no opera el sistema: acepta los términos al llegar y recibe recordatorios.</p>
+
+<p>Lo que hace al dominio no trivial no son los formularios sino las reglas:</p>
+<ul>
+  <li><b>La capacidad de una franja depende de la mascota.</b> Cada franja de 30 minutos admite un número
+    máximo de mascotas por <i>categoría de cupo</i>, y la categoría se calcula con la raza, el tamaño, el pelaje
+    y el servicio: dos medianas a máquina caben juntas, pero un pastor alemán o un husky ocupan su propio cupo.</li>
+  <li><b>Un turno no es firme hasta que se paga el abono.</b> Nace pendiente, tiene 30 minutos para recibir
+    $20.000 y, si no, se libera. Si varios pendientes compiten por el último cupo, gana el primero que paga y
+    los demás se liberan.</li>
+  <li><b>Las inasistencias tienen consecuencias</b> que dependen de cuándo avisó el dueño (12 horas), y se
+    registran en el historial.</li>
+  <li><b>No se atiende sin autorización:</b> términos aceptados y autorización de datos personales (Ley 1581
+    de 2012), con versión del texto y fecha.</li>
+</ul>
+
+<h3>Los tres drivers</h3>
+<table>
+  <tr><th style="width:24%">Driver</th><th>Qué exige</th><th style="width:25%">De dónde sale</th></tr>
+  <tr><td><b>D1 · Disponibilidad sin conexión</b></td>
+      <td>La recepción agenda y consulta la agenda aunque no haya internet. Si la agenda no funciona, el negocio no atiende.</td>
+      <td>Condición real de operación: el local no tiene internet estable.</td></tr>
+  <tr><td><b>D2 · Integridad de la agenda</b></td>
+      <td>Nunca se sobrepasa la capacidad de una franja, ni siquiera cuando hay pendientes compitiendo o turnos que expiran mientras alguien registra un abono.</td>
+      <td>Es la regla que más afecta el servicio: una franja sobrevendida es un cliente esperando o una peluquera con dos mascotas a la vez.</td></tr>
+  <tr><td><b>D3 · Modificabilidad de las notificaciones</b></td>
+      <td>Agregar o cambiar el canal de recordatorios (hoy WhatsApp, mañana SMS o correo) no obliga a tocar la lógica de la agenda.</td>
+      <td>La API de WhatsApp de Meta cambia sus reglas, exige plantillas aprobadas y conexión para enviar.</td></tr>
+</table>
+
+<!-- ================================================================ 2 -->
+<h2><span class="num">2</span>Árbol de utilidad y restricciones</h2>
+<p>Cada hoja es un escenario concreto marcado con <b>(importancia para el negocio, dificultad técnica)</b>
+en Alta, Media o Baja. Las hojas resaltadas en verde son las que priorizamos: alta importancia y dificultad
+alta o media. Son cuatro de trece; el resto se atiende, pero no dirige la estructura.</p>
+
+<div class="arbol no-partir">
+<ul><li><span class="raiz">Utilidad de CLINICAN</span>
+  <ul>
+    <li><span class="atributo">Disponibilidad</span>
+      <ul>
+        <li><span class="refina">Operación sin red</span>
+          <ul><li><span class="hoja prio">E1 · Con el internet caído, la recepción agenda un turno y ve la agenda del día en menos de 2 s. <span class="chip A">A</span> <span class="chip M">M</span></span></li></ul></li>
+        <li><span class="refina">Recuperación</span>
+          <ul><li><span class="hoja prio">E4 · Si el disco se daña, se restaura el último respaldo en menos de 10 minutos, perdiendo como máximo el día en curso. <span class="chip A">A</span> <span class="chip M">M</span></span></li>
+              <li><span class="hoja">Si falla el envío de un recordatorio, la agenda sigue funcionando y el envío se reintenta. <span class="chip M">M</span> <span class="chip B">B</span></span></li></ul></li>
+      </ul></li>
+    <li><span class="atributo">Integridad</span>
+      <ul>
+        <li><span class="refina">Capacidad de la franja</span>
+          <ul><li><span class="hoja prio">E2 · Dos turnos pendientes compiten por el último cupo: solo uno se confirma y 0 franjas quedan con más mascotas que su cupo. <span class="chip A">A</span> <span class="chip A">A</span></span></li></ul></li>
+        <li><span class="refina">Ciclo de vida</span>
+          <ul><li><span class="hoja">Un turno solo cambia de estado por una transición válida (por ejemplo, no se entrega lo que no se atendió). <span class="chip M">M</span> <span class="chip M">M</span></span></li>
+              <li><span class="hoja">Una actualización del programa migra la base de datos sin perder registros. <span class="chip M">M</span> <span class="chip M">M</span></span></li></ul></li>
+      </ul></li>
+    <li><span class="atributo">Modificabilidad</span>
+      <ul>
+        <li><span class="refina">Canales de notificación</span>
+          <ul><li><span class="hoja prio">E3 · Cambiar WhatsApp por SMS se hace agregando un adaptador, sin modificar agenda ni dominio, en menos de 1 día-persona. <span class="chip A">A</span> <span class="chip M">M</span></span></li></ul></li>
+        <li><span class="refina">Reglas configurables</span>
+          <ul><li><span class="hoja">La administradora cambia precios, cupos y horarios desde la pantalla, sin programar. <span class="chip M">M</span> <span class="chip B">B</span></span></li>
+              <li><span class="hoja">Un cambio en el texto legal crea una versión nueva y pide aceptarla de nuevo. <span class="chip M">M</span> <span class="chip B">B</span></span></li></ul></li>
+      </ul></li>
+    <li><span class="atributo">Seguridad y privacidad</span>
+      <ul>
+        <li><span class="refina">Ley 1581 de 2012</span>
+          <ul><li><span class="hoja">E5 · No se inicia la atención ni se envía un recordatorio a un dueño sin autorización vigente (100 % de los casos). <span class="chip A">A</span> <span class="chip B">B</span></span></li></ul></li>
+        <li><span class="refina">Control de acceso</span>
+          <ul><li><span class="hoja">Bloquear días, restaurar respaldos y cambiar precios solo lo hace la administradora, y queda en la auditoría. <span class="chip M">M</span> <span class="chip B">B</span></span></li></ul></li>
+      </ul></li>
+    <li><span class="atributo">Usabilidad</span>
+      <ul><li><span class="hoja">Una persona nueva agenda un turno en menos de 2 minutos sin capacitación. <span class="chip M">M</span> <span class="chip M">M</span></span></li></ul></li>
+    <li><span class="atributo">Rendimiento</span>
+      <ul><li><span class="hoja">La agenda del día abre en menos de 1 s con cinco años de historial. <span class="chip B">B</span> <span class="chip B">B</span></span></li></ul></li>
+  </ul></li></ul>
+</div>
+<div class="leyenda"><span><span class="chip A">A</span> alta</span><span><span class="chip M">M</span> media</span><span><span class="chip B">B</span> baja</span><span>Primer chip: importancia · segundo chip: dificultad</span><span style="outline:1.5px solid var(--verde);padding:0 4pt;border-radius:3pt">hoja priorizada</span></div>
+
+<h3>Restricciones (no se negocian)</h3>
+<table>
+  <tr><th style="width:26%">Restricción</th><th>Tipo</th><th>Efecto en el diseño</th></tr>
+  <tr><td>Internet inestable en el local</td><td>Condición de operación</td><td>Nada que la agenda necesite puede depender de la red.</td></tr>
+  <tr><td>Un solo computador con Windows 11</td><td>Condición de operación</td><td>Sin servidor propio; la aplicación y los datos viven en el mismo equipo.</td></tr>
+  <tr><td>Ley 1581 de 2012 (datos personales)</td><td>Norma</td><td>Autorización con versión y fecha antes de atender o contactar; auditoría.</td></tr>
+  <tr><td>API oficial de WhatsApp (Meta)</td><td>Integración</td><td>Solo plantillas aprobadas fuera de la ventana de 24 h; requiere conexión y un token que no puede ir en el código.</td></tr>
+  <tr><td>Presupuesto mínimo; personal con poca experiencia en computadores</td><td>Negocio</td><td>Sin licencias ni hosting pagado; letra grande y flujos cortos.</td></tr>
+</table>
+
+<!-- ================================================================ 3 -->
+<h2 class="salto"><span class="num">3</span>Escenarios de calidad</h2>
+<p>Los tres primeros salen de las hojas priorizadas y son los que dirigen la estructura. E4 y E5 se incluyen
+porque restringen decisiones que tomamos por los primeros.</p>
+
+<table class="no-partir">
+  <tr><th style="width:14%">Parte</th><th>E1 · Agendar sin internet <span style="font-weight:400">(D1)</span></th><th>E2 · Último cupo en disputa <span style="font-weight:400">(D2)</span></th><th>E3 · Cambiar de canal <span style="font-weight:400">(D3)</span></th></tr>
+  <tr><td><b>Fuente</b></td><td>Persona de recepción</td><td>Dos clientes y la recepción</td><td>Administradora del negocio con un desarrollador</td></tr>
+  <tr><td><b>Estímulo</b></td><td>Agenda un turno nuevo y consulta la agenda del día</td><td>Dos turnos pendientes piden el último cupo GRANDE de las 10:00; se registra el abono de uno mientras el temporizador de expiración revisa los vencidos</td><td>Decide enviar los recordatorios por SMS en vez de WhatsApp</td></tr>
+  <tr><td><b>Artefacto</b></td><td>Agenda: servicio de turnos y base de datos</td><td>Reglas de cupo y servicio de turnos</td><td>Módulo de notificaciones</td></tr>
+  <tr><td><b>Entorno</b></td><td>Operación normal, sin conexión a internet desde hace horas</td><td>Operación normal, franja con un cupo libre</td><td>Tiempo de desarrollo, sistema en producción</td></tr>
+  <tr><td><b>Respuesta</b></td><td>El turno queda guardado y se muestra; ninguna parte del flujo espera a la red</td><td>El primer abono confirma su turno; el otro pendiente pasa a LIBERADO con motivo «otro pagó primero» y se avisa al personal</td><td>Se escribe un adaptador nuevo que implementa el puerto <code>Notificador</code> y se conecta en el arranque (<code>main.py</code>)</td></tr>
+  <tr><td><b>Medida</b></td><td>100 % de los casos de uso de la agenda funcionan sin red; respuesta &lt; 2 s</td><td>0 franjas con ocupación mayor que su cupo; verificado por pruebas automáticas que reproducen la carrera</td><td>0 líneas cambiadas en la agenda (servicio de turnos y reglas de cupo); solo el adaptador y su nombre en la lista de canales; &lt; 1 día-persona</td></tr>
+</table>
+
+<table class="no-partir">
+  <tr><th style="width:14%">Parte</th><th>E4 · Disco dañado <span style="font-weight:400">(disponibilidad)</span></th><th>E5 · Atender sin autorización <span style="font-weight:400">(Ley 1581)</span></th></tr>
+  <tr><td><b>Fuente</b></td><td>Falla del hardware</td><td>Persona de peluquería</td></tr>
+  <tr><td><b>Estímulo</b></td><td>La base de datos queda ilegible</td><td>Intenta iniciar la atención de un cliente que no ha aceptado los términos ni la autorización de datos</td></tr>
+  <tr><td><b>Artefacto</b></td><td>Base de datos y respaldos</td><td>Servicio de turnos y servicio legal</td></tr>
+  <tr><td><b>Entorno</b></td><td>Fin de la jornada, con respaldo automático del día anterior</td><td>Llegada del cliente, sin conexión</td></tr>
+  <tr><td><b>Respuesta</b></td><td>La administradora restaura desde la pantalla Respaldo; antes, el sistema guarda una copia de lo actual y verifica la integridad del archivo</td><td>La acción se rechaza con un mensaje que lleva a la ficha, donde se registran los datos y la aceptación</td></tr>
+  <tr><td><b>Medida</b></td><td>Restauración &lt; 10 min; pérdida ≤ 1 día de registros</td><td>0 atenciones iniciadas sin aceptación vigente</td></tr>
+</table>
+
+<!-- ================================================================ 4 -->
+<h2><span class="num">4</span>Estilo arquitectónico elegido</h2>
+<p><b>Monolito de escritorio en capas, con el dominio al centro y puertos y adaptadores en el borde de
+integración.</b> Un solo proceso de Python con cuatro capas —presentación, aplicación, datos y dominio— y una
+base de datos SQLite embebida en el mismo equipo. Las dependencias apuntan en una sola dirección, hacia el
+dominio. La integración con WhatsApp entra por un puerto definido en la capa de aplicación y se conecta
+mediante un adaptador, con una bandeja de salida (<i>outbox</i>) que guarda los mensajes hasta que haya red.</p>
+
+<table>
+  <tr><th style="width:22%">Driver</th><th>Por qué este estilo lo atiende</th></tr>
+  <tr><td>D1 · Disponibilidad sin conexión</td><td>Todo lo que la agenda necesita está en el mismo computador: proceso, reglas y datos. No hay salto de red en ningún caso de uso de la agenda.</td></tr>
+  <tr><td>D2 · Integridad de la agenda</td><td>Un solo proceso y una sola base con transacciones ACID permiten volver a validar el cupo dentro de una transacción con bloqueo de escritura. No hay que coordinar réplicas.</td></tr>
+  <tr><td>D3 · Modificabilidad de las notificaciones</td><td>El puerto <code>Notificador</code> aísla el canal: la agenda produce «recordatorios pendientes» y no sabe quién los envía ni cómo.</td></tr>
+</table>
+
+<h3>Qué sacrifica</h3>
+<ul>
+  <li><b>Escalabilidad y acceso remoto.</b> Funciona en un solo computador. Nadie puede ver la agenda desde el celular ni desde otra sede, y un segundo computador no puede compartir la base de forma segura (riesgo R3).</li>
+  <li><b>Inmediatez de los recordatorios.</b> Se envían cuando hay conexión, no en el instante en que se generan.</li>
+  <li><b>Despliegue independiente.</b> Cualquier cambio, aunque sea solo del canal, implica instalar una nueva versión del programa completo.</li>
+  <li><b>Un punto único de falla físico:</b> el disco del computador. Se mitiga con respaldos (táctica T4), no con redundancia.</li>
+</ul>
+
+<h3>Estilos que evaluamos y descartamos</h3>
+<table>
+  <tr><th style="width:22%">Alternativa</th><th>Por qué no</th></tr>
+  <tr><td>Microservicios (agenda, fichas, notificaciones)</td><td>Agrega la red entre servicios justo donde D1 exige no depender de ella, y obliga a coordinar la integridad del cupo entre procesos (D2). Para un computador y cuatro usuarios, el costo de operación no se justifica.</td></tr>
+  <tr><td>Aplicación web en la nube</td><td>Si se cae internet, la agenda no abre: viola D1 de entrada.</td></tr>
+  <tr><td>Web local con sincronización a la nube (<i>offline-first</i>)</td><td>Resuelve el acceso remoto, pero la sincronización con conflictos es la peor enemiga de D2: dos copias podrían confirmar el mismo cupo. Es la opción para un crecimiento futuro (ver R3), no para hoy.</td></tr>
+  <tr><td>Eventos con un broker de mensajes</td><td>Desacopla las notificaciones (D3), pero exige operar un broker en un PC de recepción. La bandeja de salida en SQLite logra el mismo desacople sin otra pieza que instalar.</td></tr>
+</table>
+
+<!-- ================================================================ 5 -->
+<h2 class="salto"><span class="num">5</span>Contextos delimitados</h2>
+<p>Dentro de cada capa, el código se organiza por contexto: cada uno tiene su módulo en <code>dominio</code>,
+<code>datos</code> y <code>servicios</code>. Trazamos una frontera donde aparece una de estas señales: el
+mismo término cambia de significado, el ciclo de vida es distinto, o cambia por razones distintas o a ritmo
+distinto.</p>
+<table>
+  <tr><th style="width:17%">Contexto</th><th style="width:30%">Responsabilidad</th><th>Señal que justifica la frontera</th></tr>
+  <tr><td><b>Agenda</b></td><td>Franjas, cupos por categoría, turnos, abonos, expiración, grupos de mascotas, bloqueos</td><td>Ciclo de vida propio, con estados de minutos y horas (pendiente → confirmado → liberado). Aquí «servicio» es solo un <i>tipo</i> que define la categoría de cupo.</td></tr>
+  <tr><td><b>Atención</b> (fichas)</td><td>Ficha de servicio, detalles del corte, precios, sesiones de desenredado</td><td>«Servicio» significa otra cosa: lo que realmente se hizo, con precio y observaciones. Su ciclo dura días (desenredado por sesiones) y cambia cuando cambian los precios, no la agenda.</td></tr>
+  <tr><td><b>Clientes</b></td><td>Propietarios, mascotas, razas, clientes sin registrar, importación de fichas antiguas</td><td>Datos de referencia que usan todos los demás y que viven años; se unen, corrigen e importan sin tocar turnos.</td></tr>
+  <tr><td><b>Legal</b></td><td>Textos versionados, consentimientos, declaración de responsabilidad</td><td>Cambia por una norma (Ley 1581), no por el negocio. Su unidad es la «versión aceptada con fecha», que nadie más maneja.</td></tr>
+  <tr><td><b>Notificaciones</b></td><td>Recordatorios, plantillas, bandeja de salida, canales</td><td>Cambia por un tercero (Meta) y a otro ritmo. Es la frontera que pide D3.</td></tr>
+  <tr><td><b>Acceso y operación</b></td><td>Personal, PIN, permisos, auditoría, configuración, respaldos</td><td>Transversal: ninguna regla de la agenda depende de cómo se autentica la gente o de cómo se respalda.</td></tr>
+</table>
+
+<h3>Cómo se relacionan</h3>
+<ul>
+  <li><b>Agenda → Notificaciones:</b> la agenda no llama al canal. Escribe un hecho en la bandeja de salida («recordar el turno 812 mañana a las 09:00») dentro de la misma transacción que confirma el turno. Notificaciones lo lee y lo traduce a su propio modelo.</li>
+  <li><b>Agenda y Atención → Legal:</b> antes de iniciar la atención, o de contactar a un dueño, preguntan a Legal si hay autorización vigente.</li>
+  <li><b>Todos → Clientes:</b> referencian propietarios y mascotas por identificador.</li>
+</ul>
+
+<!-- ================================================================ 6 -->
+<h2><span class="num">6</span>Tácticas aplicadas</h2>
+<table>
+  <tr><th style="width:20%">Táctica</th><th style="width:7%">Contra</th><th>Cómo se aplica en CLINICAN</th><th style="width:24%">Qué degrada</th></tr>
+  <tr><td><b>T1 · Eliminar la dependencia remota</b> (disponibilidad)</td><td>E1</td><td>Base de datos embebida (SQLite) y reglas locales. La red solo la usa el despachador de notificaciones.</td><td>Acceso remoto y uso desde varios equipos.</td></tr>
+  <tr><td><b>T2 · Transacción con bloqueo de escritura y revalidación</b> (integridad)</td><td>E2</td><td>Toda escritura de un caso de uso va dentro de <code>BEGIN IMMEDIATE</code>. Antes de confirmar un turno se vuelve a contar la ocupación de la franja dentro de esa misma transacción. Si ya no hay cupo, se rechaza y nada queda a medias.</td><td>Concurrencia: un solo escritor a la vez. Es irrelevante con un computador; sería un cuello de botella con muchos.</td></tr>
+  <tr><td><b>T3 · Reglas en un núcleo puro y máquina de estados</b> (integridad)</td><td>E2</td><td>Categoría de cupo, cupos libres, precios y transiciones de estado son funciones del <code>dominio</code> sin acceso a la base, probadas aisladamente.</td><td>Algo de duplicación: la consulta trae datos y el dominio decide.</td></tr>
+  <tr><td><b>T4 · Respaldo verificado y recuperación al iniciar</b> (disponibilidad)</td><td>E4</td><td>Respaldo diario y al cerrar, con la API de copia de SQLite y verificación <code>quick_check</code>; se conservan los últimos N. Al restaurar, primero se guarda lo actual. Al abrir, se liberan los turnos vencidos.</td><td>Espacio en disco; el cierre tarda un poco más.</td></tr>
+  <tr><td><b>T5 · Encapsular con un puerto</b> (modificabilidad)</td><td>E3</td><td>El puerto <code>Notificador</code> se define en <code>servicios</code> y los adaptadores (WhatsApp de Meta, archivo o consola) viven en <code>adaptadores</code>.</td><td>Una indirección más: hay que leer dos archivos para seguir un envío.</td></tr>
+  <tr><td><b>T6 · Intermediario persistente (bandeja de salida)</b> (modificabilidad y disponibilidad)</td><td>E1, E3</td><td>Los recordatorios se guardan en la tabla de salida en la misma transacción del turno. Un despachador, en un hilo aparte con su propia conexión, los envía cada minuto cuando hay red y reintenta los fallidos con espera creciente.</td><td>Latencia de entrega y una tabla que puede crecer si la red falta por días.</td></tr>
+  <tr><td><b>T7 · Restringir dependencias</b> (modificabilidad)</td><td>E3</td><td>Una prueba automática falla si una capa importa a otra que no debe: por ejemplo, si <code>ui</code> importa <code>datos</code>, o si <code>dominio</code> importa cualquier otra capa.</td><td>Más fricción al programar: no se puede «tomar un atajo» aunque sea más rápido.</td></tr>
+  <tr><td><b>T8 · Autenticar, autorizar y auditar</b> (seguridad)</td><td>E5</td><td>PIN con hash y sal, una tabla de permisos que solo consulta la capa de servicios, consentimientos versionados y registro de auditoría.</td><td>Usabilidad: hay que escribir el PIN y aceptar los términos en la ficha.</td></tr>
+</table>
+
+<!-- ================================================================ 7 -->
+<h2 class="salto"><span class="num">7</span>Diagramas C4</h2>
+
+<h3>Nivel 1 · Contexto del sistema</h3>
+<figure>
+<svg viewBox="0 0 800 470" width="100%" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="f1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333"/></marker>
+    <style>.lb{font-size:10.5px;fill:#222;paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}.t{font-size:13px;font-weight:700}.s{font-size:10px}.w{fill:#fff}</style>
+  </defs>
+  <!-- personas -->
+  <g><rect x="30" y="20" width="210" height="90" rx="12" fill="#08427b"/><circle cx="135" cy="12" r="0"/>
+     <text x="135" y="50" text-anchor="middle" class="t w">Personal</text>
+     <text x="135" y="66" text-anchor="middle" class="s w">[Persona]</text>
+     <text x="135" y="84" text-anchor="middle" class="s w">Recepción y peluquería: agenda,</text>
+     <text x="135" y="97" text-anchor="middle" class="s w">cobra abonos, llena fichas</text></g>
+  <g><rect x="295" y="20" width="210" height="90" rx="12" fill="#08427b"/>
+     <text x="400" y="50" text-anchor="middle" class="t w">Administradora</text>
+     <text x="400" y="66" text-anchor="middle" class="s w">[Persona]</text>
+     <text x="400" y="84" text-anchor="middle" class="s w">Precios, cupos, horarios,</text>
+     <text x="400" y="97" text-anchor="middle" class="s w">personal, respaldos</text></g>
+  <g><rect x="560" y="20" width="220" height="90" rx="12" fill="#08427b"/>
+     <text x="670" y="50" text-anchor="middle" class="t w">Dueño de la mascota</text>
+     <text x="670" y="66" text-anchor="middle" class="s w">[Persona externa]</text>
+     <text x="670" y="84" text-anchor="middle" class="s w">No opera el sistema; recibe</text>
+     <text x="670" y="97" text-anchor="middle" class="s w">recordatorios y firma términos</text></g>
+  <!-- sistema -->
+  <g><rect x="250" y="190" width="300" height="110" rx="6" fill="#1168bd"/>
+     <text x="400" y="225" text-anchor="middle" class="t w" style="font-size:15px">CLINICAN</text>
+     <text x="400" y="241" text-anchor="middle" class="s w">[Sistema de software]</text>
+     <text x="400" y="262" text-anchor="middle" class="s w">Agenda con cupos y abonos, fichas de servicio,</text>
+     <text x="400" y="276" text-anchor="middle" class="s w">consentimientos y recordatorios. Funciona sin internet.</text></g>
+  <!-- externos -->
+  <g><rect x="20" y="360" width="220" height="90" rx="6" fill="#8b8b8b"/>
+     <text x="130" y="392" text-anchor="middle" class="t w">Fichas antiguas en Excel</text>
+     <text x="130" y="408" text-anchor="middle" class="s w">[Archivos .xlsx]</text>
+     <text x="130" y="426" text-anchor="middle" class="s w">Historial previo de clientes</text></g>
+  <g><rect x="290" y="360" width="220" height="90" rx="6" fill="#8b8b8b"/>
+     <text x="400" y="392" text-anchor="middle" class="t w">Memoria USB</text>
+     <text x="400" y="408" text-anchor="middle" class="s w">[Medio externo]</text>
+     <text x="400" y="426" text-anchor="middle" class="s w">Copia de los respaldos fuera del PC</text></g>
+  <g><rect x="560" y="360" width="220" height="90" rx="6" fill="#8b8b8b"/>
+     <text x="670" y="392" text-anchor="middle" class="t w">WhatsApp Business</text>
+     <text x="670" y="408" text-anchor="middle" class="s w">[Sistema externo · API de Meta]</text>
+     <text x="670" y="426" text-anchor="middle" class="s w">Entrega mensajes con plantillas</text></g>
+  <!-- flechas -->
+  <line x1="150" y1="110" x2="320" y2="188" stroke="#333" stroke-width="1.4" marker-end="url(#f1)"/>
+  <text x="120" y="150" class="lb">Agenda turnos, registra abonos</text>
+  <text x="120" y="163" class="lb">y fichas [teclado y ratón]</text>
+  <line x1="400" y1="110" x2="400" y2="188" stroke="#333" stroke-width="1.4" marker-end="url(#f1)"/>
+  <text x="408" y="145" class="lb">Configura y restaura</text>
+  <text x="408" y="158" class="lb">[con PIN de administradora]</text>
+  <line x1="300" y1="300" x2="160" y2="358" stroke="#333" stroke-width="1.4" marker-end="url(#f1)"/>
+  <text x="140" y="330" class="lb">Lee e importa [.xlsx]</text>
+  <line x1="400" y1="300" x2="400" y2="358" stroke="#333" stroke-width="1.4" marker-end="url(#f1)"/>
+  <text x="408" y="334" class="lb">Copia respaldos [.db]</text>
+  <line x1="510" y1="300" x2="610" y2="358" stroke="#333" stroke-width="1.4" stroke-dasharray="5 3" marker-end="url(#f1)"/>
+  <text x="560" y="318" class="lb">Envía recordatorios [HTTPS,</text>
+  <text x="560" y="331" class="lb">solo cuando hay conexión]</text>
+  <line x1="740" y1="360" x2="740" y2="112" stroke="#333" stroke-width="1.4" marker-end="url(#f1)"/>
+  <text x="732" y="230" text-anchor="end" class="lb">Entrega el recordatorio</text>
+  <text x="732" y="243" text-anchor="end" class="lb">[WhatsApp]</text>
+</svg>
+<figcaption><b>Figura 1.</b> Contexto. Leyenda: azul oscuro = persona; azul = el sistema que diseñamos; gris =
+sistema o medio externo. Flecha continua = interacción síncrona y local; flecha discontinua = depende de
+internet y es asíncrona (no bloquea la agenda).</figcaption>
+</figure>
+
+<h3>Nivel 2 · Contenedores</h3>
+<figure>
+<svg viewBox="0 0 820 560" width="100%" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="f2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333"/></marker>
+    <style>.lb{font-size:10.5px;fill:#222;paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}.t{font-size:12.5px;font-weight:700}.s{font-size:9.8px}.w{fill:#fff}</style>
+  </defs>
+  <!-- personas -->
+  <rect x="30" y="10" width="190" height="72" rx="12" fill="#08427b"/>
+  <text x="125" y="40" text-anchor="middle" class="t w">Personal</text><text x="125" y="56" text-anchor="middle" class="s w">[Persona]</text>
+  <rect x="310" y="10" width="190" height="72" rx="12" fill="#08427b"/>
+  <text x="405" y="40" text-anchor="middle" class="t w">Administradora</text><text x="405" y="56" text-anchor="middle" class="s w">[Persona]</text>
+  <rect x="600" y="10" width="200" height="72" rx="12" fill="#08427b"/>
+  <text x="700" y="40" text-anchor="middle" class="t w">Dueño de la mascota</text><text x="700" y="56" text-anchor="middle" class="s w">[Persona externa]</text>
+  <!-- frontera -->
+  <rect x="20" y="125" width="565" height="300" rx="8" fill="none" stroke="#555" stroke-dasharray="7 4"/>
+  <text x="32" y="143" style="font-size:11px;font-weight:700;fill:#444">CLINICAN [sistema] · un computador con Windows 11, sin servidor</text>
+  <!-- app -->
+  <rect x="45" y="160" width="305" height="115" rx="6" fill="#1168bd"/>
+  <text x="197" y="185" text-anchor="middle" class="t w">Aplicación de escritorio</text>
+  <text x="197" y="200" text-anchor="middle" class="s w">[Contenedor: Python 3.11 + CustomTkinter, un proceso]</text>
+  <text x="197" y="220" text-anchor="middle" class="s w">Pantallas, casos de uso, permisos y auditoría,</text>
+  <text x="197" y="234" text-anchor="middle" class="s w">reglas del dominio y despachador periódico</text>
+  <text x="197" y="248" text-anchor="middle" class="s w">de notificaciones. Arranca con</text>
+  <text x="197" y="262" text-anchor="middle" class="s w" style="font-family:'JetBrains Mono',monospace">python main.py</text>
+  <!-- log -->
+  <rect x="420" y="165" width="150" height="62" rx="6" fill="#438dd5"/>
+  <text x="495" y="188" text-anchor="middle" class="t w">Registro</text>
+  <text x="495" y="203" text-anchor="middle" class="s w">[Archivo clinican.log]</text>
+  <text x="495" y="217" text-anchor="middle" class="s w">Errores, con rotación</text>
+  <!-- bd -->
+  <path d="M200,330 a100,12 0 0,0 200,0 v62 a100,12 0 0,1 -200,0 z" fill="#438dd5"/>
+  <ellipse cx="300" cy="330" rx="100" ry="12" fill="#5b9fe0"/>
+  <text x="300" y="360" text-anchor="middle" class="t w">Base de datos</text>
+  <text x="300" y="375" text-anchor="middle" class="s w">[SQLite 3 · datos/clinican.db]</text>
+  <text x="300" y="389" text-anchor="middle" class="s w">16 tablas, incluida la bandeja de salida</text>
+  <!-- respaldos -->
+  <rect x="430" y="325" width="140" height="78" rx="6" fill="#438dd5"/>
+  <text x="500" y="348" text-anchor="middle" class="t w">Respaldos</text>
+  <text x="500" y="363" text-anchor="middle" class="s w">[Carpeta respaldos/]</text>
+  <text x="500" y="377" text-anchor="middle" class="s w">Copias .db verificadas;</text>
+  <text x="500" y="390" text-anchor="middle" class="s w">se conservan las últimas N</text>
+  <!-- externos -->
+  <rect x="30" y="465" width="180" height="70" rx="6" fill="#8b8b8b"/>
+  <text x="120" y="492" text-anchor="middle" class="t w">Fichas en Excel</text><text x="120" y="508" text-anchor="middle" class="s w">[Archivos .xlsx]</text>
+  <rect x="420" y="465" width="170" height="70" rx="6" fill="#8b8b8b"/>
+  <text x="505" y="492" text-anchor="middle" class="t w">Memoria USB</text><text x="505" y="508" text-anchor="middle" class="s w">[Medio externo]</text>
+  <rect x="610" y="225" width="195" height="88" rx="6" fill="#8b8b8b"/>
+  <text x="707" y="252" text-anchor="middle" class="t w">WhatsApp Business</text>
+  <text x="707" y="268" text-anchor="middle" class="s w">[Sistema externo]</text>
+  <text x="707" y="284" text-anchor="middle" class="s w">Graph API de Meta (Cloud API)</text>
+  <!-- flechas -->
+  <line x1="125" y1="82" x2="140" y2="158" stroke="#333" stroke-width="1.4" marker-end="url(#f2)"/>
+  <text x="138" y="112" class="lb">Usa [interfaz gráfica]</text>
+  <line x1="405" y1="82" x2="300" y2="158" stroke="#333" stroke-width="1.4" marker-end="url(#f2)"/>
+  <text x="362" y="112" class="lb">Usa [interfaz gráfica + PIN]</text>
+  <line x1="350" y1="196" x2="418" y2="196" stroke="#333" stroke-width="1.4" marker-end="url(#f2)"/>
+  <text x="355" y="190" class="lb" style="font-size:9.5px">Escribe</text>
+  <line x1="300" y1="275" x2="300" y2="316" stroke="#333" stroke-width="1.4" marker-end="url(#f2)"/>
+  <text x="292" y="296" text-anchor="end" class="lb">Lee y escribe [SQL,</text>
+  <text x="292" y="309" text-anchor="end" class="lb">transacción BEGIN IMMEDIATE]</text>
+  <path d="M340,275 V300 H500 V322" fill="none" stroke="#333" stroke-width="1.4" marker-end="url(#f2)"/>
+  <text x="360" y="296" class="lb" style="font-size:9.8px">Copia diaria y al cerrar [API backup]</text>
+  <line x1="350" y1="262" x2="607" y2="262" stroke="#333" stroke-width="1.4" stroke-dasharray="5 3" marker-end="url(#f2)"/>
+  <text x="430" y="257" class="lb">Envía recordatorios pendientes</text>
+  <text x="430" y="278" class="lb" style="font-size:9.8px">[HTTPS · solo con conexión]</text>
+  <line x1="90" y1="275" x2="90" y2="462" stroke="#333" stroke-width="1.4" marker-end="url(#f2)"/>
+  <text x="98" y="430" class="lb">Lee e importa</text>
+  <text x="98" y="443" class="lb">[openpyxl]</text>
+  <line x1="505" y1="403" x2="505" y2="462" stroke="#333" stroke-width="1.4" marker-end="url(#f2)"/>
+  <text x="513" y="438" class="lb">Copia manual [.db]</text>
+  <line x1="740" y1="225" x2="740" y2="84" stroke="#333" stroke-width="1.4" marker-end="url(#f2)"/>
+  <text x="748" y="150" class="lb">Entrega</text>
+  <text x="748" y="163" class="lb">[WhatsApp]</text>
+</svg>
+<figcaption><b>Figura 2.</b> Contenedores. Leyenda: azul fuerte = contenedor que ejecuta código; azul claro =
+almacenamiento; gris = externo; borde discontinuo = frontera del sistema (un solo computador). Flecha
+discontinua = sale por internet de forma asíncrona. La aplicación y la base de datos comparten el equipo:
+ninguna flecha de la agenda cruza la red.</figcaption>
+</figure>
+
+<h3>Vista complementaria · capas dentro de la aplicación</h3>
+<p>No la pide la entrega, pero es la que el esqueleto demuestra: cómo se reparten las responsabilidades dentro
+del contenedor «Aplicación de escritorio» y hacia dónde apuntan las dependencias.</p>
+<figure>
+<svg viewBox="0 0 800 400" width="100%" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="f3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333"/></marker>
+    <style>.lb{font-size:10px;fill:#222;paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round}.t{font-size:12.5px;font-weight:700}.s{font-size:9.8px}</style>
+  </defs>
+  <rect x="50" y="15" width="710" height="60" rx="6" fill="#eef4d6" stroke="#7f9a1e"/>
+  <text x="70" y="40" class="t">Presentación · clinican/ui</text>
+  <text x="70" y="58" class="s">Pantallas y diálogos de CustomTkinter. Solo llama a casos de uso; nunca abre la base de datos.</text>
+  <rect x="50" y="105" width="710" height="62" rx="6" fill="#e6eef9" stroke="#1e5aa8"/>
+  <text x="70" y="130" class="t">Aplicación · clinican/servicios</text>
+  <text x="70" y="148" class="s">Casos de uso, permisos (RN-01), auditoría y transacciones. Define el puerto Notificador.</text>
+  <rect x="50" y="200" width="335" height="66" rx="6" fill="#fff4dc" stroke="#8a5a00"/>
+  <text x="68" y="224" class="t">Datos · clinican/datos</text>
+  <text x="68" y="242" class="s">Repositorios SQLite, migraciones, semillas,</text>
+  <text x="68" y="256" class="s">bandeja de salida.</text>
+  <rect x="425" y="200" width="335" height="66" rx="6" fill="#fff4dc" stroke="#8a5a00"/>
+  <text x="443" y="224" class="t">Adaptadores · clinican/adaptadores</text>
+  <text x="443" y="242" class="s">Implementan Notificador: WhatsApp (Meta),</text>
+  <text x="443" y="256" class="s">archivo y consola. Despachador en un hilo.</text>
+  <rect x="50" y="300" width="710" height="62" rx="6" fill="#f5f6f2" stroke="#16151c"/>
+  <text x="70" y="325" class="t">Dominio · clinican/dominio</text>
+  <text x="70" y="343" class="s">Reglas puras: cupos, precios, estados del turno, legal, recordatorios. No importa ninguna otra capa.</text>
+  <line x1="405" y1="75" x2="405" y2="103" stroke="#333" stroke-width="1.4" marker-end="url(#f3)"/>
+  <line x1="215" y1="167" x2="215" y2="198" stroke="#333" stroke-width="1.4" marker-end="url(#f3)"/>
+  <line x1="592" y1="200" x2="592" y2="169" stroke="#333" stroke-width="1.4" stroke-dasharray="5 3" marker-end="url(#f3)"/>
+  <text x="600" y="190" class="lb">implementa el puerto</text>
+  <line x1="405" y1="167" x2="405" y2="298" stroke="#333" stroke-width="1.4" marker-end="url(#f3)"/>
+  <line x1="215" y1="266" x2="215" y2="298" stroke="#333" stroke-width="1.4" marker-end="url(#f3)"/>
+  <line x1="592" y1="266" x2="592" y2="298" stroke="#333" stroke-width="1.4" marker-end="url(#f3)"/>
+  <path d="M50,45 H28 V331 H48" fill="none" stroke="#333" stroke-width="1.2" stroke-dasharray="2 3" marker-end="url(#f3)"/>
+  <text x="34" y="190" class="lb" transform="rotate(-90 34 190)" text-anchor="middle">solo tipos y formatos</text>
+  <text x="50" y="390" class="s" style="fill:#a3123a;font-weight:700">Prohibido (lo verifica una prueba): ui → datos · ui → adaptadores · servicios → ui · servicios → adaptadores · adaptadores → datos · dominio → cualquiera</text>
+</svg>
+<figcaption><b>Figura 3.</b> Capas. Flecha = «depende de» (importa). Todas apuntan hacia el dominio. La flecha
+punteada de la izquierda es la única dependencia que salta una capa: la presentación usa del dominio solo
+catálogos y formatos, nunca reglas con efectos. Los adaptadores se conectan en el arranque
+(<code>main.py</code>, la raíz de composición).</figcaption>
+</figure>
+
+<!-- ================================================================ 8 -->
+<h2 class="salto"><span class="num">8</span>Decisiones de arquitectura</h2>
+<p>Cada ADR tiene cinco secciones: estado, contexto, decisión, alternativas descartadas y consecuencias, buenas y malas.</p>
+
+<div class="adr">
+<h3>ADR-001 · Monolito de escritorio en capas con base de datos local</h3>
+<h4>Estado</h4><p>Aceptada.</p>
+<h4>Contexto</h4>
+<p>D1 exige que la agenda funcione sin internet, y la restricción de operación es un solo computador con
+Windows, sin presupuesto para un servidor. Lo usan cuatro personas, siempre en el mismo mostrador. D2 pide una
+integridad fuerte del cupo, más fácil de garantizar con una sola base de datos.</p>
+<h4>Decisión</h4>
+<p>Aplicación de escritorio en Python con cuatro capas (ui, servicios, datos, dominio) en un solo proceso, y
+SQLite como base de datos embebida en <code>datos/clinican.db</code>. La regla de dependencias es una sola
+dirección hacia el dominio, y la verifica una prueba automática.</p>
+<h4>Alternativas descartadas</h4>
+<ul>
+  <li><b>Aplicación web en la nube</b> (por ejemplo, Django en un hosting). Sin internet no hay agenda: viola D1.</li>
+  <li><b>Microservicios</b> para agenda, fichas y notificaciones. Mete la red entre las piezas, obliga a coordinar el cupo entre procesos y a operar varios servicios en un PC de recepción. Es más costo que beneficio para este tamaño.</li>
+  <li><b>Servidor local con cliente web</b> (Flask en el mismo PC más navegador). Cumple D1, pero agrega un servidor que levantar y vigilar, sin una ganancia hoy, porque nadie más entra a la agenda.</li>
+</ul>
+<h4>Consecuencias</h4>
+<ul>
+  <li>Buena: la agenda nunca depende de la red; instalación con un solo ejecutable (PyInstaller).</li>
+  <li>Buena: las transacciones ACID locales hacen posible ADR-002 sin coordinación distribuida.</li>
+  <li>Mala: no hay acceso remoto ni uso desde varios computadores. Abrir la misma base desde dos equipos por la red corrompe datos (R3).</li>
+  <li>Mala: el disco del PC es un punto único de falla; dependemos de los respaldos (T4, R1).</li>
+  <li>Mala: si el negocio crece, migrar a cliente-servidor significa reescribir la presentación (los servicios y el dominio se conservan).</li>
+</ul>
+</div>
+
+<div class="adr">
+<h3>ADR-002 · Agenda por franjas con cupos por categoría, protegida por una transacción con bloqueo</h3>
+<h4>Estado</h4><p>Aceptada. Reemplaza el modelo de la propuesta: agenda por peluquero con duración variable.</p>
+<h4>Contexto</h4>
+<p>D2: nunca sobrevender. Al levantar los requisitos con el negocio encontramos que no asigna peluquero al
+agendar y que trabaja con franjas fijas de 30 minutos. Lo que varía es cuántas mascotas caben por franja, según
+la categoría: MÁQUINA 2, GRANDE 1, TIJERA 1, COMPLICADO 1. Además, hay carreras reales: un turno pendiente
+puede expirar justo cuando se registra su abono, y varios pendientes compiten por el último cupo.</p>
+<h4>Decisión</h4>
+<ul>
+  <li>La categoría y los cupos libres se calculan en el dominio con funciones puras.</li>
+  <li>Cada caso de uso que ocupa un cupo (crear, abonar, mover) abre <code>BEGIN IMMEDIATE</code>, vuelve a contar la ocupación de la franja dentro de la transacción y confirma solo si cabe.</li>
+  <li>Cuando un abono agota el cupo, en esa misma transacción los demás pendientes pasan a LIBERADO («otro pagó primero»).</li>
+  <li>Los estados del turno siguen una máquina de estados del dominio.</li>
+</ul>
+<h4>Alternativas descartadas</h4>
+<ul>
+  <li><b>Agenda por peluquero con duración variable</b> (lo que propusimos al inicio). No refleja cómo trabaja el negocio y obligaría a estimar la duración de algo que depende de nudos y conducta. Se descartó tras hablar con la administradora.</li>
+  <li><b>Validar el cupo solo en la pantalla.</b> Entre ver el cupo libre y guardar puede pasar el temporizador de expiración o un segundo abono; la validación tiene que estar donde se escribe.</li>
+  <li><b>Restricción o trigger en SQL.</b> Una restricción no expresa «como máximo N por categoría según la configuración», y un trigger escondería la regla de negocio en la base, lejos de las pruebas del dominio.</li>
+  <li><b>Bloqueo optimista con número de versión.</b> Sirve con muchos escritores; aquí hay uno solo y obligaría a reintentar en la interfaz sin ganancia.</li>
+</ul>
+<h4>Consecuencias</h4>
+<ul>
+  <li>Buena: la regla vive en un solo lugar del dominio, con pruebas que reproducen las carreras.</li>
+  <li>Buena: los cupos se cambian en Configuración, sin programar.</li>
+  <li>Mala: un solo escritor a la vez. Con un PC no se nota; con varios equipos sería el primer cuello de botella.</li>
+  <li>Mala: no se sabe qué peluquera atiende cada turno hasta que se llena la ficha. Si el negocio lo quiere, hay que extender el modelo.</li>
+</ul>
+</div>
+
+<div class="adr">
+<h3>ADR-003 · Recordatorios por un puerto y una bandeja de salida en la base local</h3>
+<h4>Estado</h4><p>Aceptada.</p>
+<h4>Contexto</h4>
+<p>D3 exige cambiar el canal sin tocar la agenda, y D1 exige que la agenda no espere a la red. La API de Meta
+pide plantillas aprobadas, conexión y un token. La Ley 1581 exige autorización antes de contactar al dueño.</p>
+<h4>Decisión</h4>
+<ul>
+  <li>Al confirmar o mover un turno, el servicio de turnos guarda un recordatorio en la tabla de salida, en la misma transacción.</li>
+  <li>Un despachador, en un hilo aparte con su propia conexión, lee los pendientes cada minuto y los entrega a un <code>Notificador</code>, un puerto definido en <code>servicios</code>. Justo antes de enviar, el dominio revisa si todavía tiene sentido: el turno sigue confirmado, no ha empezado y el dueño tiene autorización de datos vigente (Ley 1581). Si no, lo descarta con su motivo. Si el canal falla, reintenta con espera creciente.</li>
+  <li>Los adaptadores viven en <code>adaptadores</code>: <code>NotificadorWhatsApp</code> (HTTPS a la Graph API, con plantilla aprobada) y <code>NotificadorArchivo</code> (escribe el mensaje en un archivo, para operar sin cuenta de Meta). <code>main.py</code> elige uno según el canal de la configuración y se lo pasa al despachador; las capas internas no importan ningún adaptador.</li>
+</ul>
+<h4>Alternativas descartadas</h4>
+<ul>
+  <li><b>Llamar a la API de WhatsApp desde el servicio de turnos.</b> Es lo más rápido de escribir, pero acopla la agenda al canal (viola D3) y la bloquea si no hay red (viola D1).</li>
+  <li><b>Un microservicio de notificaciones en la nube.</b> Aísla bien el canal, pero exige sincronizar la agenda hacia la nube y operar un servidor pagado.</li>
+  <li><b>Un broker de mensajes</b> (RabbitMQ o similar) entre la agenda y el canal. Da el mismo desacople que la bandeja, con una pieza más que instalar y mantener en el PC de recepción.</li>
+</ul>
+<h4>Consecuencias</h4>
+<ul>
+  <li>Buena: un canal nuevo es un adaptador nuevo y su nombre en la lista de canales; la agenda y sus reglas no cambian (E3).</li>
+  <li>Buena: sin red, los recordatorios se acumulan y salen cuando vuelve la conexión; nada se pierde porque está en la misma base y en los mismos respaldos.</li>
+  <li>Mala: el recordatorio puede llegar tarde si la red falta mucho tiempo. Uno vencido no se envía y queda marcado.</li>
+  <li>Mala: entrega «al menos una vez»: si se cae justo después de enviar y antes de marcar, el dueño puede recibir el mensaje dos veces.</li>
+  <li>Mala: el envío real depende de una cuenta de Meta verificada y de plantillas aprobadas, que no controlamos (R2).</li>
+</ul>
+</div>
+
+<!-- ================================================================ 9 -->
+<h2 class="salto"><span class="num">9</span>Riesgos identificados</h2>
+<table>
+  <tr><th style="width:5%">#</th><th style="width:27%">Riesgo</th><th style="width:25%">Impacto</th><th>Qué habría que verificar para descartarlo</th></tr>
+  <tr><td><b>R1</b></td><td>Los respaldos quedan en el mismo disco del computador. Un robo, un ransomware o un disco dañado se lleva la base y las copias.</td><td>Pérdida total del historial y de los consentimientos (Ley 1581). Afecta D1 y E4.</td><td>Hacer un simulacro: copiar a la USB, borrar la base en un equipo de prueba, restaurar y medir el tiempo y lo perdido. Confirmar con el negocio quién y cada cuánto saca la copia del equipo.</td></tr>
+  <tr><td><b>R2</b></td><td>Meta no aprueba la plantilla, cambia la política del número o el costo por conversación hace inviable el canal.</td><td>No salen recordatorios. La agenda sigue funcionando gracias a ADR-003, pero el valor de D3 se pierde hasta tener otro canal.</td><td>Crear la cuenta de Meta Business, someter la plantilla de recordatorio, enviar un mensaje real de prueba y consultar la tarifa vigente para Colombia. Revisar qué pasa con el uso normal del número 301 441 7194 al pasar a la API.</td></tr>
+  <tr><td><b>R3</b></td><td>El negocio crece y pone un segundo computador abriendo el mismo archivo SQLite por la red local.</td><td>SQLite no está hecho para compartirse por carpetas de red: bloqueos y posible corrupción. Es lo primero que se rompe si el negocio crece diez veces.</td><td>Probar dos equipos escribiendo a la vez sobre una carpeta compartida de Windows y medir errores. Mientras tanto, la instrucción es un solo equipo. La salida sería un servidor local o en la nube detrás de la misma capa de servicios.</td></tr>
+  <tr><td><b>R4</b></td><td>La bandeja de salida crece sin límite si la red falta por semanas o el token vence.</td><td>Recordatorios inútiles enviados tarde y la base creciendo.</td><td>Ejecutar el despachador con la red cortada por 30 días simulados y comprobar que los vencidos se descartan y que la tabla se purga.</td></tr>
+</table>
+
+<h3>Si el negocio creciera diez veces</h3>
+<p>Diez veces más turnos en el mismo local no rompen nada: SQLite maneja millones de filas y la agenda se
+consulta por fecha. Diez veces significa en realidad varias sedes o varios computadores. Lo primero que se
+rompe es <b>ADR-001</b>, el monolito en un solo equipo (R3), y con él la táctica de un solo escritor de
+ADR-002. Lo que sobrevive es el dominio y los servicios: la frontera de capas permite poner un servidor detrás
+de la misma capa de servicios sin reescribir las reglas.</p>
+
+<!-- ================================================================ 10 -->
+<h2><span class="num">10</span>Esqueleto funcional y trazabilidad</h2>
+<p>El esqueleto es el mismo repositorio del programa. Para la sustentación, un comando recorre el sistema de
+punta a punta sin abrir ventanas y muestra cada capa en acción:</p>
+<p class="mono" style="background:var(--fondo);padding:6pt 10pt;border-radius:4pt">python -m clinican.demo</p>
+<ol>
+  <li><b>Estructura:</b> lee el código fuente y muestra de qué capa depende cada una, y que no hay atajos (ADR-001).</li>
+  <li><b>D2:</b> con una base temporal, dos labradores piden el último cupo GRANDE de las 10:00. Gana quien paga primero, el otro se libera y un abono tardío se rechaza (ADR-002).</li>
+  <li><b>D1:</b> el despachador intenta enviar el recordatorio sin internet; queda pendiente con su error, y mientras tanto se agenda otro turno sin esperar (ADR-003).</li>
+  <li><b>D3:</b> vuelve la red y el recordatorio sale por archivo; luego el mismo mensaje sale por un canal SMS escrito dentro de la demo y por consola, sin tocar la agenda. El recordatorio de un dueño sin autorización de datos se descarta (Ley 1581).</li>
+</ol>
+<p>La regla de capas se comprueba con <code>python -m pytest tests/test_arquitectura.py</code>: analiza los
+<i>imports</i> de cada archivo y además verifica que solo la capa de datos ejecute SQL. Incluye casos que
+plantan un atajo a propósito para demostrar que la prueba lo detecta. El programa completo, con ventanas, se
+abre con <code>python main.py</code>. Las instrucciones están en <code>INSTRUCCIONES.md</code>, y el proyecto
+tiene 323 pruebas automáticas.</p>
+
+<table>
+  <tr><th style="width:12%">Driver</th><th style="width:22%">Decisión</th><th style="width:16%">Tácticas</th><th>Dónde está en el código</th><th style="width:20%">Cómo se comprueba</th></tr>
+  <tr><td>D1</td><td>ADR-001, ADR-003</td><td>T1, T4, T6</td><td><code>datos/conexion.py</code>, <code>datos/archivo_bd.py</code>, <code>servicios/respaldos.py</code>, <code>datos/repo_notificaciones.py</code></td><td><code>tests/test_notificaciones.py</code>, <code>tests/test_respaldos.py</code>; parte 3 de la demo</td></tr>
+  <tr><td>D2</td><td>ADR-002</td><td>T2, T3</td><td><code>dominio/cupos.py</code>, <code>dominio/turnos.py</code>, <code>servicios/turnos.py</code></td><td><code>tests/test_turnos.py</code>; parte 2 de la demo</td></tr>
+  <tr><td>D3</td><td>ADR-003</td><td>T5, T6, T7</td><td>Puerto en <code>servicios/notificaciones.py</code>; <code>adaptadores/</code>; <code>dominio/notificaciones.py</code>; raíz de composición en <code>main.py</code></td><td><code>tests/test_notificaciones.py</code>, <code>tests/test_arquitectura.py</code>; partes 1 y 4 de la demo</td></tr>
+</table>
+
+<!-- ================================================================ 11 -->
+<h2><span class="num">11</span>Cambios respecto a la propuesta</h2>
+<p>La propuesta se escribió antes de levantar los requisitos con el negocio. Mantuvimos los tres drivers y
+ajustamos el modelo donde la realidad era distinta:</p>
+<table>
+  <tr><th style="width:30%">Decía la propuesta</th><th style="width:30%">Quedó así</th><th>Por qué</th></tr>
+  <tr><td>Agenda por peluquero, con duración variable por raza y servicio</td><td>Franjas de 30 minutos con cupos por categoría, que se calculan con la raza, el tamaño, el pelaje y el servicio</td><td>El negocio no asigna peluquera al agendar; la variación por raza y tamaño se expresa en cuántas mascotas caben por franja (ADR-002). El driver D2 no cambia: nunca sobrevender.</td></tr>
+  <tr><td>Cinco tipos de usuario, incluidos el peluquero y el veterinario por separado</td><td>Dos roles que operan (Administradora y Personal) y el dueño como actor externo</td><td>Recepción y peluquería las hace el mismo personal. Los permisos cambian solo entre administradora y el resto.</td></tr>
+  <tr><td>El veterinario autoriza a mascotas sin vacunas</td><td>El requisito de carnet de vacunas es una cláusula de los términos que el dueño acepta al llegar</td><td>La revisión se hace con el carnet físico; no hay un flujo de aprobación en el sistema. Queda fuera del alcance de esta versión.</td></tr>
+</table>
+
+</body>
+</html>

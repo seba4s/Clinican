@@ -183,3 +183,11 @@ def abonos_a_favor(conn: sqlite3.Connection, propietario_id: int) -> list[sqlite
 
 def mover_abono(conn: sqlite3.Connection, abono_id: int, turno_id: int) -> None:
     conn.execute("UPDATE abonos SET turno_id = ? WHERE id = ?", (turno_id, abono_id))
+
+
+def contar_activos_futuros_en_franja(conn: sqlite3.Connection, dia_semana: int, hora: str, desde: str) -> int:
+    """Turnos activos desde ``desde`` que caen en ese día de la semana (0 = domingo) y hora."""
+    return conn.execute(
+        "SELECT COUNT(*) FROM turnos WHERE hora = ? AND fecha >= ? AND CAST(strftime('%w', fecha) AS INTEGER) = ? "
+        "AND estado IN ('PENDIENTE_ABONO','CONFIRMADO','EN_PROCESO','LISTA')",
+        (hora, desde, dia_semana)).fetchone()[0]

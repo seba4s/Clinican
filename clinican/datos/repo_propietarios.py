@@ -167,3 +167,9 @@ def historial_servicios(conn: sqlite3.Connection, mascota_id: int) -> list[sqlit
            FROM servicios s WHERE s.mascota_id = ? ORDER BY s.fecha DESC, s.id DESC""",
         (mascota_id,),
     ).fetchall()
+
+
+def provisional_por_celular_y_nombre(conn: sqlite3.Connection, celular: str, nombre: str) -> sqlite3.Row | None:
+    """Cliente sin registrar con ese celular y nombre (sin importar tildes ni mayúsculas)."""
+    return conn.execute("SELECT * FROM propietarios WHERE provisional = 1 AND celular1 = ? "
+                        "AND sin_tildes(nombre) = sin_tildes(?)", (celular, nombre)).fetchone()

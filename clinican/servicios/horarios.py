@@ -201,10 +201,8 @@ def fijar_franja_base(conn, sesion: Sesion, dia_semana: int, hora: str, activa: 
             repo.insertar_franja_base(conn, dia_semana, hora, reglas.jornada_de(hora))
         else:
             if not activa:
-                futuros = conn.execute(
-                    "SELECT COUNT(*) FROM turnos WHERE hora = ? AND fecha >= ? AND CAST(strftime('%w', fecha) AS INTEGER) = ? "
-                    "AND estado IN ('PENDIENTE_ABONO','CONFIRMADO','EN_PROCESO','LISTA')",
-                    (hora, date.today().isoformat(), dia_semana)).fetchone()[0]
+                futuros = repo_turnos.contar_activos_futuros_en_franja(conn, dia_semana, hora,
+                                                                        date.today().isoformat())
                 if futuros:
                     raise DatoInvalido(f"Hay {futuros} turno(s) activo(s) futuros los {DIAS[dia_semana].lower()} "
                                        f"a las {hora}. Muévalos o cancélelos primero.")

@@ -15,7 +15,10 @@ La especificación completa está en `ESPECIFICACION_CLINICAN.md`. El manual par
 | 3. Ficha y precios | Ficha de servicio, precios sugeridos, extras de baño, desenredado por sesiones | **Terminada** |
 | 4. Turnos | Agenda, franjas, horas extra, bloqueos, cupos, abonos, expiración, quien paga primero, grupos, no asistencia, entrega | **Terminada** |
 | 5. Empaquetado y respaldos | `construir.bat`, `.exe`, acceso directo, respaldo automático y manual, restaurar, manual de usuario | **Terminada** (falta la prueba de instalación limpia en el PC de la peluquería) |
-| 6. WhatsApp | Solo con autorización | Pendiente |
+| 6. WhatsApp | Recordatorios por bandeja de salida y puerto `Notificador`; canal ARCHIVO activo, adaptador de WhatsApp listo pero sin cuenta. El bot para agendar por WhatsApp sigue pendiente | **Parcial** |
+
+**Trabajo final de Arquitectura de Software:** diseño en `docs/arquitectura/diseno_documentado.pdf` y
+cómo levantar el esqueleto en `INSTRUCCIONES.md` (`python -m clinican.demo`).
 
 ## Instalar el programa (.exe)
 
@@ -192,12 +195,15 @@ Todos se cambian desde Configuración (solo la administradora), sin tocar el có
 ## Estructura del código
 
 ```
+main.py         raíz de composición: elige el canal de recordatorios y arranca el despachador
 clinican\
-  dominio\    reglas de negocio puras (permisos, PIN, validación de configuración)
-  datos\      SQLite: esquema, migraciones (PRAGMA user_version), semillas y repositorios
-  servicios\  casos de uso con validación de permisos y auditoría
-  ui\         pantallas CustomTkinter
-tests\        pruebas automáticas (pytest)
+  dominio\      reglas de negocio puras; no importa ninguna otra capa
+  datos\        SQLite: esquema, migraciones (PRAGMA user_version), semillas, repositorios y bandeja de salida
+  servicios\    casos de uso con permisos, auditoría y transacciones; define el puerto Notificador
+  adaptadores\  canales de recordatorio (WhatsApp de Meta, archivo, consola) y despachador en un hilo
+  ui\           pantallas CustomTkinter
+  demo.py       demostración de la arquitectura en consola
+tests\          pruebas automáticas (pytest); test_arquitectura.py verifica que las capas no tengan atajos
 ```
 
 ## Pruebas
@@ -206,7 +212,7 @@ tests\        pruebas automáticas (pytest)
 .venv\Scripts\python -m pytest
 ```
 
-292 pruebas. Las de rutas `C:\...` solo corren en Windows, y la prueba de humo de la interfaz se omite si
+323 pruebas. Las de rutas `C:\...` solo corren en Windows, y la prueba de humo de la interfaz se omite si
 el equipo no tiene pantalla.
 
 ## Notas

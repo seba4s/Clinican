@@ -250,8 +250,7 @@ def _procesar_fichas(conn, fichas, reporte: ReporteFichas, guardar: bool, sesion
             dueno = duenos.get(clave)
             if dueno is None:
                 existente = (repo_propietarios.propietario_por_cedula(conn, cedula) if cedula else
-                             conn.execute("SELECT * FROM propietarios WHERE provisional = 1 AND celular1 = ? "
-                                          "AND sin_tildes(nombre) = sin_tildes(?)", (celular1, nombre)).fetchone())
+                             repo_propietarios.provisional_por_celular_y_nombre(conn, celular1, nombre))
                 dueno = {"id": existente["id"] if existente else None, "nombre": nombre, "nuevo": existente is None,
                          "mascotas": {}}
                 if existente is not None:
@@ -304,9 +303,7 @@ def _procesar_fichas(conn, fichas, reporte: ReporteFichas, guardar: bool, sesion
                                                       "pero no el servicio."))
                 continue
             visita = (clave, clave_m, fecha)
-            repetida = visita in visitas or (mid is not None and conn.execute(
-                "SELECT 1 FROM servicios WHERE mascota_id = ? AND fecha = ? AND observaciones LIKE '%[Importada de Excel%'",
-                (mid, fecha)).fetchone())
+            repetida = visita in visitas or (mid is not None and repo_servicios.existe_importado(conn, mid, fecha))
             if repetida:
                 reporte.avisos.append((ficha.archivo, f"La ficha de {mascota} del {fecha} ya estaba importada."))
                 continue

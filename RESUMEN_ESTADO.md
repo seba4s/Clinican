@@ -1,13 +1,25 @@
 # CLINICAN — Resumen de avance
 
-_Fecha: 29 de septiembre de 2026_
+_Fecha: 10 de noviembre de 2026_
 
 Programa de escritorio (Python + CustomTkinter + SQLite, 100 % sin internet) para la peluquería canina de
 CLINICAN. Se construye por fases según `ESPECIFICACION_CLINICAN.md` (sección 12).
 
 **Estado general:** fases 1 a 5 terminadas en el código. De la 5 solo falta la prueba en el PC real (instalación
-limpia en Windows 11 sin internet). La 6 (WhatsApp) necesita autorización. Las **293 pruebas automáticas pasan** (2 más solo corren en Windows)
+limpia en Windows 11 sin internet). La 6 (WhatsApp) necesita autorización. Las **323 pruebas automáticas pasan** (2 más solo corren en Windows)
 (`.venv\Scripts\python -m pytest`).
+
+### Trabajo final de Arquitectura de Software
+- Diseño documentado: `docs/arquitectura/diseno_documentado.pdf` (fuente en HTML al lado). Instrucciones del
+  esqueleto: `INSTRUCCIONES.md`.
+- **Recordatorios (ADR-003):** al confirmar o mover un turno se guarda un recordatorio en la tabla
+  `notificaciones_salida` (migración 6), en la misma transacción. Un despachador en un hilo aparte los envía por
+  el puerto `Notificador`. El canal se elige en Configuración › Recordatorios: `ARCHIVO` (por defecto, escribe en
+  `datos\recordatorios.txt`) o `WHATSAPP` (API de Meta; necesita las variables `CLINICAN_WHATSAPP_TOKEN` y
+  `CLINICAN_WHATSAPP_NUMERO_ID`, que todavía no existen). Sin autorización de datos (Ley 1581) no se envía.
+- **Capas verificadas:** `tests/test_arquitectura.py` falla si una capa importa a otra que no debe o si los
+  servicios ejecutan SQL. Las consultas sueltas de `servicios` pasaron a `datos` (`archivo_bd.py` y repositorios).
+- **Demostración:** `python -m clinican.demo`.
 
 ### Auditoría de diseño (skill `apple-design`)
 Informe completo en `AUDITORIA_DISENO.md`. Cambios aplicados: bordes de campos con contraste 4,2 : 1; botones
