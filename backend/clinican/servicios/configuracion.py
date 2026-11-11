@@ -106,6 +106,7 @@ CLAVES: dict[str, Clave] = {
         Clave("horario", HorarioSemanal(), _validar_horario, _horario_a_texto, _horario_de_texto),
         Clave("canal_notificaciones", "archivo", _validar_texto, str, str),
         Clave("carpeta_respaldos", "respaldos", _validar_texto, str, str),
+        Clave("respaldos_a_conservar", 30, _validar_entero_positivo, str, int),
         # 24 h antes por defecto (confirmado), configurable.
         Clave("horas_antes_recordatorio", HORAS_ANTES_RECORDATORIO, _validar_entero_no_negativo, str, int),
     )
@@ -120,6 +121,7 @@ class ConfigClinica:
     horario: HorarioSemanal
     canal_notificaciones: str
     carpeta_respaldos: str
+    respaldos_a_conservar: int
     horas_antes_recordatorio: int
 
 

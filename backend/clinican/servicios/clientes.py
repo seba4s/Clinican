@@ -7,7 +7,7 @@ dentro de ella.
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from clinican.datos import repo_agenda, repo_clientes
@@ -15,6 +15,7 @@ from clinican.datos.conexion import transaccion
 from clinican.dominio.cupos import Tamano
 from clinican.dominio.entidades import Mascota, Propietario, Raza
 from clinican.dominio.errores import DatoInvalido, NoEncontrado, OperacionNoPermitida
+from clinican.dominio.documentos import normalizar_cedula
 from clinican.dominio.telefonos import normalizar_celular
 from clinican.servicios.auditoria import auditar
 
@@ -42,6 +43,14 @@ def _tamano(valor: Any) -> Tamano | None:
     raise DatoInvalido("El tamaño debe ser uno de: " + ", ".join(t.value for t in Tamano))
 
 
+def _fecha(valor: Any, campo: str) -> date | None:
+    if valor is None:
+        return None
+    if isinstance(valor, datetime) or not isinstance(valor, date):
+        raise DatoInvalido(f"La {campo} debe ser una fecha")
+    return valor
+
+
 def _cambios(**campos: Any) -> dict[str, Any]:
     return {k: v for k, v in campos.items() if v is not SIN_CAMBIO}
 
@@ -63,25 +72,72 @@ def _propietario_activo(con, propietario_id: int) -> Propietario:
     return propietario
 
 
-def crear_propietario(con, nombre: str, telefono: str, *, ahora: datetime) -> Propietario:
-    """Crea el propietario. El celular debe tener exactamente 10 dígitos y se guarda así."""
+def _celular2(valor: Any) -> str | None:
+    if valor is None or (isinstance(valor, str) and not valor.strip()):
+        return None
+    return normalizar_celular(valor)
+
+
+def cedula_libre(con, cedula: str, excepto: int | None = None) -> None:
+    """Lanza DatoInvalido si otro propietario ya tiene esa cédula."""
+    existente = repo_clientes.obtener_propietario_por_cedula(con, cedula)
+    if existente is not None and existente.id != excepto:
+        raise DatoInvalido(f"Ya existe un propietario con la cédula {cedula} ({existente.nombre})")
+
+
+def obtener_por_cedula(con, cedula: str) -> Propietario | None:
+    return repo_clientes.obtener_propietario_por_cedula(con, normalizar_cedula(cedula))
+
+
+def crear_propietario(
+    con,
+    nombre: str,
+    telefono: str,
+    *,
+    cedula: str,
+    ahora: datetime,
+    direccion: str = "",
+    celular2: str | None = None,
+) -> Propietario:
+    """Crea el propietario. La cédula es obligatoria y única; los celulares, de 10 dígitos."""
     nombre = _texto(nombre, "nombre")
     telefono = normalizar_celular(telefono)
+    cedula = normalizar_cedula(cedula)
+    direccion = _texto(direccion, "dirección", requerido=False)
+    celular2 = _celular2(celular2)
     with transaccion(con):
-        pid = repo_clientes.insertar_propietario(con, nombre, telefono)
-        auditar(con, ahora, "crear", "propietario", pid, nombre=nombre, telefono=telefono)
+        cedula_libre(con, cedula)
+        pid = repo_clientes.insertar_propietario(con, nombre, telefono, cedula, direccion, celular2)
+        auditar(con, ahora, "crear", "propietario", pid, nombre=nombre, telefono=telefono,
+                cedula=cedula, direccion=direccion, celular2=celular2)
     return obtener_propietario(con, pid)
 
 
 def editar_propietario(
-    con, propietario_id: int, *, ahora: datetime, nombre: Any = SIN_CAMBIO, telefono: Any = SIN_CAMBIO
+    con,
+    propietario_id: int,
+    *,
+    ahora: datetime,
+    nombre: Any = SIN_CAMBIO,
+    telefono: Any = SIN_CAMBIO,
+    cedula: Any = SIN_CAMBIO,
+    direccion: Any = SIN_CAMBIO,
+    celular2: Any = SIN_CAMBIO,
 ) -> Propietario:
+    """Edita el propietario. Si no tenía cédula (datos anteriores), hay que darla al editar."""
     cambios = _cambios(
         nombre=nombre if nombre is SIN_CAMBIO else _texto(nombre, "nombre"),
         telefono=telefono if telefono is SIN_CAMBIO else normalizar_celular(telefono),
+        cedula=cedula if cedula is SIN_CAMBIO else normalizar_cedula(cedula),
+        direccion=direccion if direccion is SIN_CAMBIO else _texto(direccion, "dirección", False),
+        celular2=celular2 if celular2 is SIN_CAMBIO else _celular2(celular2),
     )
     with transaccion(con):
-        obtener_propietario(con, propietario_id)
+        actual = obtener_propietario(con, propietario_id)
+        if "cedula" in cambios:
+            cedula_libre(con, cambios["cedula"], excepto=propietario_id)
+        elif actual.cedula is None:
+            raise DatoInvalido(f"Indique la cédula de {actual.nombre} para guardar los cambios")
         repo_clientes.actualizar_propietario(con, propietario_id, **cambios)
         auditar(con, ahora, "editar", "propietario", propietario_id, **cambios)
     return obtener_propietario(con, propietario_id)
@@ -215,8 +271,14 @@ def crear_mascota(
     tamano: Tamano | None = None,
     pelaje: str | None = None,
     complicado: bool = False,
+    fecha_nacimiento: date | None = None,
+    ultima_visita: date | None = None,
+    observaciones: str = "",
 ) -> Mascota:
     """Crea la mascota; si no se da tamaño o pelaje, se toman de la raza."""
+    fecha_nacimiento = _fecha(fecha_nacimiento, "fecha de nacimiento")
+    ultima_visita = _fecha(ultima_visita, "fecha de última visita")
+    observaciones = _texto(observaciones, "observaciones", requerido=False)
     nombre = _texto(nombre, "nombre")
     tamano = _tamano(tamano)
     with transaccion(con):
@@ -230,10 +292,13 @@ def crear_mascota(
             pelaje = raza.pelaje if raza is not None else ""
         pelaje = _texto(pelaje, "pelaje", requerido=False)
         mid = repo_clientes.insertar_mascota(
-            con, propietario_id, nombre, raza_id, tamano, pelaje, bool(complicado)
+            con, propietario_id, nombre, raza_id, tamano, pelaje, bool(complicado),
+            fecha_nacimiento, ultima_visita, observaciones,
         )
         auditar(con, ahora, "crear", "mascota", mid, propietario_id=propietario_id, nombre=nombre,
-                raza_id=raza_id, tamano=tamano.value, pelaje=pelaje, complicado=bool(complicado))
+                raza_id=raza_id, tamano=tamano.value, pelaje=pelaje, complicado=bool(complicado),
+                fecha_nacimiento=fecha_nacimiento, ultima_visita=ultima_visita,
+                observaciones=observaciones)
     return obtener_mascota(con, mid)
 
 
@@ -241,6 +306,8 @@ def editar_mascota(
     con, mascota_id: int, *, ahora: datetime,
     nombre: Any = SIN_CAMBIO, raza_id: Any = SIN_CAMBIO, tamano: Any = SIN_CAMBIO,
     pelaje: Any = SIN_CAMBIO, complicado: Any = SIN_CAMBIO,
+    fecha_nacimiento: Any = SIN_CAMBIO, ultima_visita: Any = SIN_CAMBIO,
+    observaciones: Any = SIN_CAMBIO,
 ) -> Mascota:
     if tamano is None:
         raise DatoInvalido("La mascota debe tener un tamaño")
@@ -250,6 +317,12 @@ def editar_mascota(
         tamano=tamano if tamano is SIN_CAMBIO else _tamano(tamano),
         pelaje=pelaje if pelaje is SIN_CAMBIO else _texto(pelaje, "pelaje", False),
         complicado=complicado if complicado is SIN_CAMBIO else bool(complicado),
+        fecha_nacimiento=fecha_nacimiento if fecha_nacimiento is SIN_CAMBIO
+        else _fecha(fecha_nacimiento, "fecha de nacimiento"),
+        ultima_visita=ultima_visita if ultima_visita is SIN_CAMBIO
+        else _fecha(ultima_visita, "fecha de última visita"),
+        observaciones=observaciones if observaciones is SIN_CAMBIO
+        else _texto(observaciones, "observaciones", False),
     )
     with transaccion(con):
         obtener_mascota(con, mascota_id)

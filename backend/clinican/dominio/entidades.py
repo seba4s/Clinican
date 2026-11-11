@@ -19,6 +19,9 @@ class Propietario:
     saldo_a_favor: int
     activo: bool
     fusionado_en: int | None = None
+    cedula: str | None = None
+    direccion: str = ""
+    celular2: str | None = None
 
 
 @dataclass(frozen=True)
@@ -40,6 +43,9 @@ class Mascota:
     pelaje: str
     complicado: bool
     activo: bool
+    fecha_nacimiento: date | None = None
+    ultima_visita: date | None = None
+    observaciones: str = ""
 
 
 @dataclass(frozen=True)

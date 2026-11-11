@@ -72,3 +72,31 @@ def test_aplicar_saldo(saldo, requerido, esperado):
 def test_aplicar_saldo_valida_pesos(saldo, requerido):
     with pytest.raises((TypeError, ValueError)):
         aplicar_saldo(saldo, requerido)
+
+
+# --------------------------------------------------------------------------- edad aproximada
+
+from datetime import date  # noqa: E402
+
+from clinican.dominio.documentos import fecha_nacimiento_aproximada  # noqa: E402
+from clinican.dominio.errores import DatoInvalido  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    "anios, meses, hoy, esperado",
+    [
+        (3, 0, date(2026, 11, 10), date(2023, 11, 10)),
+        (0, 5, date(2026, 11, 10), date(2026, 6, 10)),
+        (1, 11, date(2026, 3, 31), date(2024, 4, 30)),
+        (0, 0, date(2026, 2, 28), date(2026, 2, 28)),
+        (2, 0, date(2024, 2, 29), date(2022, 2, 28)),
+    ],
+)
+def test_fecha_nacimiento_aproximada(anios, meses, hoy, esperado):
+    assert fecha_nacimiento_aproximada(anios, meses, hoy) == esperado
+
+
+@pytest.mark.parametrize("anios, meses", [(-1, 0), (0, 12), (1.5, 0), (True, 0)])
+def test_edad_invalida(anios, meses):
+    with pytest.raises(DatoInvalido):
+        fecha_nacimiento_aproximada(anios, meses, date(2026, 11, 10))

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from clinican.datos._util import a_texto, actualizar, de_texto, fecha_a_texto, hora_a_texto
@@ -14,14 +14,14 @@ from clinican.dominio.estados import EstadoTurno, MotivoLiberacion
 
 # --------------------------------------------------------------------------- turnos
 
-_TURNO = (
+COLUMNAS_TURNO = (
     "id, mascota_id, propietario_id, inicio, servicio, categoria, estado, motivo_liberacion, "
     "abono_requerido, abono_pagado, saldo_aplicado, saldo_generado, creado_en, abonado_en, "
     "aviso_inasistencia_en"
 )
 
 
-def _turno(f) -> Turno:
+def turno_de_fila(f) -> Turno:
     return Turno(
         id=f[0],
         mascota_id=f[1],
@@ -77,8 +77,8 @@ def insertar_turno(
 
 
 def obtener_turno(con: sqlite3.Connection, id_: int) -> Turno | None:
-    f = con.execute(f"SELECT {_TURNO} FROM turnos WHERE id = ?", (id_,)).fetchone()
-    return None if f is None else _turno(f)
+    f = con.execute(f"SELECT {COLUMNAS_TURNO} FROM turnos WHERE id = ?", (id_,)).fetchone()
+    return None if f is None else turno_de_fila(f)
 
 
 def actualizar_turno(con: sqlite3.Connection, id_: int, **campos: Any) -> None:
@@ -93,24 +93,29 @@ def actualizar_turno(con: sqlite3.Connection, id_: int, **campos: Any) -> None:
 
 def turnos_en_inicio(con: sqlite3.Connection, inicio: datetime) -> list[Turno]:
     filas = con.execute(
-        f"SELECT {_TURNO} FROM turnos WHERE inicio = ? ORDER BY id", (a_texto(inicio),)
+        f"SELECT {COLUMNAS_TURNO} FROM turnos WHERE inicio = ? ORDER BY id", (a_texto(inicio),)
     ).fetchall()
-    return [_turno(f) for f in filas]
+    return [turno_de_fila(f) for f in filas]
+
+
+def rango_del_dia(dia: date) -> tuple[str, str]:
+    """Límites de texto [desde, hasta) del día, para usar el índice turnos(inicio, estado)."""
+    return fecha_a_texto(dia), fecha_a_texto(dia + timedelta(days=1))
 
 
 def turnos_del_dia(con: sqlite3.Connection, dia: date) -> list[Turno]:
     filas = con.execute(
-        f"SELECT {_TURNO} FROM turnos WHERE substr(inicio, 1, 10) = ? ORDER BY inicio, id",
-        (fecha_a_texto(dia),),
+        f"SELECT {COLUMNAS_TURNO} FROM turnos WHERE inicio >= ? AND inicio < ? ORDER BY inicio, id",
+        rango_del_dia(dia),
     ).fetchall()
-    return [_turno(f) for f in filas]
+    return [turno_de_fila(f) for f in filas]
 
 
 def turnos_por_estado(con: sqlite3.Connection, estado: EstadoTurno) -> list[Turno]:
     filas = con.execute(
-        f"SELECT {_TURNO} FROM turnos WHERE estado = ? ORDER BY id", (estado.value,)
+        f"SELECT {COLUMNAS_TURNO} FROM turnos WHERE estado = ? ORDER BY id", (estado.value,)
     ).fetchall()
-    return [_turno(f) for f in filas]
+    return [turno_de_fila(f) for f in filas]
 
 
 def turnos_de_propietario(
@@ -118,11 +123,11 @@ def turnos_de_propietario(
 ) -> list[Turno]:
     valor = None if estado is None else estado.value
     filas = con.execute(
-        f"SELECT {_TURNO} FROM turnos WHERE propietario_id = ? AND (? IS NULL OR estado = ?) "
+        f"SELECT {COLUMNAS_TURNO} FROM turnos WHERE propietario_id = ? AND (? IS NULL OR estado = ?) "
         "ORDER BY inicio, id",
         (propietario_id, valor, valor),
     ).fetchall()
-    return [_turno(f) for f in filas]
+    return [turno_de_fila(f) for f in filas]
 
 
 def mover_turnos_de_propietario(con: sqlite3.Connection, origen: int, destino: int) -> int:

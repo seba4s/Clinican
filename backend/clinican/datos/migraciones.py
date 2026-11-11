@@ -24,6 +24,20 @@ def _semilla_precios() -> str:
     return f"INSERT INTO precios (categoria, valor, vigente_desde) VALUES {filas};"
 
 
+# Razas de la plantilla de importación (sin tamaño por defecto).
+RAZAS_INICIALES = (
+    "Bulldog Francés", "Chihuahua", "Gato (sin raza definida)", "Golden Retriever", "Husky",
+    "Labrador Retriever", "Pastor Alemán", "Perro mestizo (sin raza)", "Pitbull y similares",
+    "Poodle (Caniche) Toy y Miniatura", "Schnauzer", "Schnauzer Miniatura", "Shih Tzu",
+    "Yorkshire Terrier",
+)
+
+
+def _semilla_razas() -> str:
+    filas = ", ".join("('" + nombre.replace("'", "''") + "')" for nombre in RAZAS_INICIALES)
+    return f"INSERT OR IGNORE INTO razas (nombre) VALUES {filas};"
+
+
 class ErrorMigracion(RuntimeError):
     """Error general de migraciones."""
 
@@ -237,6 +251,20 @@ MIGRACIONES: tuple[Migracion, ...] = (
         CREATE INDEX ix_notificaciones_estado_programada
             ON notificaciones_salida(estado, programada_para);
         CREATE INDEX ix_notificaciones_turno ON notificaciones_salida(turno_id);
+        """,
+    ),
+    Migracion(
+        version=11,
+        descripcion="Cédula, dirección y celular 2 del propietario; datos de la mascota; razas",
+        sql=f"""
+        ALTER TABLE propietarios ADD COLUMN cedula TEXT;
+        ALTER TABLE propietarios ADD COLUMN direccion TEXT NOT NULL DEFAULT '';
+        ALTER TABLE propietarios ADD COLUMN celular2 TEXT;
+        CREATE UNIQUE INDEX ux_propietarios_cedula ON propietarios(cedula);
+        ALTER TABLE mascotas ADD COLUMN fecha_nacimiento TEXT;
+        ALTER TABLE mascotas ADD COLUMN ultima_visita TEXT;
+        ALTER TABLE mascotas ADD COLUMN observaciones TEXT NOT NULL DEFAULT '';
+        {_semilla_razas()}
         """,
     ),
 )
