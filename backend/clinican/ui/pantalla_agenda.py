@@ -1,4 +1,4 @@
-"""Agenda del día: tablero de cupos, pendientes de abono y panel del turno."""
+"""Agenda del día: hoja tipo Excel con los turnos, pendientes de abono y panel del turno."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from datetime import date, datetime, timedelta
 import customtkinter as ctk
 
 from clinican.dominio.abonos import vence_en
-from clinican.dominio.agenda import Bloqueo, generar_franjas
+from clinican.dominio.agenda import generar_franjas
 from clinican.dominio.cupos import CategoriaCupo
 from clinican.dominio.estados import EstadoTurno, MotivoLiberacion, ocupa_cupo
 from clinican.servicios import agenda, clientes, configuracion, consultas, fichas, precios
@@ -17,6 +17,7 @@ from clinican.ui import formato as fmt
 from clinican.ui import tema
 from clinican.ui.app import Pantalla
 from clinican.ui.componentes import boton, chip_estado, confirmar, etiqueta, tarjeta
+from clinican.ui.hoja_agenda import HojaAgenda, agrupar
 
 E = EstadoTurno
 ORDEN_CATEGORIAS = (CategoriaCupo.MAQUINA, CategoriaCupo.GRANDE, CategoriaCupo.TIJERA, CategoriaCupo.COMPLICADO)
@@ -75,6 +76,8 @@ class PantallaAgenda(Pantalla):
         self.dia = self.ctx.hoy()
         self.seleccion: int | None = None
         self._turnos: dict[int, TurnoEnAgenda] = {}
+        self._clave_pendientes = None
+        self._clave_panel = None
 
         cab = ctk.CTkFrame(self, fg_color="transparent", width=0, height=0)
         cab.pack(fill="x", padx=24, pady=(20, 0))
@@ -93,13 +96,15 @@ class PantallaAgenda(Pantalla):
 
         cuerpo = ctk.CTkFrame(self, fg_color="transparent", width=0, height=0)
         cuerpo.pack(fill="both", expand=True, padx=24, pady=(12, 20))
-        self.panel = tarjeta(cuerpo, width=340)
+        self.panel = tarjeta(cuerpo, width=320)
         self.panel.pack(side="right", fill="y", padx=(16, 0))
         self.panel.pack_propagate(False)
+        self._contenido_panel = None
         marco = tarjeta(cuerpo)
         marco.pack(side="left", fill="both", expand=True)
-        self.tablero = ctk.CTkScrollableFrame(marco, fg_color="transparent")
-        self.tablero.pack(fill="both", expand=True, padx=8, pady=8)
+        self.hoja = HojaAgenda(marco, self.seleccionar,
+                               lambda inicio, cat: self.nuevo_turno(inicio=inicio, categoria=cat))
+        self.hoja.pack(fill="both", expand=True, padx=10, pady=(10, 6))
         self.lbl_fuera = etiqueta(marco, "", tema.ETIQUETA, suave=True, wraplength=760)
         self.lbl_fuera.pack(fill="x", padx=16, pady=(0, 10))
 
@@ -130,13 +135,12 @@ class PantallaAgenda(Pantalla):
         self.refrescar()
 
     # ------------------------------------------------------------------ dibujo
-    def refrescar(self) -> None:
+    def refrescar(self, periodico: bool = False) -> None:
         ahora = self.ctx.ahora()
         hoy = self.ctx.hoy()
         with self.ctx.con() as con:
             filas, fuera, libres = armar_tablero(con, self.dia, ahora)
             pendientes = [p for p in consultas.pendientes_de_abono(con, ahora=ahora) if not p.vencido]
-            cfg = configuracion.cargar(con)
         titulo = fmt.dia_largo(self.dia)
         if self.dia == hoy:
             titulo = "Hoy, " + titulo[0].lower() + titulo[1:]
@@ -148,20 +152,25 @@ class PantallaAgenda(Pantalla):
         else:
             self.lbl_resumen.configure(text=f"{len(turnos)} turno{'s' if len(turnos) != 1 else ''} · {libres} cupos libres")
         self._dibujar_pendientes(pendientes, ahora)
-        self._dibujar_tablero(filas, cfg)
+        if self.seleccion not in self._turnos:
+            self.seleccion = None
+        self.hoja.mostrar(agrupar(filas, ORDEN_CATEGORIAS), self.seleccion, ahora,
+                          "" if filas else "Este día la peluquería está cerrada.")
         if fuera:
             partes = [f"{t.mascota} ({tema.estilo_estado(t.turno.estado)[3].lower()}, {fmt.hora(t.turno.inicio)})" for t in fuera]
             self.lbl_fuera.configure(text="Fuera de agenda: " + " · ".join(partes))
         else:
             self.lbl_fuera.configure(text="")
-        if self.seleccion not in self._turnos:
-            self.seleccion = None
-        self._dibujar_panel()
+        self._dibujar_panel(forzar=not periodico)
 
     def refrescar_periodico(self) -> None:
-        self.refrescar()
+        self.refrescar(periodico=True)
 
     def _dibujar_pendientes(self, pendientes, ahora) -> None:
+        clave = tuple((p.turno.id, p.turno.abono_total, fmt.minutos_restantes(p.vence_en, ahora)) for p in pendientes)
+        if clave == self._clave_pendientes:
+            return
+        self._clave_pendientes = clave
         for w in self.pendientes.winfo_children():
             w.destroy()
         if not pendientes:
@@ -187,73 +196,40 @@ class PantallaAgenda(Pantalla):
         self.dia = fmt.local(turno.inicio).date()
         self.seleccion = turno.id
         self.refrescar()
-
-    def _dibujar_tablero(self, filas: list[FilaTablero], cfg) -> None:
-        for w in self.tablero.winfo_children():
-            w.destroy()
-        if not filas:
-            etiqueta(self.tablero, "Este día la peluquería está cerrada.", tema.SUBTITULO, suave=True).pack(pady=40)
-            return
-        t = self.tablero
-        t.grid_columnconfigure(0, minsize=64)
-        for i, cat in enumerate(ORDEN_CATEGORIAS, start=1):
-            t.grid_columnconfigure(i, weight=capacidad(cfg.cupos, cat))
-        etiqueta(t, "Hora", tema.ETIQUETA, True, suave=True).grid(row=0, column=0, sticky="w", padx=4, pady=(0, 6))
-        for i, cat in enumerate(ORDEN_CATEGORIAS, start=1):
-            etiqueta(t, f"{fmt.CATEGORIA[cat].upper()} · {capacidad(cfg.cupos, cat)}", tema.ETIQUETA, True,
-                     suave=True).grid(row=0, column=i, sticky="w", padx=4, pady=(0, 6))
-        ahora = self.ctx.ahora()
-        for r, fila in enumerate(filas, start=1):
-            actual = fila.inicio <= ahora < fila.inicio + timedelta(minutes=30)
-            hora = fmt.hora(fila.inicio)
-            etiqueta(t, hora, tema.CUERPO, not fila.pasada, suave=fila.pasada,
-                     color=tema.ACCION if actual else None).grid(row=r, column=0, sticky="w", padx=4, pady=3)
-            if fila.bloqueo:
-                ctk.CTkLabel(t, text=f"Bloqueado · {fila.bloqueo}", height=32, corner_radius=6, anchor="w",
-                             fg_color=("#EFEFEC", "#2E2C36"), text_color=tema.TINTA_SUAVE,
-                             font=tema.fuente(tema.ETIQUETA)).grid(row=r, column=1, columnspan=4, sticky="ew", padx=4, pady=3)
-                continue
-            for c, cat in enumerate(ORDEN_CATEGORIAS, start=1):
-                celda = ctk.CTkFrame(t, fg_color="transparent", width=0, height=0)
-                celda.grid(row=r, column=c, sticky="ew", padx=4, pady=3)
-                for turno in fila.puestos[cat]:
-                    self._puesto(celda, turno, fila, cat).pack(side="left", fill="x", expand=True, padx=(0, 4))
-
-    def _puesto(self, padre, item: TurnoEnAgenda | None, fila: FilaTablero, cat: CategoriaCupo):
-        if item is None:
-            if fila.pasada:
-                return ctk.CTkFrame(padre, width=60, height=32, fg_color="transparent")
-            return ctk.CTkButton(padre, text="Libre", height=32, width=60, corner_radius=6, fg_color="transparent",
-                                 hover_color=tema.HOVER_NEUTRO, text_color=tema.TINTA_SUAVE, border_width=1,
-                                 border_color=tema.BORDE_CAMPO, font=tema.fuente(tema.ETIQUETA),
-                                 command=lambda: self.nuevo_turno(inicio=fila.inicio, categoria=cat))
-        turno = item.turno
-        fondo, letra, borde, _n, icono = tema.estilo_estado(turno.estado)
-        seleccionado = turno.id == self.seleccion
-        return ctk.CTkButton(padre, text=f"{icono} {item.mascota}", height=32, width=60, corner_radius=6, anchor="w",
-                             fg_color=fondo, hover_color=borde, text_color=letra,
-                             border_width=2 if seleccionado else 1,
-                             border_color=tema.TINTA if seleccionado else borde,
-                             font=tema.fuente(tema.ETIQUETA, True),
-                             command=lambda: self.seleccionar(turno.id))
+        self.after_idle(lambda: self.hoja.ir_a(turno.id))
 
     def seleccionar(self, turno_id: int) -> None:
+        """Marca el turno en la hoja y muestra su panel, sin volver a dibujar todo el día."""
+        if turno_id not in self._turnos:
+            self.refrescar()
+            return
         self.seleccion = turno_id
-        self.refrescar()
+        self.hoja.seleccionar(turno_id)
+        self._dibujar_panel()
 
     # ------------------------------------------------------------------ panel del turno
-    def _dibujar_panel(self) -> None:
-        for w in self.panel.winfo_children():
-            w.destroy()
-        p = ctk.CTkFrame(self.panel, fg_color="transparent", width=0, height=0)
-        p.pack(fill="both", expand=True, padx=20, pady=20)
-        if self.seleccion is None:
-            etiqueta(p, "Elige un turno del tablero para ver sus datos y lo que puedes hacer con él.",
-                     suave=True, wraplength=290).pack(anchor="w")
-            etiqueta(p, "Un puesto «Libre» agenda directamente en esa hora y cupo.", suave=True,
-                     wraplength=290).pack(anchor="w", pady=(12, 0))
+    def _dibujar_panel(self, forzar: bool = True) -> None:
+        """Arma el panel nuevo fuera de la vista y luego lo cambia por el anterior (sin parpadeo)."""
+        item = self._turnos.get(self.seleccion) if self.seleccion is not None else None
+        clave = None if item is None else (item.turno, self.dia == self.ctx.hoy())
+        if not forzar and clave == self._clave_panel and self._contenido_panel is not None \
+                and (item is None or item.turno.estado is not E.PENDIENTE_ABONO):
             return
-        item = self._turnos[self.seleccion]
+        self._clave_panel = clave
+        p = ctk.CTkFrame(self.panel, fg_color="transparent", width=0, height=0)
+        if item is None:
+            etiqueta(p, "Elige un turno de la hoja para ver sus datos y lo que puedes hacer con él.",
+                     suave=True, wraplength=270).pack(anchor="w")
+            etiqueta(p, "En la fila «Libre» de cada hora, toca un cupo para agendar directamente ahí.",
+                     suave=True, wraplength=270).pack(anchor="w", pady=(12, 0))
+        else:
+            self._llenar_panel(p, item)
+        anterior, self._contenido_panel = self._contenido_panel, p
+        p.pack(fill="both", expand=True, padx=20, pady=20)
+        if anterior is not None:
+            anterior.destroy()
+
+    def _llenar_panel(self, p, item) -> None:
         turno = item.turno
         ahora = self.ctx.ahora()
         with self.ctx.con() as con:
@@ -266,8 +242,8 @@ class PantallaAgenda(Pantalla):
 
         etiqueta(p, f"{fmt.dia_corto(fmt.local(turno.inicio).date(), self.ctx.hoy())} {fmt.hora(turno.inicio)} · "
                     f"cupo {fmt.CATEGORIA[turno.categoria]}", tema.ETIQUETA, suave=True).pack(anchor="w")
-        etiqueta(p, f"{item.mascota} · {raza}", 22, True, wraplength=290).pack(anchor="w")
-        etiqueta(p, f"{dueno.nombre} · {fmt.celular(dueno.telefono)}", wraplength=290).pack(anchor="w")
+        etiqueta(p, f"{item.mascota} · {raza}", 22, True, wraplength=270).pack(anchor="w")
+        etiqueta(p, f"{dueno.nombre} · {fmt.celular(dueno.telefono)}", wraplength=270).pack(anchor="w")
         chip_estado(p, turno.estado).pack(anchor="w", pady=(10, 10))
 
         datos = ctk.CTkFrame(p, fg_color="transparent", width=0, height=0)
@@ -282,7 +258,7 @@ class PantallaAgenda(Pantalla):
         ]
         for i, (k, v) in enumerate(filas):
             etiqueta(datos, k, suave=True).grid(row=i, column=0, sticky="w", pady=2)
-            etiqueta(datos, v, wraplength=190).grid(row=i, column=1, sticky="w", padx=(16, 0), pady=2)
+            etiqueta(datos, v, wraplength=170).grid(row=i, column=1, sticky="w", padx=(16, 0), pady=2)
 
         nota = None
         if turno.estado is E.PENDIENTE_ABONO:
@@ -297,7 +273,7 @@ class PantallaAgenda(Pantalla):
             nota = f"Pasó al saldo a favor: {fmt.pesos(turno.saldo_generado)}"
         if nota:
             ctk.CTkLabel(p, text=nota, fg_color=tema.SUPERFICIE_SUAVE, corner_radius=8, anchor="w", justify="left",
-                         wraplength=280, text_color=tema.TINTA, font=tema.fuente(tema.ETIQUETA + 1)).pack(fill="x", pady=(12, 0), ipady=6, ipadx=8)
+                         wraplength=260, text_color=tema.TINTA, font=tema.fuente(tema.ETIQUETA + 1)).pack(fill="x", pady=(12, 0), ipady=6, ipadx=8)
 
         acciones = ctk.CTkFrame(p, fg_color="transparent", width=0, height=0)
         acciones.pack(fill="x", pady=(16, 0))

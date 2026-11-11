@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 from clinican.dominio.agenda import ZONA
 from clinican.dominio.cupos import CategoriaCupo, Servicio, Tamano
@@ -116,3 +116,27 @@ def minutos_restantes(hasta: datetime, ahora: datetime) -> str:
         return "vencido"
     minutos = int(segundos // 60) + (1 if segundos % 60 else 0)
     return f"vence en {minutos} min"
+
+
+def leer_hora(texto: str) -> time:
+    """Hora escrita a mano en una franja de 30 minutos.
+
+    Acepta '9', '9:30', '09.30', '930', '16:30', '4:30 pm' o '4 p. m.'.
+    """
+    limpio = (texto or "").strip().lower().replace(" ", "").replace(".", ":")
+    tarde = limpio.endswith(("pm", "p:m:", "p:m"))
+    manana = limpio.endswith(("am", "a:m:", "a:m"))
+    limpio = re.sub(r"[ap]:?m:?$", "", limpio).rstrip(":").replace("h", ":")
+    m = re.fullmatch(r"(\d{1,2})(?::?(\d{2}))?", limpio)
+    if not m:
+        raise DatoInvalido("Escribe la hora como 09:30 (o 9:30, 930, 4:30 pm)")
+    hora_, minuto = int(m.group(1)), int(m.group(2) or 0)
+    if tarde and hora_ < 12:
+        hora_ += 12
+    elif manana and hora_ == 12:
+        hora_ = 0
+    if hora_ > 23 or minuto > 59:
+        raise DatoInvalido(f"«{texto.strip()}» no es una hora válida")
+    if minuto not in (0, 30):
+        raise DatoInvalido("Las franjas son de 30 minutos: usa :00 o :30")
+    return time(hora_, minuto)

@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 
 import customtkinter as ctk
 
-from clinican.dominio.agenda import Bloqueo, ZONA, generar_franjas
+from clinican.dominio.agenda import Bloqueo, ZONA
 from clinican.dominio.cupos import CategoriaCupo, Servicio, categoria_de_cupo
 from clinican.dominio.errores import DatoInvalido
 from clinican.dominio.estados import EstadoTurno
@@ -14,7 +14,7 @@ from clinican.servicios import agenda, clientes, configuracion, precios
 from clinican.ui import formato as fmt
 from clinican.ui import tema
 from clinican.ui.busqueda import buscar_clientes
-from clinican.ui.componentes import Campo, Dialogo, boton, chip, etiqueta
+from clinican.ui.componentes import Campo, CampoHora, Dialogo, boton, chip, etiqueta
 
 POR_QUE = {
     CategoriaCupo.COMPLICADO: "La mascota está marcada como de pelaje complicado.",
@@ -419,19 +419,13 @@ class DialogoBloqueo(Dialogo):
                         text_color=tema.TINTA, fg_color=tema.TINTA, command=self._cambio).pack(anchor="w", pady=(4, 8))
         self.horas = ctk.CTkFrame(self.contenido, fg_color="transparent", width=0, height=0)
         self.horas.pack(anchor="w")
-        opciones = [f"{h:02d}:{m:02d}" for h in range(7, 20) for m in (0, 30)]
+        opciones = [f"{h:02d}:{m:02d}" for h in range(7, 21) for m in (0, 30)]
         etiqueta(self.horas, "Desde", tema.ETIQUETA + 1, True).grid(row=0, column=0, sticky="w")
         etiqueta(self.horas, "Hasta", tema.ETIQUETA + 1, True).grid(row=0, column=1, sticky="w", padx=(16, 0))
-        self.desde = ctk.CTkOptionMenu(self.horas, values=opciones, width=110, height=tema.ALTO_CONTROL,
-                                       font=tema.fuente(tema.CUERPO), fg_color=tema.SUPERFICIE_SUAVE,
-                                       button_color=tema.SUPERFICIE_SUAVE, text_color=tema.TINTA)
-        self.desde.set("12:00")
-        self.desde.grid(row=1, column=0, sticky="w")
-        self.hasta = ctk.CTkOptionMenu(self.horas, values=opciones, width=110, height=tema.ALTO_CONTROL,
-                                       font=tema.fuente(tema.CUERPO), fg_color=tema.SUPERFICIE_SUAVE,
-                                       button_color=tema.SUPERFICIE_SUAVE, text_color=tema.TINTA)
-        self.hasta.set("13:00")
-        self.hasta.grid(row=1, column=1, sticky="w", padx=(16, 0))
+        self.desde = CampoHora(self.horas, "12:00", opciones)
+        self.desde.grid(row=1, column=0, sticky="w", pady=(4, 0))
+        self.hasta = CampoHora(self.horas, "13:00", opciones)
+        self.hasta.grid(row=1, column=1, sticky="w", padx=(16, 0), pady=(4, 0))
         self.campo_motivo = Campo(self.contenido, "Motivo", "Almuerzo", ancho=300)
         self.campo_motivo.pack(anchor="w", pady=(10, 0))
         self.boton_principal("Bloquear", self._bloquear)
@@ -454,8 +448,10 @@ class DialogoBloqueo(Dialogo):
             if self.var_completo.get():
                 bloqueo = Bloqueo(fecha, motivo=self.campo_motivo.valor())
             else:
-                bloqueo = Bloqueo(fecha, time.fromisoformat(self.desde.get()), time.fromisoformat(self.hasta.get()),
-                                  self.campo_motivo.valor())
+                bloqueo = Bloqueo(fecha, self.desde.hora(), self.hasta.hora(), self.campo_motivo.valor())
+        except DatoInvalido as e:
+            self.error(f"Revisa las horas: {e}.")
+            return
         except ValueError:
             self.error("La hora «hasta» debe ser posterior a «desde».")
             return

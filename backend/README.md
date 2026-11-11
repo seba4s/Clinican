@@ -76,7 +76,7 @@ Windows.
 
 | Sección | Qué hay |
 |---|---|
-| Agenda | Tablero de cupos del día (un puesto «Libre» agenda ahí mismo), pendientes de abono con su cuenta regresiva, panel del turno con las acciones de su estado, nuevo turno, mover, abono, inasistencia, ficha de servicio, bloquear horas |
+| Agenda | Hoja del día tipo Excel (hora, cupo, mascota, raza, servicio, propietario, celular, abono y estado; los cupos «Libre» de cada hora agendan ahí mismo), pendientes de abono con su cuenta regresiva, panel del turno con las acciones de su estado, nuevo turno, mover, abono, inasistencia, ficha de servicio, bloquear horas |
 | Clientes | Búsqueda por cédula, nombre, celular o mascota; datos, saldo a favor, autorización de datos (Ley 1581), mascotas, historial con fichas, unir duplicados, importar Excel |
 | Recordatorios | Por enviar, enviados, fallidos (reintentar o corregir el celular) y descartados |
 | Ajustes | Horario y bloqueos, cupos y abono, precios, razas, canal de recordatorios, respaldos y registro de cambios |
