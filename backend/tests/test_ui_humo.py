@@ -177,6 +177,40 @@ def test_cliente_nuevo_y_mascota(app, con):
     app.update_idletasks()
 
 
+def test_cliente_autoriza_y_revoca_datos(app, con):
+    from clinican.servicios import autorizaciones
+    from clinican.ui import formato as fmt
+    from clinican.ui.pantalla_clientes import DialogoCliente
+
+    cl = app.ir("Clientes")
+    d = DialogoCliente(cl, app.ctx, None, "3009998877")
+    d.nombre.poner("Luis Pantoja")
+    d.cedula.poner("5050")
+    d.autorizo.set(True)
+    d.fecha_autorizacion.poner("05/11/2026")
+    d.medio_autorizacion.poner("Formato firmado")
+    d._guardar()
+    p = d.resultado
+    vigente = autorizaciones.autorizacion_vigente(con, p.id)
+    assert vigente is not None and vigente.medio == "Formato firmado"
+    assert fmt.fecha_numerica(vigente.fecha) == "05/11/2026"
+
+    futura = DialogoCliente(cl, app.ctx, p)
+    assert futura.autorizo.get()
+    futura.fecha_autorizacion.poner("01/01/2099")
+    futura._guardar()
+    assert futura.resultado is None and futura.winfo_exists()
+    futura.destroy()
+
+    e = DialogoCliente(cl, app.ctx, p)
+    e.autorizo.set(False)
+    e._guardar()
+    assert autorizaciones.autorizacion_vigente(con, p.id) is None
+    assert len(autorizaciones.historial(con, p.id)) == 2
+    cl.elegir(p.id)
+    app.update_idletasks()
+
+
 def test_formatos():
     from clinican.ui import formato as fmt
 

@@ -145,6 +145,9 @@ respaldo). Lo compensa en parte la auditoría: cada escritura queda registrada c
     el turno nace confirmado. Cancelar deja lo pagado como saldo a favor.</li>
   <li><b>Las inasistencias tienen consecuencias</b>: si el dueño avisó con 12 horas o más, el abono queda a
     favor; si no, se pierde.</li>
+  <li><b>Los datos personales necesitan autorización.</b> Cada dueño tiene una casilla «autorizó el tratamiento
+    de sus datos» con la fecha y el medio (Ley 1581). Cada cambio queda en un historial que no se borra. Por
+    decisión del negocio, la falta de autorización no bloquea turnos ni recordatorios.</li>
   <li><b>El precio se fija por fecha.</b> La ficha toma el precio vigente en la fecha del turno; cambiar un precio
     crea una fila nueva con su vigencia. Todo se maneja en pesos enteros.</li>
 </ul>
@@ -182,7 +185,7 @@ hora (reloj inyectado en todos los casos de uso) e instalar en Windows con un so
 <h2 class="salto"><span class="num">2</span>Árbol de utilidad y restricciones</h2>
 <p>Cada hoja es un escenario concreto marcado con <b>(importancia para el negocio, dificultad técnica)</b>
 en Alta, Media o Baja. Las hojas resaltadas son las que priorizamos: alta importancia y dificultad alta o
-media. Son cuatro de trece y solo una es (A, A); el resto se atiende, pero no dirige la estructura.</p>
+media. Son cuatro de catorce y solo una es (A, A); el resto se atiende, pero no dirige la estructura.</p>
 
 <div class="arbol no-partir">
 <ul><li><span class="raiz">Utilidad de CLINICAN</span>
@@ -217,7 +220,8 @@ media. Son cuatro de trece y solo una es (A, A); el resto se atiende, pero no di
         <li><span class="refina">Trazabilidad</span>
           <ul><li><span class="hoja">El 100 % de las escrituras queda en la auditoría con qué se hizo y cuándo. <span class="chip M">M</span> <span class="chip B">B</span></span></li></ul></li>
         <li><span class="refina">Datos personales (Ley 1581)</span>
-          <ul><li><span class="hoja">Cédulas y celulares no salen del equipo, salvo el celular que se envía a Meta con el recordatorio. <span class="chip M">M</span> <span class="chip B">B</span></span></li></ul></li>
+          <ul><li><span class="hoja">Para el 100 % de los propietarios se ve si autorizaron sus datos y desde qué fecha; el historial de autorizaciones y retiros no se borra. <span class="chip M">M</span> <span class="chip B">B</span></span></li>
+              <li><span class="hoja">Cédulas y celulares no salen del equipo, salvo el celular que se envía a Meta con el recordatorio. <span class="chip M">M</span> <span class="chip B">B</span></span></li></ul></li>
       </ul></li>
     <li><span class="atributo">Usabilidad</span>
       <ul><li><span class="hoja">Una persona nueva agenda un turno en menos de 2 minutos sin capacitación. <span class="chip M">M</span> <span class="chip M">M</span></span></li></ul></li>
@@ -233,7 +237,7 @@ media. Son cuatro de trece y solo una es (A, A); el resto se atiende, pero no di
   <tr><td>Internet inestable en el local</td><td>Condición de operación</td><td>Nada que la agenda necesite puede depender de la red.</td></tr>
   <tr><td>Un solo computador con Windows 11</td><td>Condición de operación</td><td>Sin servidor propio; la aplicación y los datos viven en el mismo equipo.</td></tr>
   <tr><td>API oficial de WhatsApp (Meta)</td><td>Integración</td><td>Solo plantillas aprobadas, con 4 parámetros; requiere conexión y un token que va en variables de entorno, nunca en el código.</td></tr>
-  <tr><td>Ley 1581 de 2012 (datos personales)</td><td>Norma</td><td>Se guardan cédula y celular. Los datos se quedan en el equipo y en sus respaldos; la autorización del titular se gestiona fuera del sistema (riesgo R5).</td></tr>
+  <tr><td>Ley 1581 de 2012 (datos personales)</td><td>Norma</td><td>Se guardan cédula y celular. El módulo Legal registra la autorización del titular con fecha, medio e historial. Por decisión del negocio no bloquea turnos ni recordatorios (riesgo R5).</td></tr>
   <tr><td>Presupuesto mínimo; personal con poca experiencia en computadores</td><td>Negocio</td><td>Sin licencias ni hosting pagado; un solo perfil, letra grande y flujos cortos.</td></tr>
 </table>
 
@@ -310,6 +314,7 @@ es distinto o la carga es distinta.</p>
   <tr><td><b>Atención</b></td><td>Ficha de servicio, precio final, precios con vigencia, sesiones de desenredado. <code>dominio/precios.py</code>, <code>servicios/fichas.py</code>, <code>servicios/precios.py</code></td><td><b>Vocabulario:</b> «servicio» es lo que realmente se hizo, con precio y observaciones. <b>Ritmo:</b> cambia cuando cambian los precios, no la agenda.</td></tr>
   <tr><td><b>Clientes</b></td><td>Propietarios (llave: cédula), mascotas, razas, saldo a favor, unión de duplicados, importación de Excel. <code>servicios/clientes.py</code>, <code>servicios/importacion.py</code></td><td><b>Ritmo:</b> datos de referencia que viven años; se corrigen, unen e importan sin tocar turnos.</td></tr>
   <tr><td><b>Notificaciones</b></td><td>Recordatorios, bandeja de salida, despachador, canales. <code>dominio/notificaciones.py</code>, <code>servicios/notificaciones.py</code>, <code>servicios/despachador.py</code>, <code>adaptadores/</code></td><td><b>Dueño:</b> las reglas las cambia un tercero (Meta). <b>Ritmo:</b> otro distinto al de la agenda. Es la frontera que pide D3.</td></tr>
+  <tr><td><b>Legal</b></td><td>Autorización de tratamiento de datos (Ley 1581): otorgar o retirar, con fecha, medio e historial. <code>dominio/autorizaciones.py</code>, <code>servicios/autorizaciones.py</code>, <code>datos/repo_autorizaciones.py</code></td><td><b>Dueño:</b> la regla la impone una norma, no el negocio. <b>Ritmo:</b> cambia cuando cambia la ley. Su unidad es «la autorización con fecha», que nadie más maneja.</td></tr>
   <tr><td><b>Operación</b></td><td>Configuración, auditoría, respaldos, migraciones. <code>servicios/configuracion.py</code>, <code>auditoria.py</code>, <code>respaldos.py</code></td><td><b>Transversal:</b> ninguna regla de la agenda depende de cómo se respalda o se audita.</td></tr>
 </table>
 
@@ -317,6 +322,7 @@ es distinto o la carga es distinta.</p>
 <ul>
   <li><b>Agenda → Notificaciones:</b> la agenda no llama al canal. Escribe un hecho en la bandeja («recordar el turno 812 el lunes a las 9:00») en la misma transacción que confirma o mueve el turno. El despachador lo lee después.</li>
   <li><b>Agenda → Clientes:</b> lee la mascota y el propietario por identificador y ajusta su saldo a favor.</li>
+  <li><b>Clientes → Legal:</b> al unir dos registros duplicados, el historial de autorizaciones pasa al que queda; vale el registro más reciente.</li>
   <li><b>Atención → Agenda:</b> la ficha nace cuando el turno pasa a atendido.</li>
   <li><b>Todos → Operación:</b> leen la configuración y escriben en la auditoría.</li>
   <li>Las pantallas leen vistas combinadas (turno con mascota y propietario) desde <code>datos/repo_consultas.py</code>, que hace joins de solo lectura sobre tablas de varios contextos. Es un atajo consciente: en un monolito con una sola base evita N+1 consultas; si un contexto se extrajera, esa consulta sería lo primero que habría que rehacer.</li>
@@ -441,7 +447,7 @@ internet y es asíncrona (no bloquea la agenda).</figcaption>
   <ellipse cx="300" cy="330" rx="100" ry="12" fill="#5b9fe0"/>
   <text x="300" y="360" text-anchor="middle" class="t w">Base de datos</text>
   <text x="300" y="375" text-anchor="middle" class="s w">[SQLite 3 en WAL · clinican.db]</text>
-  <text x="300" y="389" text-anchor="middle" class="s w">11 tablas, incluida la bandeja de salida</text>
+  <text x="300" y="389" text-anchor="middle" class="s w">12 tablas, incluida la bandeja de salida</text>
   <rect x="430" y="325" width="140" height="78" rx="6" fill="#438dd5"/>
   <text x="500" y="348" text-anchor="middle" class="t w">Respaldos</text>
   <text x="500" y="363" text-anchor="middle" class="s w">[Carpeta respaldos/]</text>
@@ -638,7 +644,7 @@ La API de Meta pide plantillas aprobadas, conexión y un token que no puede ir e
   <tr><td>R2</td><td>Meta no aprueba la plantilla, cambia la política del número o el costo por conversación hace inviable el canal.</td><td>No salen recordatorios. La agenda sigue (ADR-003), pero D3 pierde su valor hasta tener otro canal.</td><td>Crear la cuenta de Meta Business, someter la plantilla <code>recordatorio_turno</code> con sus 4 parámetros, enviar un mensaje real y consultar la tarifa vigente para Colombia.</td></tr>
   <tr><td>R3</td><td>El negocio pone un segundo computador abriendo el mismo archivo SQLite por la red local.</td><td>Bloqueos y posible corrupción. Es lo primero que se rompe si el negocio crece diez veces.</td><td>Probar dos equipos escribiendo a la vez sobre una carpeta compartida de Windows y medir errores. Mientras tanto, la instrucción es un solo equipo.</td></tr>
   <tr><td>R4</td><td>La red falta por semanas o el token vence, y la bandeja se llena de recordatorios inútiles.</td><td>Mensajes tardíos y la base creciendo.</td><td>Ya mitigado en parte: los vencidos se descartan antes de enviar y lo cerrado se purga a los 90 días. Falta un simulacro con la red cortada 30 días.</td></tr>
-  <tr><td>R5</td><td>La Ley 1581 exige autorización del titular para tratar cédula y celular, y el sistema no la registra.</td><td>Incumplimiento legal y un recordatorio enviado sin autorización.</td><td>Confirmar con la administradora cómo se recoge hoy la autorización (por ejemplo, un formato firmado al llegar). Si no existe, agregar al cliente la fecha de autorización y que el despachador la revise.</td></tr>
+  <tr><td>R5</td><td>La autorización de datos (Ley 1581) se registra, pero por decisión del negocio no bloquea: un dueño sin autorización recibe igual el recordatorio. Los clientes importados de Excel llegan sin ella.</td><td>Mensajes a titulares que no han autorizado; incumplimiento si se audita.</td><td>Contar cuántos propietarios activos siguen sin autorización un mes después de instalar. Si no baja, activar la regla en el despachador: la consulta de autorización vigente ya existe y el cambio es una condición más antes de enviar.</td></tr>
 </table>
 
 <h3>No-riesgos (verificados, no se rediscuten)</h3>
@@ -661,6 +667,7 @@ La API de Meta pide plantillas aprobadas, conexión y un token que no puede ir e
   <tr><td><code>BEGIN IMMEDIATE</code> con reconteo (ADR-002)</td><td>Integridad (D2)</td><td>Concurrencia y escalabilidad</td><td>Hay un solo PC; las escrituras duran milisegundos.</td></tr>
   <tr><td>Bandeja de salida (ADR-003)</td><td>Disponibilidad (D1) y modificabilidad (D3)</td><td>Inmediatez; posibles duplicados</td><td>Un recordatorio 24 h antes tolera minutos de retraso y, rara vez, un mensaje repetido.</td></tr>
   <tr><td>Base local (ADR-001)</td><td>Disponibilidad (D1) y simplicidad</td><td>Acceso remoto y escalabilidad</td><td>El negocio tiene una sede y un mostrador.</td></tr>
+  <tr><td>Autorización de datos que no bloquea</td><td>Disponibilidad del recordatorio y usabilidad</td><td>Cumplimiento estricto de la Ley 1581</td><td>Decisión del negocio: el recordatorio evita inasistencias; el registro con fecha deja la evidencia y la regla puede activarse después (R5).</td></tr>
   <tr><td>Un solo perfil sin PIN</td><td>Usabilidad para personal con poca experiencia</td><td>Seguridad (control de acceso)</td><td>Todo el personal hace todo; la auditoría deja rastro de cada cambio.</td></tr>
 </table>
 
@@ -715,7 +722,7 @@ modelo donde la realidad era distinta.</p>
   <tr><th style="width:30%">Antes</th><th style="width:30%">Quedó así</th><th>Por qué</th></tr>
   <tr><td>Agenda por peluquero, con duración variable por raza y servicio</td><td>Franjas de 30 minutos con cupos por categoría</td><td>El negocio no asigna peluquera al agendar; la variación se expresa en cuántas mascotas caben por franja (ADR-002).</td></tr>
   <tr><td>Varios tipos de usuario con PIN y permisos (administradora y personal)</td><td>Un solo perfil, sin roles ni PIN; el dueño y Meta como actores externos</td><td>Recepción, peluquería y administración las hace la misma gente. Se sacrificó control de acceso a cambio de usabilidad; la auditoría queda (sección 9, puntos de compromiso).</td></tr>
-  <tr><td>Módulo legal con términos versionados y autorización de datos (Ley 1581) dentro del sistema</td><td>La norma sigue como restricción; la autorización se gestiona fuera del sistema</td><td>El negocio no la pidió como flujo del programa. Queda como riesgo R5 por verificar.</td></tr>
+  <tr><td>Módulo legal con términos versionados, autorización de datos (Ley 1581) y bloqueo de la atención sin ella</td><td>Módulo Legal más pequeño: autorización con fecha, medio e historial por propietario, que no bloquea</td><td>El negocio quiere la evidencia, pero no que una autorización faltante detenga un turno o un recordatorio (punto de compromiso y R5).</td></tr>
   <tr><td>La categoría dependía de raza, tamaño, pelaje y servicio</td><td>Prioridad COMPLICADO &gt; GRANDE &gt; TIJERA &gt; MÁQUINA según la marca de la mascota, su tamaño y el corte</td><td>Regla confirmada con el negocio: más simple de explicar y de configurar.</td></tr>
   <tr><td>Si varios pendientes competían por el último cupo, ganaba el primero que pagaba</td><td>El pendiente ocupa su cupo desde que se crea, durante 30 minutos</td><td>Regla confirmada con el negocio: quien agenda primero aparta el cupo mientras paga.</td></tr>
 </table>

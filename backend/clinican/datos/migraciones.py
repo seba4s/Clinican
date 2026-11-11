@@ -267,6 +267,22 @@ MIGRACIONES: tuple[Migracion, ...] = (
         {_semilla_razas()}
         """,
     ),
+    Migracion(
+        version=12,
+        descripcion="Autorización de tratamiento de datos (Ley 1581), con historial",
+        sql="""
+        CREATE TABLE autorizaciones_datos (
+            id INTEGER PRIMARY KEY,
+            propietario_id INTEGER NOT NULL REFERENCES propietarios(id),
+            otorgada INTEGER NOT NULL CHECK (otorgada IN (0, 1)),
+            fecha TEXT NOT NULL,
+            medio TEXT NOT NULL DEFAULT '',
+            registrada_en TEXT NOT NULL
+        );
+        CREATE INDEX ix_autorizaciones_propietario
+            ON autorizaciones_datos(propietario_id, registrada_en);
+        """,
+    ),
 )
 
 _DESTRUCTIVO = re.compile(r"\b(DROP|DELETE)\b", re.IGNORECASE)
