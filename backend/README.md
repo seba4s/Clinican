@@ -108,7 +108,7 @@ Con el canal `archivo`, los recordatorios se escriben, uno por línea, en
 
 ## Importar mascotas desde Excel
 
-Use `plantilla_importacion.xlsx` (raíz del repositorio), hoja **Mascotas**, una
+Use `plantilla_importacion.xlsx` (en esta carpeta `backend/`), hoja **Mascotas**, una
 fila por mascota:
 
 ```python
