@@ -51,6 +51,35 @@ def test_cambiar_precio_validaciones(con, valor, fecha):
     assert len(precios.historial_precios(con, C.MAQUINA)) == 1
 
 
+def test_editar_precio(con):
+    precios.editar_precio(con, C.MAQUINA, FECHA_PRECIOS_INICIALES, 47000, ahora=AHORA)
+    assert precios.precio_en_fecha(con, C.MAQUINA, LUNES) == 47000
+    assert len(precios.historial_precios(con, C.MAQUINA)) == 1  # corrige, no agrega
+    registro = historial(con, "precio")[-1]
+    assert (registro.accion, registro.detalle["antes"], registro.detalle["despues"]) == (
+        "editar_precio", 45000, 47000
+    )
+    precios.cambiar_precio(con, C.MAQUINA, 50000, date(2026, 12, 1), ahora=AHORA)
+    precios.editar_precio(con, C.MAQUINA, date(2026, 12, 1), 52000, ahora=AHORA)
+    assert precios.precio_en_fecha(con, C.MAQUINA, date(2026, 12, 2)) == 52000
+    assert precios.precio_en_fecha(con, C.MAQUINA, LUNES) == 47000
+
+
+def test_editar_precio_validaciones(con):
+    with pytest.raises(NoEncontrado):
+        precios.editar_precio(con, C.MAQUINA, date(2026, 12, 1), 50000, ahora=AHORA)
+    for valor in (50000.0, -1):
+        with pytest.raises(DatoInvalido):
+            precios.editar_precio(con, C.MAQUINA, FECHA_PRECIOS_INICIALES, valor, ahora=AHORA)
+    assert precios.precio_en_fecha(con, C.MAQUINA, LUNES) == 45000
+
+
+def test_editar_precio_no_cambia_fichas_ya_creadas(con, esc):
+    t = _atendido(con, esc)
+    precios.editar_precio(con, C.MAQUINA, FECHA_PRECIOS_INICIALES, 60000, ahora=a_las(12))
+    assert fichas.ficha_de_turno(con, t.id).precio_final == 45000
+
+
 # --------------------------------------------------------------------------- fichas
 
 
@@ -108,13 +137,31 @@ def test_crear_ficha_manual_y_reglas(con, esc):
         fichas.crear_ficha(con, 999, ahora=AHORA)
 
 
-def test_editar_ficha_no_toca_precio(con, esc):
+def test_editar_textos_de_ficha(con, esc):
     t = _atendido(con, esc)
     ficha = fichas.ficha_de_turno(con, t.id)
     editada = fichas.editar_ficha(con, ficha.id, observaciones="Volver en 6 semanas", ahora=a_las(11))
     assert editada.observaciones == "Volver en 6 semanas"
     assert editada.precio_final == ficha.precio_final
     assert historial(con, "ficha", ficha.id)[-1].accion == "editar"
+
+
+def test_editar_precio_final_de_ficha_audita_antes_y_despues(con, esc):
+    t = _atendido(con, esc)
+    ficha = fichas.ficha_de_turno(con, t.id)
+    editada = fichas.editar_ficha(con, ficha.id, precio_final=55000, ahora=a_las(11))
+    assert editada.precio_final == 55000
+    detalle = historial(con, "ficha", ficha.id)[-1].detalle
+    assert (detalle["precio_anterior"], detalle["precio_final"]) == (45000, 55000)
+
+
+@pytest.mark.parametrize("precio", [0, -1, 55000.0, True, "55000"])
+def test_precio_final_invalido(con, esc, precio):
+    t = _atendido(con, esc)
+    ficha = fichas.ficha_de_turno(con, t.id)
+    with pytest.raises(DatoInvalido):
+        fichas.editar_ficha(con, ficha.id, precio_final=precio, ahora=a_las(11))
+    assert fichas.obtener_ficha(con, ficha.id).precio_final == 45000
 
 
 def test_sesiones_de_desenredado(con, esc):

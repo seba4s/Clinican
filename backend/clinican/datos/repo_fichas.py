@@ -46,7 +46,10 @@ def ficha_de_turno(con: sqlite3.Connection, turno_id: int) -> Ficha | None:
 
 
 def actualizar_ficha(con: sqlite3.Connection, id_: int, **campos: Any) -> None:
-    actualizar(con, "fichas", id_, campos, {"servicios_realizados", "detalles_corte", "observaciones"})
+    actualizar(
+        con, "fichas", id_, campos,
+        {"servicios_realizados", "detalles_corte", "observaciones", "precio_final"},
+    )
 
 
 _SESION = "id, mascota_id, ficha_id, numero_sesion, avance, porcentaje, fecha"

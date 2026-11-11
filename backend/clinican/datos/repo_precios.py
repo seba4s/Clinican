@@ -24,6 +24,24 @@ def insertar(
     return cur.lastrowid
 
 
+def valor_en(con: sqlite3.Connection, categoria: CategoriaCupo, vigente_desde: date) -> int | None:
+    fila = con.execute(
+        "SELECT valor FROM precios WHERE categoria = ? AND vigente_desde = ?",
+        (categoria.value, vigente_desde.isoformat()),
+    ).fetchone()
+    return None if fila is None else fila[0]
+
+
+def actualizar_valor(
+    con: sqlite3.Connection, categoria: CategoriaCupo, vigente_desde: date, valor: int
+) -> int:
+    cur = con.execute(
+        "UPDATE precios SET valor = ? WHERE categoria = ? AND vigente_desde = ?",
+        (valor, categoria.value, vigente_desde.isoformat()),
+    )
+    return cur.rowcount
+
+
 def historial(con: sqlite3.Connection, categoria: CategoriaCupo | None = None) -> list[PrecioHistorico]:
     valor = None if categoria is None else categoria.value
     filas = con.execute(

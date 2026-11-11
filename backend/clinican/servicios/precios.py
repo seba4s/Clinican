@@ -51,9 +51,37 @@ def cambiar_precio(
         if any(p.vigente_desde == vigente_desde for p in existentes):
             raise DatoInvalido(
                 f"Ya hay un precio de {categoria.value} desde el {vigente_desde.strftime('%d/%m/%Y')}; "
-                "use otra fecha de vigencia"
+                "para corregirlo use editar_precio"
             )
         repo_precios.insertar(con, categoria, valor, vigente_desde, ahora)
         auditar(con, ahora, "cambiar_precio", "precio", None, categoria=categoria.value,
                 valor=valor, valor_texto=formatear_pesos(valor), vigente_desde=vigente_desde.isoformat())
+    return PrecioHistorico(vigente_desde, categoria, valor)
+
+
+def editar_precio(
+    con, categoria: CategoriaCupo, vigente_desde: date, valor: int, *, ahora: datetime
+) -> PrecioHistorico:
+    """Corrige el valor de un precio ya registrado (incluidos los iniciales).
+
+    Las fichas ya creadas conservan el precio final que guardaron. El valor
+    anterior queda en la auditoría.
+    """
+    _categoria(categoria)
+    try:
+        validar_pesos(valor, "valor")
+    except (TypeError, ValueError) as error:
+        raise DatoInvalido(str(error)) from None
+    if isinstance(vigente_desde, datetime) or not isinstance(vigente_desde, date):
+        raise DatoInvalido("vigente_desde debe ser una fecha (sin hora)")
+    with transaccion(con):
+        anterior = repo_precios.valor_en(con, categoria, vigente_desde)
+        if anterior is None:
+            raise NoEncontrado(
+                f"No hay precio de {categoria.value} desde el {vigente_desde.strftime('%d/%m/%Y')}"
+            )
+        repo_precios.actualizar_valor(con, categoria, vigente_desde, valor)
+        auditar(con, ahora, "editar_precio", "precio", None, categoria=categoria.value,
+                vigente_desde=vigente_desde.isoformat(), antes=anterior, despues=valor,
+                despues_texto=formatear_pesos(valor))
     return PrecioHistorico(vigente_desde, categoria, valor)

@@ -100,8 +100,10 @@ def editar_ficha(
     servicios_realizados: Any = SIN_CAMBIO,
     detalles_corte: Any = SIN_CAMBIO,
     observaciones: Any = SIN_CAMBIO,
+    precio_final: Any = SIN_CAMBIO,
 ) -> Ficha:
-    """Edita los textos de la ficha. El precio final no se modifica."""
+    """Edita la ficha. El precio final se puede corregir (entero de pesos > 0);
+    la auditoría guarda el valor anterior y el nuevo."""
     cambios = {
         k: _texto(v, k)
         for k, v in {
@@ -111,10 +113,17 @@ def editar_ficha(
         }.items()
         if v is not SIN_CAMBIO
     }
+    if precio_final is not SIN_CAMBIO:
+        if isinstance(precio_final, bool) or not isinstance(precio_final, int) or precio_final <= 0:
+            raise DatoInvalido("El precio final debe ser un entero de pesos mayor que cero")
+        cambios["precio_final"] = precio_final
     with transaccion(con):
-        obtener_ficha(con, ficha_id)
+        anterior = obtener_ficha(con, ficha_id)
         repo_fichas.actualizar_ficha(con, ficha_id, **cambios)
-        auditar(con, ahora, "editar", "ficha", ficha_id, **cambios)
+        detalle = dict(cambios)
+        if "precio_final" in cambios:
+            detalle["precio_anterior"] = anterior.precio_final
+        auditar(con, ahora, "editar", "ficha", ficha_id, **detalle)
     return obtener_ficha(con, ficha_id)
 
 

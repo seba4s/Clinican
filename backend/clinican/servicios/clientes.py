@@ -6,6 +6,7 @@ dentro de ella.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Any
 
@@ -14,6 +15,7 @@ from clinican.datos.conexion import transaccion
 from clinican.dominio.cupos import Tamano
 from clinican.dominio.entidades import Mascota, Propietario, Raza
 from clinican.dominio.errores import DatoInvalido, NoEncontrado, OperacionNoPermitida
+from clinican.dominio.telefonos import normalizar_celular
 from clinican.servicios.auditoria import auditar
 
 
@@ -61,9 +63,10 @@ def _propietario_activo(con, propietario_id: int) -> Propietario:
     return propietario
 
 
-def crear_propietario(con, nombre: str, telefono: str = "", *, ahora: datetime) -> Propietario:
+def crear_propietario(con, nombre: str, telefono: str, *, ahora: datetime) -> Propietario:
+    """Crea el propietario. El celular debe tener exactamente 10 dígitos y se guarda así."""
     nombre = _texto(nombre, "nombre")
-    telefono = _texto(telefono, "teléfono", requerido=False)
+    telefono = normalizar_celular(telefono)
     with transaccion(con):
         pid = repo_clientes.insertar_propietario(con, nombre, telefono)
         auditar(con, ahora, "crear", "propietario", pid, nombre=nombre, telefono=telefono)
@@ -75,7 +78,7 @@ def editar_propietario(
 ) -> Propietario:
     cambios = _cambios(
         nombre=nombre if nombre is SIN_CAMBIO else _texto(nombre, "nombre"),
-        telefono=telefono if telefono is SIN_CAMBIO else _texto(telefono, "teléfono", False),
+        telefono=telefono if telefono is SIN_CAMBIO else normalizar_celular(telefono),
     )
     with transaccion(con):
         obtener_propietario(con, propietario_id)
@@ -93,7 +96,16 @@ def desactivar_propietario(con, propietario_id: int, *, ahora: datetime) -> Prop
 
 
 def buscar_propietarios(con, texto: str = "", incluir_inactivos: bool = False) -> list[Propietario]:
-    return repo_clientes.buscar_propietarios(con, texto.strip(), incluir_inactivos)
+    texto = texto.strip()
+    if texto and re.fullmatch(r"[\d\s\-]+", texto):
+        texto = re.sub(r"[\s\-]", "", texto)  # buscar "300 123" igual que "300123"
+    return repo_clientes.buscar_propietarios(con, texto, incluir_inactivos)
+
+
+def buscar_por_celular(con, telefono: str) -> list[Propietario]:
+    """Propietarios activos con exactamente ese celular (10 dígitos)."""
+    celular = normalizar_celular(telefono)
+    return [p for p in repo_clientes.buscar_propietarios(con, celular) if p.telefono == celular]
 
 
 def unir_propietarios(con, origen_id: int, destino_id: int, *, ahora: datetime) -> Propietario:

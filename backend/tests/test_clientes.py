@@ -34,8 +34,38 @@ def test_crear_editar_buscar_desactivar_propietario(con):
 @pytest.mark.parametrize("nombre", ["", "   ", None])
 def test_nombre_de_propietario_obligatorio(con, nombre):
     with pytest.raises(DatoInvalido):
-        clientes.crear_propietario(con, nombre, ahora=AHORA)
+        clientes.crear_propietario(con, nombre, "3001234567", ahora=AHORA)
     assert historial(con) == []
+
+
+@pytest.mark.parametrize(
+    "entrada, guardado",
+    [("3001234567", "3001234567"), ("300 123 4567", "3001234567"), ("300-123-45-67", "3001234567")],
+)
+def test_celular_se_guarda_con_10_digitos(con, entrada, guardado):
+    p = clientes.crear_propietario(con, "Ana", entrada, ahora=AHORA)
+    assert p.telefono == guardado
+    p = clientes.editar_propietario(con, p.id, telefono="310 999 9999", ahora=AHORA)
+    assert p.telefono == "3109999999"
+
+
+@pytest.mark.parametrize(
+    "telefono", ["", "300123456", "30012345678", "+57 3001234567", "300.123.4567", "300abc4567", None]
+)
+def test_celular_invalido(con, telefono):
+    with pytest.raises(DatoInvalido, match="10 dígitos|texto"):
+        clientes.crear_propietario(con, "Ana", telefono, ahora=AHORA)
+    p = clientes.crear_propietario(con, "Ana", "3001234567", ahora=AHORA)
+    with pytest.raises(DatoInvalido):
+        clientes.editar_propietario(con, p.id, telefono=telefono, ahora=AHORA)
+    assert clientes.obtener_propietario(con, p.id).telefono == "3001234567"
+
+
+def test_buscar_por_celular(con):
+    a = clientes.crear_propietario(con, "Ana", "3001234567", ahora=AHORA)
+    clientes.crear_propietario(con, "Beto", "3001234568", ahora=AHORA)
+    assert [p.id for p in clientes.buscar_por_celular(con, "300 123 4567")] == [a.id]
+    assert len(clientes.buscar_propietarios(con, "300 123")) == 2
 
 
 def test_propietario_inexistente(con):
