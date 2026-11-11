@@ -32,7 +32,7 @@ class DialogoFicha(Dialogo):
         c = self.contenido
 
         etiqueta(c, "Servicios realizados", tema.ETIQUETA + 1, True).pack(anchor="w")
-        fila = ctk.CTkFrame(c, fg_color="transparent")
+        fila = ctk.CTkFrame(c, fg_color="transparent", width=0, height=0)
         fila.pack(fill="x", pady=(4, 12))
         marcados = set(s.strip() for s in (self.ficha.servicios_realizados.split(",") if self.ficha else [fmt.SERVICIO[self.turno.servicio]]) if s.strip())
         extras = [s for s in marcados if s not in SERVICIOS]
@@ -43,7 +43,7 @@ class DialogoFicha(Dialogo):
             ctk.CTkCheckBox(fila, text=s, variable=v, font=tema.fuente(tema.CUERPO), text_color=tema.TINTA,
                             fg_color=tema.TINTA, hover_color=tema.TINTA_SUAVE).pack(side="left", padx=(0, 14))
 
-        textos = ctk.CTkFrame(c, fg_color="transparent")
+        textos = ctk.CTkFrame(c, fg_color="transparent", width=0, height=0)
         textos.pack(fill="x")
         textos.grid_columnconfigure((0, 1), weight=1, uniform="t")
         self.corte = Texto(textos, "Detalles del corte", self.ficha.detalles_corte if self.ficha else "")
@@ -59,14 +59,14 @@ class DialogoFicha(Dialogo):
         if previa:
             texto += f". La anterior ({fmt.dia_corto(previa.fecha, ctx.hoy())}) llegó al {previa.porcentaje or 0} %."
         etiqueta(caja, texto, tema.ETIQUETA + 1, True).pack(anchor="w", padx=14, pady=(10, 4))
-        des = ctk.CTkFrame(caja, fg_color="transparent")
+        des = ctk.CTkFrame(caja, fg_color="transparent", width=0, height=0)
         des.pack(fill="x", padx=14, pady=(0, 8))
         self.porcentaje = Campo(des, "Avance %", ancho=100)
         self.porcentaje.pack(side="left")
         self.avance = Campo(des, "Qué se avanzó", ancho=480)
         self.avance.pack(side="left", padx=(14, 0))
 
-        cuenta = ctk.CTkFrame(c, fg_color="transparent")
+        cuenta = ctk.CTkFrame(c, fg_color="transparent", width=0, height=0)
         cuenta.pack(fill="x", pady=(14, 0))
         precio = self.ficha.precio_final if self.ficha else self.precio_vigente
         self.precio = Campo(cuenta, "Precio final", fmt.pesos(precio), ancho=180, validar=self._validar_precio)

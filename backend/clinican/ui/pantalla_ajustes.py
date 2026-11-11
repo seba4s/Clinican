@@ -121,7 +121,7 @@ class PantallaAjustes(Pantalla):
 
         boton(self.cuerpo, "Guardar horario", guardar, "principal").pack(anchor="w", pady=(12, 0))
 
-        fila = ctk.CTkFrame(self.cuerpo, fg_color="transparent")
+        fila = ctk.CTkFrame(self.cuerpo, fg_color="transparent", width=0, height=0)
         fila.pack(fill="x", pady=(24, 6))
         etiqueta(fila, "Bloqueos de los próximos 60 días", tema.SUBTITULO, True).pack(side="left")
         boton(fila, "Bloquear horas…", self._nuevo_bloqueo).pack(side="right")
@@ -150,13 +150,13 @@ class PantallaAjustes(Pantalla):
             cfg = configuracion.cargar(con)
         t = tarjeta(self.cuerpo)
         t.pack(fill="x")
-        fila = ctk.CTkFrame(t, fg_color="transparent")
+        fila = ctk.CTkFrame(t, fg_color="transparent", width=0, height=0)
         fila.pack(fill="x", padx=16, pady=12)
         campos = {}
         for cat in CategoriaCupo:
             campos[cat] = Campo(fila, fmt.CATEGORIA[cat], str(cfg.cupos.capacidad(cat)), ancho=110)
             campos[cat].pack(side="left", padx=(0, 16))
-        fila2 = ctk.CTkFrame(t, fg_color="transparent")
+        fila2 = ctk.CTkFrame(t, fg_color="transparent", width=0, height=0)
         fila2.pack(fill="x", padx=16, pady=(0, 12))
         abono = Campo(fila2, "Abono", fmt.pesos(cfg.abono), ancho=150)
         abono.pack(side="left", padx=(0, 16))
@@ -192,10 +192,10 @@ class PantallaAjustes(Pantalla):
         for r, cat in enumerate(CategoriaCupo, start=1):
             etiqueta(t, fmt.CATEGORIA[cat], negrita=True).grid(row=r, column=0, sticky="nw", padx=16, pady=8)
             etiqueta(t, fmt.pesos(vigentes[cat])).grid(row=r, column=1, sticky="nw", padx=16, pady=8)
-            caja = ctk.CTkFrame(t, fg_color="transparent")
+            caja = ctk.CTkFrame(t, fg_color="transparent", width=0, height=0)
             caja.grid(row=r, column=2, sticky="ew", padx=16, pady=4)
             for p in sorted(historial[cat], key=lambda p: p.vigente_desde, reverse=True)[:4]:
-                linea = ctk.CTkFrame(caja, fg_color="transparent")
+                linea = ctk.CTkFrame(caja, fg_color="transparent", width=0, height=0)
                 linea.pack(fill="x")
                 futuro = p.vigente_desde > hoy
                 etiqueta(linea, f"{fmt.pesos(p.valor)} desde {fmt.fecha_numerica(p.vigente_desde)}" + ("  (próximo)" if futuro else ""),
@@ -336,7 +336,7 @@ class PantallaAjustes(Pantalla):
         copias = list(reversed(respaldos.listar_respaldos(carpeta)))
         self._titulo("Respaldos", f"Se hace uno cada día y otro al cerrar Clinican, y se guardan los últimos "
                                   f"{cfg.respaldos_a_conservar}. Carpeta: {carpeta}")
-        fila = ctk.CTkFrame(self.cuerpo, fg_color="transparent")
+        fila = ctk.CTkFrame(self.cuerpo, fg_color="transparent", width=0, height=0)
         fila.pack(fill="x", pady=(0, 10))
         if copias:
             etiqueta(fila, f"Último: {copias[0].name}", tema.CUERPO).pack(side="left")
@@ -346,7 +346,7 @@ class PantallaAjustes(Pantalla):
         if not copias:
             etiqueta(t, "Todavía no hay respaldos.", suave=True).pack(anchor="w", padx=16, pady=12)
         for copia in copias:
-            linea = ctk.CTkFrame(t, fg_color="transparent")
+            linea = ctk.CTkFrame(t, fg_color="transparent", width=0, height=0)
             linea.pack(fill="x", padx=16, pady=2)
             etiqueta(linea, copia.name).pack(side="left")
             etiqueta(linea, f"{copia.stat().st_size // 1024} KB", tema.ETIQUETA, suave=True).pack(side="left", padx=12)

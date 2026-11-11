@@ -78,10 +78,10 @@ class App(ctk.CTk):
         self.grid_rowconfigure(0, weight=1)
         self._barra_lateral()
 
-        derecha = ctk.CTkFrame(self, fg_color="transparent")
+        derecha = ctk.CTkFrame(self, fg_color="transparent", width=0, height=0)
         derecha.grid(row=0, column=1, sticky="nsew")
         self.aviso = Aviso(derecha)
-        self.contenido = ctk.CTkFrame(derecha, fg_color="transparent")
+        self.contenido = ctk.CTkFrame(derecha, fg_color="transparent", width=0, height=0)
         self.contenido.pack(fill="both", expand=True)
         self.aviso.colocar(self.contenido)
 
@@ -115,7 +115,7 @@ class App(ctk.CTk):
         barra = ctk.CTkFrame(self, fg_color=tema.SUPERFICIE, corner_radius=0, width=220)
         barra.grid(row=0, column=0, sticky="ns")
         barra.grid_propagate(False)
-        marca = ctk.CTkFrame(barra, fg_color="transparent")
+        marca = ctk.CTkFrame(barra, fg_color="transparent", width=0, height=0)
         marca.pack(fill="x", padx=20, pady=(20, 18))
         try:
             imagen = ctk.CTkImage(Image.open(LOGO), size=(36, 36))

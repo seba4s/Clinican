@@ -121,17 +121,19 @@ class Dialogo(ctk.CTkToplevel):
         self.resultado = None
         self.bind("<Escape>", lambda _e: self.cerrar())
         self.protocol("WM_DELETE_WINDOW", self.cerrar)
+        # Los botones se empacan primero, abajo: si la pantalla es baja, se recorta el
+        # contenido y los botones siguen a la vista.
+        self.botones = ctk.CTkFrame(self, fg_color="transparent", width=0, height=0)
+        self.botones.pack(side="bottom", fill="x", padx=28, pady=(0, 24))
         self.cuerpo = ctk.CTkFrame(self, fg_color="transparent", width=ancho)
         self.cuerpo.pack(fill="both", expand=True, padx=28, pady=(24, 12))
         etiqueta(self.cuerpo, titulo, 24, True).pack(anchor="w")
         if subtitulo:
             etiqueta(self.cuerpo, subtitulo, suave=True, wraplength=ancho).pack(anchor="w", pady=(2, 0))
-        self.contenido = ctk.CTkFrame(self.cuerpo, fg_color="transparent")
+        self.contenido = ctk.CTkFrame(self.cuerpo, fg_color="transparent", width=0, height=0)
         self.contenido.pack(fill="both", expand=True, pady=(16, 0))
         self.error_general = etiqueta(self.cuerpo, "", color=tema.PELIGRO, wraplength=ancho)
         self.error_general.pack(anchor="w", pady=(8, 0))
-        self.botones = ctk.CTkFrame(self, fg_color="transparent")
-        self.botones.pack(fill="x", padx=28, pady=(0, 24))
 
     def mostrar(self):
         """Centra el diálogo sobre la ventana, lo hace modal y espera a que se cierre."""
@@ -139,7 +141,13 @@ class Dialogo(ctk.CTkToplevel):
         raiz = self.master.winfo_toplevel()
         x = raiz.winfo_rootx() + max(0, (raiz.winfo_width() - self.winfo_reqwidth()) // 2)
         y = raiz.winfo_rooty() + max(0, (raiz.winfo_height() - self.winfo_reqheight()) // 3)
-        self.geometry(f"+{x}+{y}")
+        alto_max = self.winfo_screenheight() - 90  # deja ver la barra de tareas
+        y = max(10, min(y, self.winfo_screenheight() - self.winfo_reqheight() - 60))
+        if self.winfo_reqheight() > alto_max:
+            escala = self._get_window_scaling()
+            self.geometry(f"{round(self.winfo_reqwidth() / escala)}x{round(alto_max / escala)}+{x}+10")
+        else:
+            self.geometry(f"+{x}+{y}")
         self.deiconify()
         self.lift()
         self.after(50, self._enfocar)

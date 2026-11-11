@@ -112,9 +112,9 @@ class PantallaClientes(Pantalla):
             inasist = agenda.inasistencias_de_propietario(con, p.id)
         historial.sort(key=lambda x: x[0].inicio, reverse=True)
 
-        cab = ctk.CTkFrame(d, fg_color="transparent")
+        cab = ctk.CTkFrame(d, fg_color="transparent", width=0, height=0)
         cab.pack(fill="x")
-        textos = ctk.CTkFrame(cab, fg_color="transparent")
+        textos = ctk.CTkFrame(cab, fg_color="transparent", width=0, height=0)
         textos.pack(side="left", fill="x", expand=True)
         etiqueta(textos, p.nombre, tema.TITULO, True).pack(anchor="w")
         linea = f"{fmt.cedula(p.cedula)} · {fmt.celular(p.telefono)}" + (f" · {p.direccion}" if p.direccion else "")
@@ -125,7 +125,7 @@ class PantallaClientes(Pantalla):
         boton(cab, "Unir con otro…", lambda: self.unir(p)).pack(side="right", padx=tema.SEP)
         boton(cab, "Editar", lambda: self.editar(p)).pack(side="right")
 
-        metricas = ctk.CTkFrame(d, fg_color="transparent")
+        metricas = ctk.CTkFrame(d, fg_color="transparent", width=0, height=0)
         metricas.pack(fill="x", pady=(16, 0))
         metricas.grid_columnconfigure((0, 1, 2), weight=1, uniform="m")
         ultima = next((t for t, _f, _m in historial if t.estado in (E.ATENDIDO, E.ENTREGADO)), None)
@@ -143,11 +143,11 @@ class PantallaClientes(Pantalla):
             etiqueta(t, valor, tema.SUBTITULO, True).pack(anchor="w", padx=16)
             etiqueta(t, nota, tema.ETIQUETA, suave=True).pack(anchor="w", padx=16, pady=(0, 12))
 
-        fila = ctk.CTkFrame(d, fg_color="transparent")
+        fila = ctk.CTkFrame(d, fg_color="transparent", width=0, height=0)
         fila.pack(fill="x", pady=(20, 6))
         etiqueta(fila, "Mascotas", tema.SUBTITULO, True).pack(side="left")
         boton(fila, "+ Mascota", lambda: self.mascota(p.id), "enlace", ancho=110).pack(side="right")
-        rejilla = ctk.CTkFrame(d, fg_color="transparent")
+        rejilla = ctk.CTkFrame(d, fg_color="transparent", width=0, height=0)
         rejilla.pack(fill="x")
         rejilla.grid_columnconfigure((0, 1), weight=1, uniform="r")
         if not mascotas:
@@ -157,7 +157,7 @@ class PantallaClientes(Pantalla):
             cat = categoria_de_cupo(raza.nombre if raza else None, m.tamano, m.pelaje, Servicio.CORTE_MAQUINA, m.complicado)
             t = tarjeta(rejilla)
             t.grid(row=i // 2, column=i % 2, sticky="nsew", padx=(0 if i % 2 == 0 else 6, 6 if i % 2 == 0 else 0), pady=6)
-            arriba = ctk.CTkFrame(t, fg_color="transparent")
+            arriba = ctk.CTkFrame(t, fg_color="transparent", width=0, height=0)
             arriba.pack(fill="x", padx=16, pady=(12, 0))
             etiqueta(arriba, m.nombre, 17, True).pack(side="left")
             chip(arriba, f"CUPO {fmt.CATEGORIA[cat].upper()}", tema.SUPERFICIE_SUAVE, tema.TINTA).pack(side="left", padx=10)
@@ -270,7 +270,7 @@ class DialogoCliente(Dialogo):
         c = self.contenido
         self.nombre = Campo(c, "Nombre", p.nombre if p else ("" if digitos else texto), ancho=460)
         self.nombre.pack(anchor="w")
-        fila = ctk.CTkFrame(c, fg_color="transparent")
+        fila = ctk.CTkFrame(c, fg_color="transparent", width=0, height=0)
         fila.pack(anchor="w")
         self.cedula = Campo(fila, "Cédula", (p.cedula or "") if p else (digitos if len(digitos) != 10 else ""),
                             ancho=220, validar=_validar_cedula)
@@ -318,7 +318,7 @@ class DialogoMascota(Dialogo):
         c = self.contenido
         self.nombre = Campo(c, "Nombre", m.nombre if m else "", ancho=500)
         self.nombre.pack(anchor="w")
-        fila = ctk.CTkFrame(c, fg_color="transparent")
+        fila = ctk.CTkFrame(c, fg_color="transparent", width=0, height=0)
         fila.pack(anchor="w", fill="x")
         etiqueta(fila, "Raza", tema.ETIQUETA + 1, True).grid(row=0, column=0, sticky="w")
         etiqueta(fila, "Tamaño", tema.ETIQUETA + 1, True).grid(row=0, column=1, sticky="w", padx=(20, 0))
@@ -403,7 +403,7 @@ class DialogoUnir(Dialogo):
         self.campo = Campo(self.contenido, "Cliente duplicado", fmt.celular(destino.telefono), ancho=500)
         self.campo.pack(anchor="w")
         self.campo.entrada.bind("<KeyRelease>", lambda _e: self._buscar())
-        self.res = ctk.CTkFrame(self.contenido, fg_color="transparent")
+        self.res = ctk.CTkFrame(self.contenido, fg_color="transparent", width=0, height=0)
         self.res.pack(fill="x")
         self.boton_principal("Unir", self._unir)
         self.boton_cancelar()
