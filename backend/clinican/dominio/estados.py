@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from enum import Enum
 
+from clinican.dominio.errores import ErrorNegocio
+
 
 class EstadoTurno(Enum):
     PENDIENTE_ABONO = "pendiente_abono"
@@ -22,7 +24,7 @@ class MotivoLiberacion(Enum):
     OTRO = "otro"
 
 
-class TransicionInvalida(ValueError):
+class TransicionInvalida(ErrorNegocio):
     """Cambio de estado no permitido."""
 
 

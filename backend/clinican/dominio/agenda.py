@@ -89,6 +89,7 @@ class Bloqueo:
     desde: time | None = None
     hasta: time | None = None
     motivo: str = ""
+    id: int | None = field(default=None, compare=False)
 
     def __post_init__(self) -> None:
         if (self.desde is None) != (self.hasta is None):
