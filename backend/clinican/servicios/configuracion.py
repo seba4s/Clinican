@@ -106,7 +106,7 @@ CLAVES: dict[str, Clave] = {
         Clave("horario", HorarioSemanal(), _validar_horario, _horario_a_texto, _horario_de_texto),
         Clave("canal_notificaciones", "archivo", _validar_texto, str, str),
         Clave("carpeta_respaldos", "respaldos", _validar_texto, str, str),
-        # PROVISIONAL: 24 h por defecto, pendiente de confirmar por Sebas.
+        # 24 h antes por defecto (confirmado), configurable.
         Clave("horas_antes_recordatorio", HORAS_ANTES_RECORDATORIO, _validar_entero_no_negativo, str, int),
     )
 }

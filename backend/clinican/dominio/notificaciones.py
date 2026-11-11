@@ -12,7 +12,7 @@ ESPERAS_REINTENTO = (timedelta(minutes=1), timedelta(minutes=5), timedelta(minut
 # Los registros cerrados (enviados, descartados o fallidos) se purgan después de esto.
 DIAS_RETENCION = 90
 
-# PROVISIONAL: horas de anticipación del recordatorio (aún sin confirmar por Sebas).
+# Horas de anticipación del recordatorio por defecto (confirmado: 24 h; configurable).
 HORAS_ANTES_RECORDATORIO = 24
 
 
