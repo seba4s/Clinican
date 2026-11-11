@@ -38,7 +38,6 @@ from clinican.dominio.errores import (
     SinCupo,
 )
 from clinican.dominio.estados import EstadoTurno, MotivoLiberacion, transicionar
-from clinican.dominio.precios import formatear_pesos
 from clinican.dominio.turnos import contar_ocupacion, esta_activo, validar_franja
 from clinican.servicios import configuracion
 from clinican.servicios.auditoria import auditar
@@ -134,16 +133,22 @@ def _verificar_cupo(
     return franja
 
 
+def _devolver_lo_puesto(con, turno: Turno) -> dict:
+    """Pendiente que se libera o cancela: el saldo aplicado vuelve al propietario y lo
+    abonado parcialmente queda como saldo a favor. Devuelve los campos a actualizar."""
+    total = turno.saldo_aplicado + turno.abono_pagado
+    if total:
+        repo_clientes.sumar_saldo(con, turno.propietario_id, total)
+    return {"saldo_aplicado": 0, "saldo_generado": turno.abono_pagado}
+
+
 def _liberar(con, turno: Turno, motivo: MotivoLiberacion, ahora: datetime) -> None:
-    """Libera un pendiente de abono y devuelve al propietario el saldo que se le había aplicado."""
+    """Libera un pendiente de abono; lo que el cliente ya había puesto vuelve a su saldo."""
     transicionar(turno.estado, E.LIBERADO, motivo)
-    campos = {"estado": E.LIBERADO, "motivo_liberacion": motivo}
-    if turno.saldo_aplicado:
-        repo_clientes.sumar_saldo(con, turno.propietario_id, turno.saldo_aplicado)
-        campos["saldo_aplicado"] = 0
+    campos = {"estado": E.LIBERADO, "motivo_liberacion": motivo, **_devolver_lo_puesto(con, turno)}
     repo_agenda.actualizar_turno(con, turno.id, **campos)
-    auditar(con, ahora, "liberar", "turno", turno.id,
-            motivo=motivo.value, saldo_devuelto=turno.saldo_aplicado)
+    auditar(con, ahora, "liberar", "turno", turno.id, motivo=motivo.value,
+            saldo_devuelto=turno.saldo_aplicado, abono_a_favor=turno.abono_pagado)
 
 
 def _pendiente_vencido(turno: Turno, cfg: ConfigClinica, ahora: datetime) -> bool:
@@ -206,16 +211,21 @@ def crear_turno(con, mascota_id: int, inicio: datetime, servicio: Servicio, *, a
 
 
 def registrar_abono(con, turno_id: int, monto: int, *, ahora: datetime) -> Turno:
-    """Registra el abono de un turno pendiente y lo confirma.
+    """Registra un abono (parcial, exacto o de más) de un turno pendiente.
 
-    Si el abono ya venció, el turno se libera (ABONO_VENCIDO) en la misma
-    transacción y el abono se rechaza.
+    Los parciales se acumulan y el turno sigue PENDIENTE_ABONO hasta cubrir el
+    abono requerido; entonces pasa a CONFIRMADO. Lo pagado de más queda como
+    saldo a favor del propietario. Si el abono ya venció (30 min desde la
+    creación), el turno se libera (ABONO_VENCIDO) en la misma transacción, lo
+    que ya había pagado pasa a saldo a favor y este abono se rechaza.
     """
     _con_zona(ahora, "ahora")
     try:
         validar_pesos(monto, "monto")
     except (TypeError, ValueError) as error:
         raise DatoInvalido(str(error)) from None
+    if monto == 0:
+        raise DatoInvalido("El abono debe ser mayor que cero")
     vencio_a_las = None
     with transaccion(con):
         cfg = configuracion.cargar(con)
@@ -228,17 +238,19 @@ def registrar_abono(con, turno_id: int, monto: int, *, ahora: datetime) -> Turno
             _liberar(con, turno, MotivoLiberacion.ABONO_VENCIDO, ahora)
             vencio_a_las = vence_en(turno.creado_en, cfg.minutos_expiracion)
         else:
-            if monto != turno.faltante:
-                raise AbonoRechazado(
-                    f"El abono debe ser exactamente {formatear_pesos(turno.faltante)} "
-                    f"(se recibió {formatear_pesos(monto)})"
-                )
-            transicionar(turno.estado, E.CONFIRMADO)
-            repo_agenda.actualizar_turno(
-                con, turno.id, estado=E.CONFIRMADO,
-                abono_pagado=turno.abono_pagado + monto, abonado_en=ahora,
-            )
-            auditar(con, ahora, "abonar", "turno", turno.id, monto=monto)
+            aplicado = min(monto, turno.faltante)
+            excedente = monto - aplicado
+            campos = {"abono_pagado": turno.abono_pagado + aplicado, "abonado_en": ahora}
+            completo = aplicado == turno.faltante
+            if completo:
+                transicionar(turno.estado, E.CONFIRMADO)
+                campos["estado"] = E.CONFIRMADO
+            repo_agenda.actualizar_turno(con, turno.id, **campos)
+            if excedente:
+                repo_clientes.sumar_saldo(con, turno.propietario_id, excedente)
+            auditar(con, ahora, "abonar", "turno", turno.id, monto=monto, aplicado=aplicado,
+                    excedente_a_favor=excedente, faltante=turno.faltante - aplicado,
+                    confirmado=completo)
     if vencio_a_las is not None:
         raise AbonoRechazado(
             f"El abono venció a las {_hora(vencio_a_las)}; el turno se liberó. "
@@ -295,23 +307,23 @@ def mover_turno(con, turno_id: int, nuevo_inicio: datetime, *, ahora: datetime) 
 def cancelar_turno(con, turno_id: int, *, ahora: datetime) -> Turno:
     """Cancela un turno pendiente o confirmado.
 
-    Si estaba pendiente, el saldo a favor que se le había aplicado vuelve al
-    propietario. PROVISIONAL: qué pasa con el abono de un turno CONFIRMADO que
-    se cancela está pendiente de definir; hoy no se mueve dinero.
+    Todo lo que el cliente había puesto en el turno (abono pagado y saldo
+    aplicado) queda como saldo a favor del propietario, sin importar la
+    anticipación con que cancele.
     """
     _con_zona(ahora, "ahora")
     with transaccion(con):
         turno = obtener_turno(con, turno_id)
         transicionar(turno.estado, E.CANCELADO)
-        campos = {"estado": E.CANCELADO}
-        devuelto = 0
-        if turno.estado is E.PENDIENTE_ABONO and turno.saldo_aplicado:
-            devuelto = turno.saldo_aplicado
-            repo_clientes.sumar_saldo(con, turno.propietario_id, devuelto)
-            campos["saldo_aplicado"] = 0
-        repo_agenda.actualizar_turno(con, turno.id, **campos)
+        if turno.estado is E.PENDIENTE_ABONO:
+            campos = _devolver_lo_puesto(con, turno)
+        else:  # CONFIRMADO
+            if turno.abono_total:
+                repo_clientes.sumar_saldo(con, turno.propietario_id, turno.abono_total)
+            campos = {"saldo_generado": turno.abono_total}
+        repo_agenda.actualizar_turno(con, turno.id, estado=E.CANCELADO, **campos)
         auditar(con, ahora, "cancelar", "turno", turno.id,
-                estado_anterior=turno.estado.value, saldo_devuelto=devuelto)
+                estado_anterior=turno.estado.value, a_favor=turno.abono_total)
     return obtener_turno(con, turno_id)
 
 

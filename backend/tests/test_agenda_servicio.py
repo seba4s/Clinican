@@ -154,15 +154,41 @@ def test_registrar_abono_confirma(con, esc):
     assert historial(con, "turno", t.id)[-1].accion == "abonar"
 
 
-@pytest.mark.parametrize("monto", [10000, 25000])
-def test_abono_con_monto_distinto(con, esc, monto):
-    t = esc.turno()
-    with pytest.raises(AbonoRechazado, match=r"\$20\.000"):
-        agenda.registrar_abono(con, t.id, monto, ahora=AHORA)
-    assert agenda.obtener_turno(con, t.id).estado is E.PENDIENTE_ABONO
+def test_abonos_parciales_se_acumulan(con, esc):
+    p = esc.propietario()
+    t = esc.turno(propietario=p)
+    t = agenda.registrar_abono(con, t.id, 5000, ahora=AHORA + timedelta(minutes=5))
+    assert (t.estado, t.abono_pagado, t.faltante) == (E.PENDIENTE_ABONO, 5000, 15000)
+    t = agenda.registrar_abono(con, t.id, 10000, ahora=AHORA + timedelta(minutes=10))
+    assert (t.estado, t.abono_pagado, t.faltante) == (E.PENDIENTE_ABONO, 15000, 5000)
+    t = agenda.registrar_abono(con, t.id, 5000, ahora=AHORA + timedelta(minutes=20))
+    assert (t.estado, t.abono_pagado, t.faltante) == (E.CONFIRMADO, 20000, 0)
+    assert _saldo(con, p.id) == 0
 
 
-@pytest.mark.parametrize("monto", [20000.0, -1, "20000"])
+def test_abono_de_mas_queda_a_favor(con, esc):
+    p = esc.propietario()
+    t = esc.turno(propietario=p)
+    agenda.registrar_abono(con, t.id, 5000, ahora=AHORA)
+    t = agenda.registrar_abono(con, t.id, 30000, ahora=AHORA)
+    assert (t.estado, t.abono_pagado) == (E.CONFIRMADO, 20000)
+    assert _saldo(con, p.id) == 15000
+    detalle = historial(con, "turno", t.id)[-1].detalle
+    assert (detalle["aplicado"], detalle["excedente_a_favor"]) == (15000, 15000)
+
+
+def test_abono_parcial_vencido_pasa_a_saldo(con, esc):
+    p = esc.propietario(saldo=3000)
+    t = esc.turno(propietario=p)  # usa los 3000
+    agenda.registrar_abono(con, t.id, 7000, ahora=AHORA + timedelta(minutes=10))
+    # El vencimiento sigue contando desde la creación, aunque haya abonos parciales
+    assert agenda.barrer_vencidos(con, ahora=AHORA + MIN30) == [t.id]
+    t = agenda.obtener_turno(con, t.id)
+    assert (t.estado, t.saldo_aplicado, t.abono_pagado, t.saldo_generado) == (E.LIBERADO, 0, 7000, 7000)
+    assert _saldo(con, p.id) == 10000
+
+
+@pytest.mark.parametrize("monto", [20000.0, -1, "20000", 0])
 def test_abono_solo_pesos_enteros(con, esc, monto):
     t = esc.turno()
     with pytest.raises(DatoInvalido):
@@ -272,6 +298,24 @@ def test_cancelar_pendiente_devuelve_saldo(con, esc):
     assert _saldo(con, p.id) == 5000
 
 
+def test_cancelar_pendiente_con_abono_parcial(con, esc):
+    p = esc.propietario(saldo=2000)
+    t = esc.turno(propietario=p)
+    agenda.registrar_abono(con, t.id, 8000, ahora=AHORA)
+    agenda.cancelar_turno(con, t.id, ahora=AHORA)
+    assert _saldo(con, p.id) == 10000
+
+
+@pytest.mark.parametrize("horas_antes", [1, 48])
+def test_cancelar_confirmado_deja_todo_a_favor(con, esc, horas_antes):
+    p = esc.propietario(saldo=5000)
+    t = esc.turno(propietario=p, inicio=a_las(15))
+    agenda.registrar_abono(con, t.id, 15000, ahora=AHORA)
+    t = agenda.cancelar_turno(con, t.id, ahora=a_las(15) - timedelta(hours=horas_antes))
+    assert (t.estado, t.saldo_generado) == (E.CANCELADO, 20000)
+    assert _saldo(con, p.id) == 20000
+
+
 def test_cancelar_estado_final(con, esc):
     t = esc.turno()
     agenda.cancelar_turno(con, t.id, ahora=AHORA)
@@ -313,6 +357,20 @@ def test_inasistencia_cuenta_saldo_aplicado_como_abono(con, esc):
     aviso = a_las(15) - timedelta(hours=13)
     agenda.marcar_inasistencia(con, t.id, aviso_en=aviso, ahora=a_las(15, 30))
     assert _saldo(con, p.id) == 20000
+
+
+def test_se_permite_turno_en_hora_pasada(con, esc):
+    """Confirmado por Sebas: se puede registrar un turno en una franja que ya pasó."""
+    t = esc.turno(inicio=a_las(9), ahora=a_las(15))
+    assert t.estado is E.PENDIENTE_ABONO and t.inicio < t.creado_en
+
+
+def test_se_permite_inasistencia_antes_de_la_hora(con, esc):
+    """Confirmado por Sebas: se puede marcar la inasistencia antes de la hora del turno."""
+    t = esc.turno(inicio=a_las(16))
+    agenda.registrar_abono(con, t.id, 20000, ahora=AHORA)
+    t = agenda.marcar_inasistencia(con, t.id, ahora=a_las(9))
+    assert t.estado is E.INASISTENCIA
 
 
 def test_inasistencia_validaciones(con, esc):
