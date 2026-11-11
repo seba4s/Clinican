@@ -77,7 +77,7 @@ Windows.
 | Sección | Qué hay |
 |---|---|
 | Agenda | Tablero de cupos del día (un puesto «Libre» agenda ahí mismo), pendientes de abono con su cuenta regresiva, panel del turno con las acciones de su estado, nuevo turno, mover, abono, inasistencia, ficha de servicio, bloquear horas |
-| Clientes | Búsqueda por cédula, nombre, celular o mascota; datos, saldo a favor, mascotas, historial con fichas, unir duplicados, importar Excel |
+| Clientes | Búsqueda por cédula, nombre, celular o mascota; datos, saldo a favor, autorización de datos (Ley 1581), mascotas, historial con fichas, unir duplicados, importar Excel |
 | Recordatorios | Por enviar, enviados, fallidos (reintentar o corregir el celular) y descartados |
 | Ajustes | Horario y bloqueos, cupos y abono, precios, razas, canal de recordatorios, respaldos y registro de cambios |
 
@@ -188,6 +188,11 @@ Una fila mala no detiene la importación. Para cada fila:
   confirmado y no haya empezado.
 - **Propietario**: la cédula es obligatoria y única, y el celular tiene
   exactamente 10 dígitos. Dos propietarios duplicados se pueden unir.
+- **Autorización de datos (Ley 1581 de 2012)**: en Editar cliente se marca si el dueño
+  autorizó el tratamiento de sus datos, con la fecha (no puede ser futura) y, si se quiere,
+  cómo lo hizo (formato firmado, WhatsApp…). Retirarla es otro registro: el historial no se
+  borra y cada cambio queda en la auditoría. Al unir duplicados, el historial pasa al cliente
+  que queda. No bloquea turnos ni recordatorios; solo deja la evidencia.
 - **Auditoría**: cada escritura deja registrado qué se hizo y cuándo.
 - **Respaldos**: diario y al cerrar, verificados con `PRAGMA quick_check`. Se
   conservan los últimos 30. Antes de restaurar se respalda la base actual.

@@ -10,7 +10,7 @@ import re
 from datetime import date, datetime
 from typing import Any
 
-from clinican.datos import repo_agenda, repo_clientes
+from clinican.datos import repo_agenda, repo_autorizaciones, repo_clientes
 from clinican.datos.conexion import transaccion
 from clinican.dominio.cupos import Tamano
 from clinican.dominio.entidades import Mascota, Propietario, Raza
@@ -167,7 +167,8 @@ def buscar_por_celular(con, telefono: str) -> list[Propietario]:
 def unir_propietarios(con, origen_id: int, destino_id: int, *, ahora: datetime) -> Propietario:
     """Fusiona el propietario duplicado ``origen`` en ``destino``.
 
-    Mueve mascotas y turnos (con su historial de inasistencias), suma el saldo a
+    Mueve mascotas, turnos (con su historial de inasistencias) y el historial de
+    autorizaciones de datos (vale el registro más reciente), suma el saldo a
     favor, marca el origen como inactivo y fusionado en el destino.
     """
     if origen_id == destino_id:
@@ -177,6 +178,7 @@ def unir_propietarios(con, origen_id: int, destino_id: int, *, ahora: datetime) 
         destino = _propietario_activo(con, destino_id)
         mascotas = repo_clientes.mover_mascotas(con, origen.id, destino.id)
         turnos = repo_agenda.mover_turnos_de_propietario(con, origen.id, destino.id)
+        autorizaciones = repo_autorizaciones.mover(con, origen.id, destino.id)
         if origen.saldo_a_favor:
             repo_clientes.sumar_saldo(con, destino.id, origen.saldo_a_favor)
         repo_clientes.actualizar_propietario(
@@ -185,7 +187,8 @@ def unir_propietarios(con, origen_id: int, destino_id: int, *, ahora: datetime) 
         auditar(
             con, ahora, "unir", "propietario", destino.id,
             origen_id=origen.id, origen_nombre=origen.nombre, mascotas_movidas=mascotas,
-            turnos_movidos=turnos, saldo_trasladado=origen.saldo_a_favor,
+            turnos_movidos=turnos, autorizaciones_movidas=autorizaciones,
+            saldo_trasladado=origen.saldo_a_favor,
         )
     return obtener_propietario(con, destino_id)
 

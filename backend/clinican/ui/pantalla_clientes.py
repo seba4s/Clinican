@@ -13,7 +13,7 @@ from clinican.dominio.cupos import Servicio, Tamano, categoria_de_cupo
 from clinican.dominio.documentos import fecha_nacimiento_aproximada
 from clinican.dominio.errores import DatoInvalido
 from clinican.dominio.estados import EstadoTurno
-from clinican.servicios import agenda, clientes, consultas
+from clinican.servicios import agenda, autorizaciones, clientes, consultas
 from clinican.ui import formato as fmt
 from clinican.ui import tema
 from clinican.ui.app import Pantalla
@@ -110,6 +110,7 @@ class PantallaClientes(Pantalla):
             for m in mascotas:
                 historial += [(t, f, m) for t, f in consultas.historial_de_mascota(con, m.id)]
             inasist = agenda.inasistencias_de_propietario(con, p.id)
+            autorizacion = autorizaciones.autorizacion_vigente(con, p.id)
         historial.sort(key=lambda x: x[0].inicio, reverse=True)
 
         cab = ctk.CTkFrame(d, fg_color="transparent")
@@ -127,7 +128,7 @@ class PantallaClientes(Pantalla):
 
         metricas = ctk.CTkFrame(d, fg_color="transparent")
         metricas.pack(fill="x", pady=(16, 0))
-        metricas.grid_columnconfigure((0, 1, 2), weight=1, uniform="m")
+        metricas.grid_columnconfigure((0, 1, 2, 3), weight=1, uniform="m")
         ultima = next((t for t, _f, _m in historial if t.estado in (E.ATENDIDO, E.ENTREGADO)), None)
         sin_aviso = [t for t in inasist if t.saldo_generado == 0]
         datos = [
@@ -135,10 +136,12 @@ class PantallaClientes(Pantalla):
             ("Última visita", fmt.dia_corto(fmt.local(ultima.inicio).date(), hoy) if ultima else "—",
              next((m.nombre for t, _f, m in historial if t is ultima), "") if ultima else "Aún no ha venido"),
             ("Inasistencias", str(len(inasist)), f"{len(sin_aviso)} sin aviso (abono perdido)" if sin_aviso else "Ninguna sin aviso"),
+            ("Datos personales", "Autorizó" if autorizacion else "Sin autorización",
+             f"Desde el {fmt.fecha_numerica(autorizacion.fecha)}" if autorizacion else "Ley 1581: márcala en Editar"),
         ]
         for i, (titulo, valor, nota) in enumerate(datos):
             t = tarjeta(metricas)
-            t.grid(row=0, column=i, sticky="nsew", padx=(0 if i == 0 else 6, 0 if i == 2 else 6))
+            t.grid(row=0, column=i, sticky="nsew", padx=(0 if i == 0 else 6, 0 if i == len(datos) - 1 else 6))
             etiqueta(t, titulo, tema.ETIQUETA, suave=True).pack(anchor="w", padx=16, pady=(12, 0))
             etiqueta(t, valor, tema.SUBTITULO, True).pack(anchor="w", padx=16)
             etiqueta(t, nota, tema.ETIQUETA, suave=True).pack(anchor="w", padx=16, pady=(0, 12))
@@ -280,6 +283,23 @@ class DialogoCliente(Dialogo):
         self.celular.pack(side="left", padx=(20, 0))
         self.direccion = Campo(c, "Dirección (opcional)", p.direccion if p else "", ancho=460)
         self.direccion.pack(anchor="w")
+        self.autorizacion = None
+        if p:
+            with ctx.con() as con:
+                self.autorizacion = autorizaciones.autorizacion_vigente(con, p.id)
+        self.autorizo = ctk.BooleanVar(value=self.autorizacion is not None)
+        ctk.CTkCheckBox(c, text="Autorizó el tratamiento de sus datos (Ley 1581 de 2012)",
+                        variable=self.autorizo, font=tema.fuente(tema.CUERPO), text_color=tema.TINTA,
+                        fg_color=tema.TINTA).pack(anchor="w", pady=(4, 6))
+        fila_aut = ctk.CTkFrame(c, fg_color="transparent")
+        fila_aut.pack(anchor="w")
+        fecha = self.autorizacion.fecha if self.autorizacion else ctx.hoy()
+        self.fecha_autorizacion = Campo(fila_aut, "Fecha de la autorización o el retiro", fmt.fecha_numerica(fecha),
+                                        ancho=220, placeholder="dd/mm/aaaa")
+        self.fecha_autorizacion.pack(side="left")
+        self.medio_autorizacion = Campo(fila_aut, "Cómo (opcional)", self.autorizacion.medio if self.autorizacion else "",
+                                        ancho=220, placeholder="Formato firmado, WhatsApp…")
+        self.medio_autorizacion.pack(side="left", padx=(20, 0))
         self.boton_principal("Guardar", self._guardar)
         self.boton_cancelar()
         self.after(80, self.nombre.entrada.focus_set)
@@ -293,15 +313,39 @@ class DialogoCliente(Dialogo):
             return
         celular = "".join(ch for ch in self.celular.valor() if ch.isdigit())
         ahora = self.ctx.ahora()
+        autorizo = self.autorizo.get()
+        cambia_autorizacion = autorizo != (self.autorizacion is not None) or (
+            autorizo and self.autorizacion is not None and (
+                self.fecha_autorizacion.valor() != fmt.fecha_numerica(self.autorizacion.fecha)
+                or self.medio_autorizacion.valor() != self.autorizacion.medio))
+        fecha_autorizacion = None
+        if cambia_autorizacion:
+            try:
+                fecha_autorizacion = fmt.leer_fecha(self.fecha_autorizacion.valor())
+            except DatoInvalido as e:
+                self.fecha_autorizacion.error(str(e))
+                return
+            if fecha_autorizacion > self.ctx.hoy():
+                self.fecha_autorizacion.error("La fecha no puede ser posterior a hoy.")
+                return
+            self.fecha_autorizacion.error(None)
 
         def guardar():
             with self.ctx.con() as con:
                 if self.p:
-                    return clientes.editar_propietario(con, self.p.id, ahora=ahora, nombre=self.nombre.valor(),
-                                                       telefono=celular, cedula=self.cedula.valor(),
-                                                       direccion=self.direccion.valor())
-                return clientes.crear_propietario(con, self.nombre.valor(), celular, cedula=self.cedula.valor(),
-                                                  ahora=ahora, direccion=self.direccion.valor())
+                    propietario = clientes.editar_propietario(con, self.p.id, ahora=ahora, nombre=self.nombre.valor(),
+                                                              telefono=celular, cedula=self.cedula.valor(),
+                                                              direccion=self.direccion.valor())
+                else:
+                    propietario = clientes.crear_propietario(con, self.nombre.valor(), celular,
+                                                             cedula=self.cedula.valor(), ahora=ahora,
+                                                             direccion=self.direccion.valor())
+                if cambia_autorizacion:
+                    registrar = (autorizaciones.registrar_autorizacion if autorizo
+                                 else autorizaciones.revocar_autorizacion)
+                    registrar(con, propietario.id, fecha_autorizacion, ahora=ahora,
+                              medio=self.medio_autorizacion.valor())
+                return propietario
 
         if self.intentar(guardar):
             self.cerrar()

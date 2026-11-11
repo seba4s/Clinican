@@ -7,7 +7,7 @@ from clinican.datos.migraciones import MIGRACIONES, migrar, version_actual
 
 TABLAS = {
     "configuracion", "propietarios", "razas", "mascotas", "turnos", "bloqueos", "auditoria",
-    "precios", "fichas", "sesiones_desenredado", "notificaciones_salida",
+    "precios", "fichas", "sesiones_desenredado", "notificaciones_salida", "autorizaciones_datos",
 }
 
 
@@ -16,7 +16,7 @@ def _nombres(con, tipo):
 
 
 def test_tablas_e_indices(con):
-    assert version_actual(con) == len(MIGRACIONES) == 11
+    assert version_actual(con) == len(MIGRACIONES) == 12
     assert TABLAS <= _nombres(con, "table")
     assert {"usuarios", "roles", "permisos"}.isdisjoint(_nombres(con, "table"))
     assert {
