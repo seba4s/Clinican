@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import json
-from datetime import date, time, timedelta
+from datetime import timedelta
 
 import customtkinter as ctk
 
@@ -14,7 +13,7 @@ from clinican.servicios import agenda, auditoria, clientes, configuracion, preci
 from clinican.ui import formato as fmt
 from clinican.ui import tema
 from clinican.ui.app import Pantalla
-from clinican.ui.componentes import Campo, Dialogo, Lista, boton, confirmar, etiqueta, tarjeta
+from clinican.ui.componentes import Campo, CampoHora, Dialogo, Lista, boton, confirmar, etiqueta, tarjeta
 
 SECCIONES = ("Horario y bloqueos", "Cupos y abono", "Precios", "Razas", "Recordatorios y WhatsApp",
              "Respaldos", "Registro de cambios")
@@ -94,29 +93,50 @@ class PantallaAjustes(Pantalla):
         t = tarjeta(self.cuerpo)
         t.pack(fill="x")
         filas = {}
-        for c, titulo in enumerate(("Día", "Abierto", "Primera franja", "Última franja")):
-            etiqueta(t, titulo, tema.ETIQUETA, True, suave=True).grid(row=0, column=c, sticky="w", padx=16, pady=(12, 4))
+        for c, titulo in enumerate(("Día", "Abierto", "Primera franja", "", "Última franja")):
+            etiqueta(t, titulo, tema.ETIQUETA, True, suave=True).grid(row=0, column=c, sticky="w", padx=(16, 0),
+                                                                      pady=(14, 6))
         for d in range(7):
             jornada = cfg.horario.dias.get(d)
             abierto = ctk.BooleanVar(value=jornada is not None)
-            desde = ctk.CTkOptionMenu(t, values=HORAS, width=100, font=tema.fuente(tema.CUERPO))
-            hasta = ctk.CTkOptionMenu(t, values=HORAS, width=100, font=tema.fuente(tema.CUERPO))
-            desde.set(jornada.apertura.strftime("%H:%M") if jornada else "09:00")
-            hasta.set(jornada.ultima_franja.strftime("%H:%M") if jornada else "16:30")
-            etiqueta(t, fmt.DIAS[d].capitalize()).grid(row=d + 1, column=0, sticky="w", padx=16, pady=4)
-            ctk.CTkCheckBox(t, text="", variable=abierto, width=24, fg_color=tema.TINTA).grid(row=d + 1, column=1, padx=16)
-            desde.grid(row=d + 1, column=2, sticky="w", padx=16)
-            hasta.grid(row=d + 1, column=3, sticky="w", padx=16)
+            desde = CampoHora(t, jornada.apertura.strftime("%H:%M") if jornada else "09:00", HORAS)
+            hasta = CampoHora(t, jornada.ultima_franja.strftime("%H:%M") if jornada else "16:30", HORAS)
+            nombre = etiqueta(t, fmt.DIAS[d].capitalize(), negrita=jornada is not None,
+                              suave=jornada is None)
+            nombre.grid(row=d + 1, column=0, sticky="w", padx=(16, 0), pady=5)
+
+            def cambiar(abierto=abierto, desde=desde, hasta=hasta, nombre=nombre):
+                activo = abierto.get()
+                desde.habilitar(activo)
+                hasta.habilitar(activo)
+                nombre.configure(text_color=tema.TINTA if activo else tema.TINTA_SUAVE,
+                                 font=tema.fuente(tema.CUERPO, activo))
+
+            ctk.CTkSwitch(t, text="", variable=abierto, width=46, switch_width=40, switch_height=22,
+                          progress_color=tema.TINTA, button_color=tema.SUPERFICIE, fg_color=tema.BORDE_CAMPO,
+                          button_hover_color=tema.HOVER_NEUTRO, command=cambiar).grid(row=d + 1, column=1, sticky="w",
+                                                                                      padx=(16, 0))
+            desde.grid(row=d + 1, column=2, sticky="w", padx=(16, 0), pady=5)
+            etiqueta(t, "a", suave=True).grid(row=d + 1, column=3, padx=(10, 0))
+            hasta.grid(row=d + 1, column=4, sticky="w", padx=(10, 16), pady=5)
+            cambiar()
             filas[d] = (abierto, desde, hasta)
-        ctk.CTkFrame(t, height=8, fg_color="transparent").grid(row=99, column=0)
+        etiqueta(t, "Escribe la hora (por ejemplo 9, 9:30 o 4:30 pm) o elígela con ▾. "
+                    "Las flechas ↑ ↓ suben o bajan media hora.", tema.ETIQUETA, suave=True,
+                 wraplength=640).grid(row=98, column=0, columnspan=6, sticky="w", padx=16, pady=(8, 14))
+        t.grid_columnconfigure(5, weight=1)
 
         def guardar():
-            try:
-                dias = {d: (Jornada(time.fromisoformat(a.get()), time.fromisoformat(b.get())) if ab.get() else None)
-                        for d, (ab, a, b) in filas.items()}
-            except ValueError as e:
-                self.avisar(f"Revisa el horario: {e}.", error=True)
-                return
+            dias = {}
+            for d, (ab, a, b) in filas.items():
+                if not ab.get():
+                    dias[d] = None
+                    continue
+                try:
+                    dias[d] = Jornada(a.hora(), b.hora())
+                except (DatoInvalido, ValueError) as e:
+                    self.avisar(f"Revisa el {fmt.DIAS[d]}: {e}.", error=True)
+                    return
             self._guardar_config([("horario", HorarioSemanal(dias))], "Horario guardado.")
 
         boton(self.cuerpo, "Guardar horario", guardar, "principal").pack(anchor="w", pady=(12, 0))

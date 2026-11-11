@@ -20,6 +20,7 @@ class TurnoEnAgenda:
     mascota: str
     propietario: str
     celular: str
+    raza: str = ""
 
 
 @dataclass(frozen=True)
@@ -54,8 +55,8 @@ def agenda_del_dia(con, dia: date, *, ahora: datetime) -> list[FranjaDeAgenda]:
     """
     cfg = configuracion.cargar(con)
     por_inicio: dict[datetime, list[TurnoEnAgenda]] = {}
-    for turno, mascota, propietario, celular in repo_consultas.turnos_detallados_del_dia(con, dia):
-        por_inicio.setdefault(turno.inicio, []).append(TurnoEnAgenda(turno, mascota, propietario, celular))
+    for turno, mascota, propietario, celular, raza in repo_consultas.turnos_detallados_del_dia(con, dia):
+        por_inicio.setdefault(turno.inicio, []).append(TurnoEnAgenda(turno, mascota, propietario, celular, raza))
     salida = []
     for franja in generar_franjas(dia, cfg.horario, repo_agenda.bloqueos_del_dia(con, dia)):
         turnos = por_inicio.get(franja.inicio, [])

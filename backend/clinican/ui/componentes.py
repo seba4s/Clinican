@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tkinter as tk
 from typing import Callable
 
 import customtkinter as ctk
@@ -254,3 +255,156 @@ class Lista(ctk.CTkScrollableFrame):
     def vaciar(self) -> None:
         for hijo in self.winfo_children():
             hijo.destroy()
+
+
+class CampoHora(ctk.CTkFrame):
+    """Hora en franjas de 30 minutos: se escribe (9, 9:30, 930, 4:30 pm) o se elige de una cuadrícula.
+
+    Con las flechas ↑ y ↓ sube o baja media hora. Al salir del campo, la hora queda
+    escrita como 09:30; si no se entiende, el borde se pone rojo y ``hora()`` lanza
+    ``DatoInvalido`` con el motivo.
+    """
+
+    COLUMNAS = 4
+
+    def __init__(self, padre, valor: str = "", horas: list[str] | None = None, ancho: int = 124):
+        super().__init__(padre, width=ancho, height=tema.ALTO_CONTROL, corner_radius=tema.RADIO,
+                         fg_color=tema.SUPERFICIE, border_width=1, border_color=tema.BORDE_CAMPO)
+        self.grid_propagate(False)
+        self.horas = horas or [f"{h:02d}:{m:02d}" for h in range(6, 21) for m in (0, 30)]
+        self._popup = None
+        self.entrada = ctk.CTkEntry(self, width=ancho - 52, height=tema.ALTO_CONTROL - 6, border_width=0,
+                                    fg_color=tema.SUPERFICIE, text_color=tema.TINTA, font=tema.fuente(tema.CUERPO),
+                                    corner_radius=0)
+        self.entrada.grid(row=0, column=0, sticky="w", padx=(8, 0), pady=3)
+        self.boton = ctk.CTkButton(self, text="▾", width=28, height=28, corner_radius=6, fg_color="transparent",
+                                   hover_color=tema.HOVER_NEUTRO, text_color=tema.TINTA_SUAVE,
+                                   font=tema.fuente(tema.CUERPO), command=self.abrir)
+        self.boton.grid(row=0, column=1, padx=(0, 6), pady=6)
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+        if valor:
+            self.set(valor)
+        self.entrada.bind("<FocusOut>", lambda _e: self.normalizar())
+        self.entrada.bind("<Return>", lambda _e: self.normalizar(), add="+")
+        self.entrada.bind("<Up>", lambda _e: self._paso(-1))
+        self.entrada.bind("<Down>", lambda _e: self._paso(1))
+        self.entrada.bind("<Alt-Down>", lambda _e: self.abrir())
+
+    # ------------------------------------------------------------------ valor
+    def get(self) -> str:
+        return self.entrada.get().strip()
+
+    def set(self, texto: str) -> None:
+        self.entrada.delete(0, "end")
+        self.entrada.insert(0, texto)
+        self.normalizar()
+
+    def hora(self):
+        from clinican.ui.formato import leer_hora
+
+        return leer_hora(self.get())
+
+    def normalizar(self) -> bool:
+        """Escribe la hora como HH:MM; marca el borde en rojo si no se entiende."""
+        from clinican.dominio.errores import DatoInvalido
+
+        try:
+            texto = self.hora().strftime("%H:%M")
+        except DatoInvalido:
+            self.configure(border_color=tema.PELIGRO, border_width=2)
+            return False
+        if texto != self.entrada.get():
+            self.entrada.delete(0, "end")
+            self.entrada.insert(0, texto)
+        self.configure(border_color=tema.BORDE_CAMPO, border_width=1)
+        return True
+
+    def habilitar(self, activo: bool) -> None:
+        estado = "normal" if activo else "disabled"
+        self.entrada.configure(state=estado, text_color=tema.TINTA if activo else tema.TINTA_SUAVE)
+        self.boton.configure(state=estado)
+        self.configure(fg_color=tema.SUPERFICIE if activo else tema.SUPERFICIE_SUAVE)
+        self.entrada.configure(fg_color=tema.SUPERFICIE if activo else tema.SUPERFICIE_SUAVE)
+
+    def _paso(self, sentido: int) -> str:
+        actual = self.get() if self.normalizar() else ""
+        if actual in self.horas:
+            i = max(0, min(len(self.horas) - 1, self.horas.index(actual) + sentido))
+        else:
+            i = 0
+        self.set(self.horas[i])
+        return "break"
+
+    # ------------------------------------------------------------------ cuadrícula de horas
+    def abrir(self) -> None:
+        if self._popup is not None:
+            self.cerrar()
+            return
+        self.normalizar()
+        raiz = self.winfo_toplevel()
+        # Toplevel simple (sin la barra de título que CustomTkinter retoca en Windows).
+        oscuro = ctk.get_appearance_mode() == "Dark"
+        popup = tk.Toplevel(raiz, bg=tema.BORDE_CAMPO[1 if oscuro else 0])
+        popup.withdraw()
+        popup.overrideredirect(True)
+        self._popup = popup
+        self._grab_previo = raiz.grab_current()
+        marco = ctk.CTkFrame(popup, fg_color=tema.SUPERFICIE, corner_radius=0)
+        marco.pack(fill="both", expand=True, padx=1, pady=1)
+        actual = self.get()
+        for i, h in enumerate(self.horas):
+            elegido = h == actual
+            b = ctk.CTkButton(marco, text=h, width=64, height=30, corner_radius=6,
+                              fg_color=tema.SELECCION_FONDO if elegido else "transparent",
+                              text_color=tema.SELECCION_TEXTO if elegido else tema.TINTA,
+                              hover_color=tema.SELECCION_FONDO if elegido else tema.HOVER_NEUTRO,
+                              font=tema.fuente(tema.ETIQUETA + 1, elegido),
+                              command=lambda h=h: self._elegir(h))
+            b.grid(row=i // self.COLUMNAS, column=i % self.COLUMNAS, padx=3, pady=2)
+        popup.update_idletasks()
+        x = self.winfo_rootx()
+        y = self.winfo_rooty() + self.winfo_height() + 4
+        alto = popup.winfo_reqheight()
+        if y + alto > self.winfo_screenheight() - 40:
+            y = max(0, self.winfo_rooty() - alto - 4)
+        popup.geometry(f"+{x}+{y}")
+        popup.deiconify()
+        popup.lift()
+        popup.bind("<Escape>", lambda _e: self.cerrar())
+        popup.bind("<Button-1>", self._clic_fuera, add="+")
+        try:
+            popup.grab_set()
+            popup.focus_force()
+        except Exception:
+            pass
+
+    def _clic_fuera(self, evento) -> None:
+        p = self._popup
+        if p is None:
+            return
+        x, y = evento.x_root, evento.y_root
+        if not (p.winfo_rootx() <= x < p.winfo_rootx() + p.winfo_width()
+                and p.winfo_rooty() <= y < p.winfo_rooty() + p.winfo_height()):
+            self.cerrar()
+
+    def _elegir(self, h: str) -> None:
+        self.cerrar()
+        self.set(h)
+        self.entrada.focus_set()
+
+    def cerrar(self) -> None:
+        p, self._popup = self._popup, None
+        if p is None:
+            return
+        try:
+            p.grab_release()
+        except Exception:
+            pass
+        p.destroy()
+        previo = getattr(self, "_grab_previo", None)
+        if previo is not None:
+            try:
+                previo.grab_set()
+            except Exception:
+                pass

@@ -83,6 +83,10 @@ class App(ctk.CTk):
         self.aviso = Aviso(derecha)
         self.contenido = ctk.CTkFrame(derecha, fg_color="transparent", width=0, height=0)
         self.contenido.pack(fill="both", expand=True)
+        # Las pantallas se apilan en la misma celda y se trae al frente la elegida:
+        # así no se vuelven a acomodar todos sus controles cada vez que se cambia de pestaña.
+        self.contenido.grid_rowconfigure(0, weight=1)
+        self.contenido.grid_columnconfigure(0, weight=1)
         self.aviso.colocar(self.contenido)
 
         from clinican.ui.pantalla_agenda import PantallaAgenda
@@ -155,16 +159,23 @@ class App(ctk.CTk):
 
     # ------------------------------------------------------------------ navegación
     def ir(self, nombre: str) -> Pantalla:
-        if self.actual and self.actual in self.pantallas:
-            self.pantallas[self.actual].pack_forget()
-        if nombre not in self.pantallas:
-            self.pantallas[nombre] = self._clases[nombre](self)
+        """Muestra una sección. Se redibuja detrás de la actual y solo entonces pasa al frente,
+        para que nunca se vea a medio armar."""
+        nueva = nombre not in self.pantallas
+        if nueva:
+            pantalla = self._clases[nombre](self)
+            self.pantallas[nombre] = pantalla
+            pantalla.grid(row=0, column=0, sticky="nsew")
+            actual = self.pantallas.get(self.actual) if self.actual else None
+            if actual is not None:
+                pantalla.lower(actual)
         pantalla = self.pantallas[nombre]
-        pantalla.pack(fill="both", expand=True)
         self.actual = nombre
         self.aviso.ocultar()
         self._marcar_menu()
         pantalla.refrescar()
+        pantalla.update_idletasks()
+        pantalla.tkraise()
         return pantalla
 
     def nuevo_turno(self, **datos) -> None:

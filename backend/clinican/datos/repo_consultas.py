@@ -23,15 +23,16 @@ _T = _prefijo(COLUMNAS_TURNO, "t")
 
 def turnos_detallados_del_dia(
     con: sqlite3.Connection, dia: date
-) -> list[tuple[Turno, str, str, str]]:
-    """(turno, mascota, propietario, celular) del día, ordenados por hora."""
+) -> list[tuple[Turno, str, str, str, str]]:
+    """(turno, mascota, propietario, celular, raza) del día, ordenados por hora."""
     filas = con.execute(
-        f"SELECT {_T}, m.nombre, p.nombre, p.telefono FROM turnos t "
+        f"SELECT {_T}, m.nombre, p.nombre, p.telefono, COALESCE(r.nombre, '') FROM turnos t "
         "JOIN mascotas m ON m.id = t.mascota_id JOIN propietarios p ON p.id = t.propietario_id "
+        "LEFT JOIN razas r ON r.id = m.raza_id "
         "WHERE t.inicio >= ? AND t.inicio < ? ORDER BY t.inicio, t.id",
         rango_del_dia(dia),
     ).fetchall()
-    return [(turno_de_fila(f[:_N]), f[_N], f[_N + 1], f[_N + 2]) for f in filas]
+    return [(turno_de_fila(f[:_N]), f[_N], f[_N + 1], f[_N + 2], f[_N + 3]) for f in filas]
 
 
 def historial_de_mascota(con: sqlite3.Connection, mascota_id: int) -> list[tuple[Turno, Ficha | None]]:

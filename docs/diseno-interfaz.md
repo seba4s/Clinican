@@ -18,7 +18,7 @@ Barra lateral con cuatro secciones; la aplicación abre en Agenda.
 
 | Sección | Contenido |
 |---|---|
-| Agenda | Tablero de cupos del día, panel del turno seleccionado, pendientes de abono, nuevo turno, bloquear horas |
+| Agenda | Hoja del día tipo Excel (una fila por turno, hora combinada, cupos libres por hora), panel del turno seleccionado, pendientes de abono, nuevo turno, bloquear horas |
 | Clientes | Lista con búsqueda, ficha del propietario (saldo a favor, mascotas, historial, inasistencias), unir duplicados, importar Excel |
 | Recordatorios | Bandeja: por enviar, enviados, fallidos (reintentar, corregir celular), descartados |
 | Ajustes | Horario y bloqueos, cupos y abono, precios, razas, recordatorios y WhatsApp, respaldos, registro de cambios |

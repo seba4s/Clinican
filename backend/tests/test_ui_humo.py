@@ -50,7 +50,8 @@ def test_todas_las_pantallas_abren(app):
     for nombre in app.SECCIONES:
         pantalla = app.ir(nombre)
         app.update_idletasks()
-        assert pantalla.winfo_manager() == "pack"
+        assert pantalla.winfo_manager() == "grid"
+        assert app.actual == nombre
     ajustes = app.pantallas["Ajustes"]
     from clinican.ui.pantalla_ajustes import SECCIONES
 
@@ -220,3 +221,69 @@ def test_formatos():
     assert fmt.dia_largo(a_las(9).date()) == "Lunes 9 de noviembre"
     assert fmt.dia_corto(a_las(9).date() + timedelta(days=1), a_las(9).date()) == "Mañana"
     assert fmt.minutos_restantes(a_las(10), a_las(9, 48)) == "vence en 12 min"
+
+
+def test_hoja_tipo_excel_agrupa_por_hora_y_agenda_desde_libre(app, con):
+    from clinican.dominio.agenda import Bloqueo
+    from clinican.ui.hoja_agenda import agrupar
+    from clinican.ui.pantalla_agenda import ORDEN_CATEGORIAS, armar_tablero
+
+    agenda.crear_bloqueo(con, Bloqueo(a_las(9).date(), a_las(12).timetz(), a_las(13).timetz(), "Almuerzo"),
+                         ahora=AHORA)
+    filas, _fuera, _libres = armar_tablero(con, a_las(9).date(), AHORA_UI)
+    grupos = agrupar(filas, ORDEN_CATEGORIAS)
+    bandas = [g for g in grupos if g.filas[0].tipo == "bloqueo"]
+    assert len(bandas) == 1 and bandas[0].filas[0].hasta == a_las(13)  # 12:00 y 12:30 en una sola banda
+    nueve = grupos[0]
+    assert [f.tipo for f in nueve.filas] == ["turno", "turno"]  # 9:00 ya pasó: sin fila «Libre»
+    diez = next(g for g in grupos if g.inicio == a_las(10))
+    assert [f.tipo for f in diez.filas] == ["turno", "libre"]
+    assert diez.filas[-1].libres[C.MAQUINA] == 1
+
+    ag = app.ir("Agenda")
+    ag.refrescar()
+    elegidos = []
+    ag.nuevo_turno = lambda **datos: elegidos.append(datos)
+    ag.hoja._al_libre = lambda inicio, cat: ag.nuevo_turno(inicio=inicio, categoria=cat)
+    zona = next(z for z in ag.hoja._zonas if z[4][0] == "libre")
+    ag.hoja._al_libre(zona[4][1], zona[4][2])
+    assert elegidos and elegidos[0]["inicio"] == zona[4][1]
+    # Elegir un turno marca la fila sin volver a dibujar el panel desde la base
+    ag.seleccionar(app.ids["confirmado"])
+    assert ag.seleccion == app.ids["confirmado"]
+    assert ("turno", app.ids["confirmado"]) in [z[4] for z in ag.hoja._zonas]
+
+
+def test_horario_se_escribe_a_mano(app, con):
+    from clinican.servicios import configuracion
+    from clinican.ui.componentes import CampoHora
+
+    ajustes = app.ir("Ajustes")
+    ajustes.ir("Horario y bloqueos")
+    campo = CampoHora(ajustes, "9")
+    assert campo.get() == "09:00"
+    campo.set("4:30 pm")
+    assert campo.get() == "16:30"
+    campo._paso(1)
+    assert campo.get() == "17:00"
+    campo.set("9:15")
+    assert not campo.normalizar()
+    campo.abrir()
+    assert campo._popup is not None
+    campo._elegir("10:30")
+    assert campo.get() == "10:30" and campo._popup is None
+
+    def todos(w):
+        for h in w.winfo_children():
+            yield h
+            yield from todos(h)
+
+    campos = [w for w in todos(ajustes.cuerpo) if isinstance(w, CampoHora)]
+    assert len(campos) == 14
+    app.update_idletasks()
+    assert all(c.boton.winfo_ismapped() for c in campos)
+    campos[1].set("1530")  # última franja del lunes
+    boton = next(w for w in todos(ajustes.cuerpo) if isinstance(w, ctk.CTkButton)
+                 and w.cget("text") == "Guardar horario")
+    boton.invoke()
+    assert configuracion.cargar(con).horario.dias[0].ultima_franja.strftime("%H:%M") == "15:30"
