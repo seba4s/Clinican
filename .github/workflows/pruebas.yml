@@ -1,0 +1,33 @@
+name: Pruebas
+
+# Corre las pruebas del backend, incluidas las funciones de aptitud
+# (tests/test_arquitectura.py, test_carreras.py, test_rendimiento.py), en cada cambio.
+on:
+  push:
+  pull_request:
+
+jobs:
+  pruebas:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      PYTHONUTF8: "1"
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Instalar dependencias
+        run: python -m pip install -r requirements.txt
+      - name: Regla de capas
+        run: python -m pytest tests/test_arquitectura.py
+      - name: Todas las pruebas
+        run: python -m pytest
+      - name: Demostración de punta a punta
+        run: python -m clinican.demo
