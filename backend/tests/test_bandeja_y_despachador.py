@@ -249,3 +249,39 @@ def test_base_compartida_con_otra_conexion(ruta_db, con, esc):
         assert len(repo_notificaciones.pendientes_hasta(otra, AHORA)) == 1
     finally:
         otra.close()
+
+
+def test_reintentar_fallido_lo_vuelve_a_enviar(con, esc, ruta_db):
+    from clinican.dominio.errores import OperacionNoPermitida
+    from clinican.servicios.notificaciones import reintentar
+
+    t = _confirmado(con, esc, a_las(16))
+    d = Despachador(ruta_db, Grabador(fallas=99))
+    momento = AHORA
+    for _ in range(4):
+        d.procesar_una_vez(momento)
+        momento = notificaciones_de_turno(con, t.id)[0].programada_para
+    n = notificaciones_de_turno(con, t.id)[0]
+    assert n.estado is EN.FALLIDA
+    luego = AHORA + timedelta(hours=1)
+    n = reintentar(con, n.id, ahora=luego)
+    assert (n.estado, n.intentos, n.ultimo_error, n.programada_para) == (EN.PENDIENTE, 0, None, luego)
+    grabador = Grabador()
+    assert Despachador(ruta_db, grabador).procesar_una_vez(luego).enviadas == 1
+    with pytest.raises(OperacionNoPermitida):
+        reintentar(con, n.id, ahora=luego)  # ya no está fallido
+
+
+def test_no_reintenta_si_el_turno_ya_no_esta_confirmado(con, esc, ruta_db):
+    from clinican.dominio.errores import OperacionNoPermitida
+    from clinican.servicios.notificaciones import reintentar
+
+    t = _confirmado(con, esc, a_las(16))
+    d = Despachador(ruta_db, Grabador(fallas=99))
+    momento = AHORA
+    for _ in range(4):
+        d.procesar_una_vez(momento)
+        momento = notificaciones_de_turno(con, t.id)[0].programada_para
+    agenda.cancelar_turno(con, t.id, ahora=momento)
+    with pytest.raises(OperacionNoPermitida):
+        reintentar(con, notificaciones_de_turno(con, t.id)[0].id, ahora=momento)

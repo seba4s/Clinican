@@ -1,9 +1,9 @@
-# Clinican — backend
+# Clinican
 
-Backend de la agenda de la peluquería: turnos por franjas de 30 minutos con cupos
+Agenda de la peluquería para Windows: turnos por franjas de 30 minutos con cupos
 por categoría, abonos, saldo a favor, fichas de servicio, recordatorios con
-bandeja de salida, respaldos e importación desde Excel. Solo usa la biblioteca
-estándar de Python más `openpyxl` (para importar Excel).
+bandeja de salida, respaldos e importación desde Excel. Usa la biblioteca
+estándar de Python, `customtkinter` y `pillow` (interfaz) y `openpyxl` (Excel).
 
 Funciona sin internet. Solo el canal de WhatsApp usa la red, y si falla, los
 recordatorios quedan pendientes y se reintentan.
@@ -55,16 +55,34 @@ cd backend
 .\.venv\Scripts\python.exe main.py
 ```
 
+Abre la ventana de Clinican. Para correr solo el backend, sin ventana, hasta
+Ctrl+C: `main.py --sin-interfaz`.
+
 Al iniciar, el programa:
 
 - abre la base,
 - aplica las migraciones pendientes,
 - libera los turnos con abono vencido,
 - elige el canal de notificaciones según la configuración,
-- arranca el despachador de recordatorios (cada 60 s) y el respaldo diario.
+- arranca el despachador de recordatorios (cada 60 s), el respaldo diario y el
+  barrido de abonos vencidos (cada 60 s).
 
-Queda corriendo hasta que se presiona Ctrl+C, y al cerrar hace un respaldo.
-Todavía no tiene interfaz.
+Al cerrar la ventana (o con Ctrl+C sin interfaz) hace un respaldo.
+
+## Interfaz
+
+Diseño acordado en `docs/diseno-interfaz.md`. Sigue el modo claro u oscuro de
+Windows.
+
+| Sección | Qué hay |
+|---|---|
+| Agenda | Tablero de cupos del día (un puesto «Libre» agenda ahí mismo), pendientes de abono con su cuenta regresiva, panel del turno con las acciones de su estado, nuevo turno, mover, abono, inasistencia, ficha de servicio, bloquear horas |
+| Clientes | Búsqueda por cédula, nombre, celular o mascota; datos, saldo a favor, mascotas, historial con fichas, unir duplicados, importar Excel |
+| Recordatorios | Por enviar, enviados, fallidos (reintentar o corregir el celular) y descartados |
+| Ajustes | Horario y bloqueos, cupos y abono, precios, razas, canal de recordatorios, respaldos y registro de cambios |
+
+Atajos: Ctrl+N nuevo turno, Ctrl+F buscar cliente, Ctrl+1 a Ctrl+4 secciones,
+← → cambiar de día en la agenda, Inicio volver a hoy, Esc cerrar un diálogo.
 
 ### Configuración
 
@@ -182,9 +200,9 @@ clinican/
   datos/        SQLite: conexión, migraciones, repositorios (único lugar con SQL)
   servicios/    casos de uso (transacciones, auditoría, bandeja, despachador, respaldos)
   adaptadores/  canales de notificación (archivo, consola, WhatsApp) e importación Excel
-  ui/           (futura interfaz)
+  ui/           interfaz CustomTkinter (solo usa servicios y dominio)
   demo.py       demostración (raíz de composición)
-main.py         arranque del backend (raíz de composición)
+main.py         arranque: base, servicios en segundo plano y ventana (raíz de composición)
 ```
 
 `tests/test_arquitectura.py` verifica las dependencias entre capas: el SQL solo
