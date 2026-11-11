@@ -24,6 +24,9 @@ POR_QUE = {
 }
 
 
+COLUMNAS = 8  # 16 franjas en dos filas
+
+
 class SelectorHora(ctk.CTkFrame):
     """Día con flechas y las franjas que aún tienen cupo para una categoría."""
 
@@ -34,15 +37,15 @@ class SelectorHora(ctk.CTkFrame):
         self.categoria: CategoriaCupo | None = None
         self.elegida: datetime | None = None
         self.al_elegir = al_elegir
-        fila = ctk.CTkFrame(self, fg_color="transparent")
+        fila = ctk.CTkFrame(self, fg_color="transparent", width=0, height=0)
         fila.pack(fill="x")
         boton(fila, "‹", lambda: self.mover_dia(-1), ancho=36, alto=34).pack(side="left")
         self.lbl = etiqueta(fila, "", tema.CUERPO, True)
         self.lbl.pack(side="left", padx=10)
         boton(fila, "›", lambda: self.mover_dia(1), ancho=36, alto=34).pack(side="left")
-        self.rejilla = ctk.CTkFrame(self, fg_color="transparent")
+        self.rejilla = ctk.CTkFrame(self, fg_color="transparent", width=0, height=0)
         self.rejilla.pack(fill="x", pady=(10, 0))
-        for c in range(6):
+        for c in range(COLUMNAS):
             self.rejilla.grid_columnconfigure(c, weight=1, uniform="h")
 
     def mover_dia(self, delta: int) -> None:
@@ -64,7 +67,7 @@ class SelectorHora(ctk.CTkFrame):
         self.lbl.configure(text=fmt.dia_largo(self.dia) + (" (hoy)" if self.dia == self.ctx.hoy() else ""))
         if self.categoria is None:
             etiqueta(self.rejilla, "Elige cliente, mascota y servicio para ver las horas con cupo.",
-                     suave=True).grid(row=0, column=0, columnspan=6, sticky="w")
+                     suave=True).grid(row=0, column=0, columnspan=COLUMNAS, sticky="w")
             return
         ahora = self.ctx.ahora()
         with self.ctx.con() as con:
@@ -72,7 +75,7 @@ class SelectorHora(ctk.CTkFrame):
                     if f.inicio > ahora]
         if not disp:
             etiqueta(self.rejilla, "No quedan horas este día. Prueba con otro día.", suave=True).grid(
-                row=0, column=0, columnspan=6, sticky="w")
+                row=0, column=0, columnspan=COLUMNAS, sticky="w")
             return
         if self.elegida and not any(f.inicio == self.elegida and n for f, n in disp):
             self.elegida = None
@@ -81,14 +84,14 @@ class SelectorHora(ctk.CTkFrame):
             sel = franja.inicio == self.elegida
             texto = f"{fmt.hora(franja.inicio)}\n{'Lleno' if lleno else ('1 libre' if n == 1 else f'{n} libres')}"
             b = ctk.CTkButton(
-                self.rejilla, text=texto, height=48, corner_radius=tema.RADIO,
+                self.rejilla, text=texto, height=44, width=70, corner_radius=tema.RADIO,
                 font=tema.fuente(tema.ETIQUETA + 1, sel),
                 fg_color=tema.TINTA if sel else (tema.SUPERFICIE_SUAVE if lleno else tema.SUPERFICIE),
                 text_color=tema.SELECCION_TEXTO if sel else (tema.TINTA_SUAVE if lleno else tema.TINTA),
                 hover_color=tema.TINTA if sel else tema.HOVER_NEUTRO, border_width=0 if lleno else 1,
                 border_color=tema.BORDE_CAMPO, state="disabled" if lleno else "normal",
                 command=lambda inicio=franja.inicio: self.elegir(inicio))
-            b.grid(row=i // 6, column=i % 6, sticky="ew", padx=3, pady=3)
+            b.grid(row=i // COLUMNAS, column=i % COLUMNAS, sticky="ew", padx=3, pady=3)
 
     def elegir(self, inicio: datetime) -> None:
         self.elegida = inicio
@@ -114,21 +117,21 @@ class DialogoNuevoTurno(Dialogo):
         self.campo_buscar = Campo(c, "Cliente", ancho=700, placeholder="Cédula, nombre, celular o mascota")
         self.campo_buscar.pack(fill="x")
         self.campo_buscar.entrada.bind("<KeyRelease>", lambda _e: self._buscar())
-        self.resultados = ctk.CTkFrame(c, fg_color="transparent")
+        self.resultados = ctk.CTkFrame(c, fg_color="transparent", width=0, height=0)
         self.resultados.pack(fill="x")
-        self.ficha_cliente = ctk.CTkFrame(c, fg_color="transparent")
+        self.ficha_cliente = ctk.CTkFrame(c, fg_color="transparent", width=0, height=0)
         self.ficha_cliente.pack(fill="x")
 
-        medio = ctk.CTkFrame(c, fg_color="transparent")
+        medio = ctk.CTkFrame(c, fg_color="transparent", width=0, height=0)
         medio.pack(fill="x", pady=(8, 0))
         medio.grid_columnconfigure((0, 1), weight=1, uniform="m")
-        izq = ctk.CTkFrame(medio, fg_color="transparent")
+        izq = ctk.CTkFrame(medio, fg_color="transparent", width=0, height=0)
         izq.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
         etiqueta(izq, "Mascota", tema.ETIQUETA + 1, True).pack(anchor="w")
         self.var_mascota = ctk.IntVar(value=0)
-        self.caja_mascotas = ctk.CTkFrame(izq, fg_color="transparent")
+        self.caja_mascotas = ctk.CTkFrame(izq, fg_color="transparent", width=0, height=0)
         self.caja_mascotas.pack(fill="x", pady=(4, 0))
-        der = ctk.CTkFrame(medio, fg_color="transparent")
+        der = ctk.CTkFrame(medio, fg_color="transparent", width=0, height=0)
         der.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
         etiqueta(der, "Servicio", tema.ETIQUETA + 1, True).pack(anchor="w")
         self.var_servicio = ctk.StringVar(value=Servicio.CORTE_MAQUINA.value)
@@ -148,7 +151,7 @@ class DialogoNuevoTurno(Dialogo):
         self.selector.elegida = inicio
         self.selector.pack(fill="x")
 
-        pie = ctk.CTkFrame(c, fg_color="transparent")
+        pie = ctk.CTkFrame(c, fg_color="transparent", width=0, height=0)
         pie.pack(fill="x", pady=(16, 0))
         self.lbl_resumen = etiqueta(pie, "", tema.CUERPO)
         self.lbl_resumen.pack(side="left", anchor="s")
@@ -178,7 +181,7 @@ class DialogoNuevoTurno(Dialogo):
         with self.ctx.con() as con:
             encontrados = buscar_clientes(con, texto, limite=5)
         if not encontrados:
-            fila = ctk.CTkFrame(self.resultados, fg_color="transparent")
+            fila = ctk.CTkFrame(self.resultados, fg_color="transparent", width=0, height=0)
             fila.pack(fill="x")
             etiqueta(fila, "No hay clientes con ese dato.", suave=True).pack(side="left")
             boton(fila, "Crear cliente nuevo", self._cliente_nuevo, "enlace").pack(side="left", padx=8)
@@ -414,7 +417,7 @@ class DialogoBloqueo(Dialogo):
         self.var_completo = ctk.BooleanVar(value=False)
         ctk.CTkCheckBox(self.contenido, text="Todo el día", variable=self.var_completo, font=tema.fuente(tema.CUERPO),
                         text_color=tema.TINTA, fg_color=tema.TINTA, command=self._cambio).pack(anchor="w", pady=(4, 8))
-        self.horas = ctk.CTkFrame(self.contenido, fg_color="transparent")
+        self.horas = ctk.CTkFrame(self.contenido, fg_color="transparent", width=0, height=0)
         self.horas.pack(anchor="w")
         opciones = [f"{h:02d}:{m:02d}" for h in range(7, 20) for m in (0, 30)]
         etiqueta(self.horas, "Desde", tema.ETIQUETA + 1, True).grid(row=0, column=0, sticky="w")

@@ -76,7 +76,7 @@ class PantallaAgenda(Pantalla):
         self.seleccion: int | None = None
         self._turnos: dict[int, TurnoEnAgenda] = {}
 
-        cab = ctk.CTkFrame(self, fg_color="transparent")
+        cab = ctk.CTkFrame(self, fg_color="transparent", width=0, height=0)
         cab.pack(fill="x", padx=24, pady=(20, 0))
         boton(cab, "‹", self.dia_anterior, ancho=40).pack(side="left")
         boton(cab, "Hoy", self.ir_hoy, ancho=64).pack(side="left", padx=4)
@@ -88,10 +88,10 @@ class PantallaAgenda(Pantalla):
         self.lbl_resumen = etiqueta(cab, "", tema.ETIQUETA + 1, suave=True)
         self.lbl_resumen.pack(side="right", padx=tema.SEP)
 
-        self.pendientes = ctk.CTkFrame(self, fg_color="transparent")
+        self.pendientes = ctk.CTkFrame(self, fg_color="transparent", width=0, height=0)
         self.pendientes.pack(fill="x", padx=24, pady=(12, 0))
 
-        cuerpo = ctk.CTkFrame(self, fg_color="transparent")
+        cuerpo = ctk.CTkFrame(self, fg_color="transparent", width=0, height=0)
         cuerpo.pack(fill="both", expand=True, padx=24, pady=(12, 20))
         self.panel = tarjeta(cuerpo, width=340)
         self.panel.pack(side="right", fill="y", padx=(16, 0))
@@ -214,7 +214,7 @@ class PantallaAgenda(Pantalla):
                              font=tema.fuente(tema.ETIQUETA)).grid(row=r, column=1, columnspan=4, sticky="ew", padx=4, pady=3)
                 continue
             for c, cat in enumerate(ORDEN_CATEGORIAS, start=1):
-                celda = ctk.CTkFrame(t, fg_color="transparent")
+                celda = ctk.CTkFrame(t, fg_color="transparent", width=0, height=0)
                 celda.grid(row=r, column=c, sticky="ew", padx=4, pady=3)
                 for turno in fila.puestos[cat]:
                     self._puesto(celda, turno, fila, cat).pack(side="left", fill="x", expand=True, padx=(0, 4))
@@ -222,7 +222,7 @@ class PantallaAgenda(Pantalla):
     def _puesto(self, padre, item: TurnoEnAgenda | None, fila: FilaTablero, cat: CategoriaCupo):
         if item is None:
             if fila.pasada:
-                return ctk.CTkFrame(padre, height=32, fg_color="transparent")
+                return ctk.CTkFrame(padre, width=60, height=32, fg_color="transparent")
             return ctk.CTkButton(padre, text="Libre", height=32, width=60, corner_radius=6, fg_color="transparent",
                                  hover_color=tema.HOVER_NEUTRO, text_color=tema.TINTA_SUAVE, border_width=1,
                                  border_color=tema.BORDE_CAMPO, font=tema.fuente(tema.ETIQUETA),
@@ -245,7 +245,7 @@ class PantallaAgenda(Pantalla):
     def _dibujar_panel(self) -> None:
         for w in self.panel.winfo_children():
             w.destroy()
-        p = ctk.CTkFrame(self.panel, fg_color="transparent")
+        p = ctk.CTkFrame(self.panel, fg_color="transparent", width=0, height=0)
         p.pack(fill="both", expand=True, padx=20, pady=20)
         if self.seleccion is None:
             etiqueta(p, "Elige un turno del tablero para ver sus datos y lo que puedes hacer con él.",
@@ -270,7 +270,7 @@ class PantallaAgenda(Pantalla):
         etiqueta(p, f"{dueno.nombre} · {fmt.celular(dueno.telefono)}", wraplength=290).pack(anchor="w")
         chip_estado(p, turno.estado).pack(anchor="w", pady=(10, 10))
 
-        datos = ctk.CTkFrame(p, fg_color="transparent")
+        datos = ctk.CTkFrame(p, fg_color="transparent", width=0, height=0)
         datos.pack(fill="x")
         precio_final = ficha.precio_final if ficha else precio
         filas = [
@@ -299,7 +299,7 @@ class PantallaAgenda(Pantalla):
             ctk.CTkLabel(p, text=nota, fg_color=tema.SUPERFICIE_SUAVE, corner_radius=8, anchor="w", justify="left",
                          wraplength=280, text_color=tema.TINTA, font=tema.fuente(tema.ETIQUETA + 1)).pack(fill="x", pady=(12, 0), ipady=6, ipadx=8)
 
-        acciones = ctk.CTkFrame(p, fg_color="transparent")
+        acciones = ctk.CTkFrame(p, fg_color="transparent", width=0, height=0)
         acciones.pack(fill="x", pady=(16, 0))
         for texto, comando, tipo in self._acciones(turno, ficha):
             boton(acciones, texto, comando, tipo).pack(fill="x", pady=(0, 8))

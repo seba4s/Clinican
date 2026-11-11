@@ -35,14 +35,14 @@ class PantallaRecordatorios(Pantalla):
                 m = clientes.obtener_mascota(con, t.mascota_id)
                 datos[n.id] = (t, p, m)
 
-        cab = ctk.CTkFrame(c, fg_color="transparent")
+        cab = ctk.CTkFrame(c, fg_color="transparent", width=0, height=0)
         cab.pack(fill="x")
         etiqueta(cab, "Recordatorios", tema.TITULO, True).pack(side="left")
         canal = CANALES.get(cfg.canal_notificaciones, cfg.canal_notificaciones)
         etiqueta(cab, f"Canal: {canal} · se revisa cada minuto", tema.ETIQUETA + 1, suave=True).pack(side="right")
 
         conteo = bandeja.conteo
-        metricas = ctk.CTkFrame(c, fg_color="transparent")
+        metricas = ctk.CTkFrame(c, fg_color="transparent", width=0, height=0)
         metricas.pack(fill="x", pady=(16, 0))
         metricas.grid_columnconfigure((0, 1, 2, 3), weight=1, uniform="m")
         fondo_fallo, letra_fallo, *_ = tema.estilo_estado(EstadoTurno.PENDIENTE_ABONO)
@@ -65,7 +65,7 @@ class PantallaRecordatorios(Pantalla):
                 t, p, m = datos[n.id]
                 caja = tarjeta(c)
                 caja.pack(fill="x", pady=4)
-                textos = ctk.CTkFrame(caja, fg_color="transparent")
+                textos = ctk.CTkFrame(caja, fg_color="transparent", width=0, height=0)
                 textos.pack(side="left", fill="x", expand=True, padx=16, pady=12)
                 etiqueta(textos, f"{m.nombre} · {p.nombre} · {fmt.celular(p.telefono)}", tema.CUERPO, True).pack(anchor="w")
                 etiqueta(textos, f"Turno {fmt.momento(t.inicio, hoy)} · {n.intentos} intentos", suave=True).pack(anchor="w")
