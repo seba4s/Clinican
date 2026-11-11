@@ -1,0 +1,124 @@
+import pytest
+
+from clinican.datos.conexion import abrir
+from clinican.datos.migraciones import (
+    MIGRACIONES,
+    BaseMasNueva,
+    Migracion,
+    MigracionesInvalidas,
+    migrar,
+    version_actual,
+)
+
+
+@pytest.fixture
+def con(tmp_path):
+    c = abrir(tmp_path / "clinica.db")
+    yield c
+    c.close()
+
+
+def _tablas(con):
+    return {
+        fila[0]
+        for fila in con.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
+    }
+
+
+# Base de una sola migración para probar el mecanismo sin depender del esquema real.
+BASE = MIGRACIONES[:1]
+
+V2 = Migracion(2, "pacientes", "CREATE TABLE pacientes (id INTEGER PRIMARY KEY, nombre TEXT);")
+V3 = Migracion(3, "columna extra", "ALTER TABLE pacientes ADD COLUMN telefono TEXT;")
+
+
+def test_migracion_inicial_crea_configuracion(con):
+    assert migrar(con, BASE) == 1
+    assert "configuracion" in _tablas(con)
+    con.execute("INSERT INTO configuracion (clave, valor) VALUES ('a', 'b')")
+
+
+def test_idempotente(con):
+    ultima = len(MIGRACIONES)
+    assert migrar(con) == ultima
+    tablas = _tablas(con)
+    con.execute("INSERT INTO configuracion VALUES ('clave', 'valor')")
+    assert migrar(con) == ultima
+    assert migrar(con) == ultima
+    assert _tablas(con) == tablas
+    assert con.execute("SELECT valor FROM configuracion").fetchall() == [("valor",)]
+
+
+def test_subir_version_conserva_datos(con):
+    migrar(con, BASE)
+    con.execute("INSERT INTO configuracion VALUES ('clinica', 'Central')")
+    assert migrar(con, (*BASE, V2)) == 2
+    con.execute("INSERT INTO pacientes (nombre) VALUES ('Ana')")
+    assert migrar(con, (*BASE, V2, V3)) == 3
+    assert con.execute("SELECT valor FROM configuracion").fetchall() == [("Central",)]
+    assert con.execute("SELECT nombre, telefono FROM pacientes").fetchall() == [("Ana", None)]
+
+
+def test_fallo_a_mitad_deja_version_anterior_sin_tablas_parciales(con):
+    migrar(con, BASE)
+    rota = Migracion(
+        2,
+        "rota a mitad",
+        """
+        CREATE TABLE parcial (id INTEGER PRIMARY KEY);
+        CREATE TABLE otra_parcial (id INTEGER PRIMARY KEY);
+        ESTO NO ES SQL;
+        """,
+    )
+    with pytest.raises(Exception):
+        migrar(con, (*BASE, rota))
+    assert version_actual(con) == 1
+    assert not con.in_transaction
+    assert {"parcial", "otra_parcial"}.isdisjoint(_tablas(con))
+    # Corregida la migración, se aplica normalmente
+    assert migrar(con, (*BASE, V2)) == 2
+
+
+def test_fallo_en_varias_pendientes_conserva_las_ya_aplicadas(con):
+    rota = Migracion(3, "rota", "CREATE TABLE x (id INTEGER); INSERT INTO no_existe VALUES (1);")
+    with pytest.raises(Exception):
+        migrar(con, (*BASE, V2, rota))
+    assert version_actual(con) == 2
+    assert "pacientes" in _tablas(con)
+    assert "x" not in _tablas(con)
+
+
+def test_base_mas_nueva_rechazada(con):
+    migrar(con, (*BASE, V2))
+    with pytest.raises(BaseMasNueva):
+        migrar(con, BASE)
+    assert version_actual(con) == 2
+
+
+@pytest.mark.parametrize(
+    "versiones",
+    [(1, 3), (2,), (1, 2, 2), (2, 1), (0, 1)],
+)
+def test_huecos_o_desorden_rechazados(con, versiones):
+    migs = tuple(Migracion(v, f"m{v}", f"CREATE TABLE t{i} (a);") for i, v in enumerate(versiones))
+    with pytest.raises(MigracionesInvalidas):
+        migrar(con, migs)
+    assert version_actual(con) == 0
+    assert _tablas(con) == set()
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "DROP TABLE configuracion;",
+        "drop index i;",
+        "DELETE FROM configuracion;",
+        "CREATE TABLE a (x); delete from a;",
+    ],
+)
+def test_drop_y_delete_rechazados(con, sql):
+    migrar(con, BASE)
+    with pytest.raises(MigracionesInvalidas):
+        migrar(con, (*BASE, Migracion(2, "destructiva", sql)))
+    assert version_actual(con) == 1
+    assert "configuracion" in _tablas(con)

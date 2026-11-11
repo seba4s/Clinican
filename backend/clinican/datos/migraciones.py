@@ -1,0 +1,325 @@
+"""Migraciones de esquema numeradas y solo aditivas.
+
+La versión aplicada se guarda en ``PRAGMA user_version``. Cada migración corre
+en su propia transacción y fija ``user_version`` dentro de esa misma
+transacción, de modo que un fallo a mitad deja la base en la versión anterior.
+"""
+
+from __future__ import annotations
+
+import re
+import sqlite3
+from dataclasses import dataclass
+
+from clinican.datos.conexion import transaccion
+from clinican.dominio.precios import FECHA_PRECIOS_INICIALES, PRECIOS_INICIALES
+
+
+def _semilla_precios() -> str:
+    """INSERT de los precios iniciales del dominio (valores enteros y fecha fija)."""
+    filas = ", ".join(
+        f"('{categoria.value}', {int(valor)}, '{FECHA_PRECIOS_INICIALES.isoformat()}')"
+        for categoria, valor in PRECIOS_INICIALES.items()
+    )
+    return f"INSERT INTO precios (categoria, valor, vigente_desde) VALUES {filas};"
+
+
+# Razas de la plantilla de importación (sin tamaño por defecto).
+RAZAS_INICIALES = (
+    "Bulldog Francés", "Chihuahua", "Gato (sin raza definida)", "Golden Retriever", "Husky",
+    "Labrador Retriever", "Pastor Alemán", "Perro mestizo (sin raza)", "Pitbull y similares",
+    "Poodle (Caniche) Toy y Miniatura", "Schnauzer", "Schnauzer Miniatura", "Shih Tzu",
+    "Yorkshire Terrier",
+)
+
+
+def _semilla_razas() -> str:
+    filas = ", ".join("('" + nombre.replace("'", "''") + "')" for nombre in RAZAS_INICIALES)
+    return f"INSERT OR IGNORE INTO razas (nombre) VALUES {filas};"
+
+
+class ErrorMigracion(RuntimeError):
+    """Error general de migraciones."""
+
+
+class BaseMasNueva(ErrorMigracion):
+    """La base tiene una versión mayor que la última migración conocida."""
+
+
+class MigracionesInvalidas(ErrorMigracion):
+    """La lista de migraciones no cumple las reglas (numeración o contenido)."""
+
+
+@dataclass(frozen=True)
+class Migracion:
+    version: int
+    descripcion: str
+    sql: str
+
+
+MIGRACIONES: tuple[Migracion, ...] = (
+    Migracion(
+        version=1,
+        descripcion="Tabla de configuración clave/valor",
+        sql="""
+        CREATE TABLE configuracion (
+            clave TEXT PRIMARY KEY,
+            valor TEXT NOT NULL
+        );
+        """,
+    ),
+    Migracion(
+        version=2,
+        descripcion="Propietarios",
+        sql="""
+        CREATE TABLE propietarios (
+            id INTEGER PRIMARY KEY,
+            nombre TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+            telefono TEXT NOT NULL DEFAULT '',
+            saldo_a_favor INTEGER NOT NULL DEFAULT 0
+                CHECK (typeof(saldo_a_favor) = 'integer' AND saldo_a_favor >= 0),
+            activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1)),
+            fusionado_en INTEGER REFERENCES propietarios(id),
+            CHECK (fusionado_en IS NULL OR (fusionado_en <> id AND activo = 0))
+        );
+        CREATE INDEX ix_propietarios_nombre ON propietarios(nombre);
+        CREATE INDEX ix_propietarios_telefono ON propietarios(telefono);
+        """,
+    ),
+    Migracion(
+        version=3,
+        descripcion="Razas con tamaño y pelaje por defecto",
+        sql="""
+        CREATE TABLE razas (
+            id INTEGER PRIMARY KEY,
+            nombre TEXT NOT NULL COLLATE NOCASE UNIQUE CHECK (length(trim(nombre)) > 0),
+            tamano TEXT,
+            pelaje TEXT NOT NULL DEFAULT '',
+            activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1))
+        );
+        """,
+    ),
+    Migracion(
+        version=4,
+        descripcion="Mascotas",
+        sql="""
+        CREATE TABLE mascotas (
+            id INTEGER PRIMARY KEY,
+            propietario_id INTEGER NOT NULL REFERENCES propietarios(id),
+            nombre TEXT NOT NULL CHECK (length(trim(nombre)) > 0),
+            raza_id INTEGER REFERENCES razas(id),
+            tamano TEXT NOT NULL,
+            pelaje TEXT NOT NULL DEFAULT '',
+            complicado INTEGER NOT NULL DEFAULT 0 CHECK (complicado IN (0, 1)),
+            activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1))
+        );
+        CREATE INDEX ix_mascotas_propietario ON mascotas(propietario_id);
+        """,
+    ),
+    Migracion(
+        version=5,
+        descripcion="Turnos (incluye historial de inasistencias por propietario)",
+        sql="""
+        CREATE TABLE turnos (
+            id INTEGER PRIMARY KEY,
+            mascota_id INTEGER NOT NULL REFERENCES mascotas(id),
+            propietario_id INTEGER NOT NULL REFERENCES propietarios(id),
+            inicio TEXT NOT NULL,
+            servicio TEXT NOT NULL,
+            categoria TEXT NOT NULL
+                CHECK (categoria IN ('maquina', 'grande', 'tijera', 'complicado')),
+            estado TEXT NOT NULL CHECK (estado IN (
+                'pendiente_abono', 'confirmado', 'en_atencion', 'atendido',
+                'entregado', 'liberado', 'cancelado', 'inasistencia')),
+            motivo_liberacion TEXT
+                CHECK (motivo_liberacion IN ('abono_vencido', 'otro_pago_primero', 'otro')),
+            abono_requerido INTEGER NOT NULL
+                CHECK (typeof(abono_requerido) = 'integer' AND abono_requerido >= 0),
+            abono_pagado INTEGER NOT NULL DEFAULT 0
+                CHECK (typeof(abono_pagado) = 'integer' AND abono_pagado >= 0),
+            saldo_aplicado INTEGER NOT NULL DEFAULT 0
+                CHECK (typeof(saldo_aplicado) = 'integer' AND saldo_aplicado >= 0),
+            saldo_generado INTEGER NOT NULL DEFAULT 0
+                CHECK (typeof(saldo_generado) = 'integer' AND saldo_generado >= 0),
+            creado_en TEXT NOT NULL,
+            abonado_en TEXT,
+            aviso_inasistencia_en TEXT,
+            CHECK (abono_pagado + saldo_aplicado <= abono_requerido),
+            CHECK ((estado = 'liberado') = (motivo_liberacion IS NOT NULL))
+        );
+        CREATE INDEX ix_turnos_inicio_estado ON turnos(inicio, estado);
+        CREATE INDEX ix_turnos_propietario ON turnos(propietario_id);
+        CREATE INDEX ix_turnos_mascota ON turnos(mascota_id);
+        """,
+    ),
+    Migracion(
+        version=6,
+        descripcion="Bloqueos de agenda",
+        sql="""
+        CREATE TABLE bloqueos (
+            id INTEGER PRIMARY KEY,
+            fecha TEXT NOT NULL,
+            hora_inicio TEXT,
+            hora_fin TEXT,
+            motivo TEXT NOT NULL DEFAULT '',
+            activo INTEGER NOT NULL DEFAULT 1 CHECK (activo IN (0, 1)),
+            CHECK ((hora_inicio IS NULL) = (hora_fin IS NULL)),
+            CHECK (hora_inicio IS NULL OR hora_inicio < hora_fin)
+        );
+        CREATE INDEX ix_bloqueos_fecha ON bloqueos(fecha);
+        """,
+    ),
+    Migracion(
+        version=7,
+        descripcion="Auditoría de escrituras",
+        sql="""
+        CREATE TABLE auditoria (
+            id INTEGER PRIMARY KEY,
+            cuando TEXT NOT NULL,
+            accion TEXT NOT NULL,
+            entidad TEXT NOT NULL,
+            entidad_id INTEGER,
+            detalle TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(detalle))
+        );
+        CREATE INDEX ix_auditoria_entidad ON auditoria(entidad, entidad_id);
+        """,
+    ),
+    Migracion(
+        version=8,
+        descripcion="Historial de precios por categoría, con los precios iniciales",
+        sql=f"""
+        CREATE TABLE precios (
+            id INTEGER PRIMARY KEY,
+            categoria TEXT NOT NULL
+                CHECK (categoria IN ('maquina', 'grande', 'tijera', 'complicado')),
+            valor INTEGER NOT NULL CHECK (typeof(valor) = 'integer' AND valor >= 0),
+            vigente_desde TEXT NOT NULL CHECK (date(vigente_desde) = vigente_desde),
+            registrado_en TEXT
+        );
+        CREATE INDEX ix_precios_categoria_fecha ON precios(categoria, vigente_desde);
+        {_semilla_precios()}
+        """,
+    ),
+    Migracion(
+        version=9,
+        descripcion="Fichas de servicio y sesiones de desenredado",
+        sql="""
+        CREATE TABLE fichas (
+            id INTEGER PRIMARY KEY,
+            turno_id INTEGER NOT NULL UNIQUE REFERENCES turnos(id),
+            servicios_realizados TEXT NOT NULL DEFAULT '',
+            detalles_corte TEXT NOT NULL DEFAULT '',
+            precio_final INTEGER NOT NULL
+                CHECK (typeof(precio_final) = 'integer' AND precio_final >= 0),
+            observaciones TEXT NOT NULL DEFAULT '',
+            creada_en TEXT NOT NULL
+        );
+        CREATE TABLE sesiones_desenredado (
+            id INTEGER PRIMARY KEY,
+            mascota_id INTEGER NOT NULL REFERENCES mascotas(id),
+            ficha_id INTEGER NOT NULL REFERENCES fichas(id),
+            numero_sesion INTEGER NOT NULL CHECK (numero_sesion >= 1),
+            avance TEXT NOT NULL DEFAULT '',
+            porcentaje INTEGER CHECK (porcentaje IS NULL OR porcentaje BETWEEN 0 AND 100),
+            fecha TEXT NOT NULL,
+            UNIQUE (mascota_id, numero_sesion)
+        );
+        CREATE INDEX ix_sesiones_ficha ON sesiones_desenredado(ficha_id);
+        """,
+    ),
+    Migracion(
+        version=10,
+        descripcion="Bandeja de salida de notificaciones",
+        sql="""
+        CREATE TABLE notificaciones_salida (
+            id INTEGER PRIMARY KEY,
+            turno_id INTEGER NOT NULL REFERENCES turnos(id),
+            tipo TEXT NOT NULL,
+            programada_para TEXT NOT NULL,
+            estado TEXT NOT NULL DEFAULT 'pendiente'
+                CHECK (estado IN ('pendiente', 'enviada', 'descartada', 'fallida')),
+            intentos INTEGER NOT NULL DEFAULT 0 CHECK (intentos >= 0),
+            ultimo_error TEXT,
+            motivo_descarte TEXT,
+            creada_en TEXT NOT NULL,
+            enviada_en TEXT,
+            cerrada_en TEXT,
+            CHECK ((estado = 'enviada') = (enviada_en IS NOT NULL)),
+            CHECK ((estado = 'descartada') = (motivo_descarte IS NOT NULL)),
+            CHECK ((estado = 'pendiente') = (cerrada_en IS NULL))
+        );
+        CREATE INDEX ix_notificaciones_estado_programada
+            ON notificaciones_salida(estado, programada_para);
+        CREATE INDEX ix_notificaciones_turno ON notificaciones_salida(turno_id);
+        """,
+    ),
+    Migracion(
+        version=11,
+        descripcion="Cédula, dirección y celular 2 del propietario; datos de la mascota; razas",
+        sql=f"""
+        ALTER TABLE propietarios ADD COLUMN cedula TEXT;
+        ALTER TABLE propietarios ADD COLUMN direccion TEXT NOT NULL DEFAULT '';
+        ALTER TABLE propietarios ADD COLUMN celular2 TEXT;
+        CREATE UNIQUE INDEX ux_propietarios_cedula ON propietarios(cedula);
+        ALTER TABLE mascotas ADD COLUMN fecha_nacimiento TEXT;
+        ALTER TABLE mascotas ADD COLUMN ultima_visita TEXT;
+        ALTER TABLE mascotas ADD COLUMN observaciones TEXT NOT NULL DEFAULT '';
+        {_semilla_razas()}
+        """,
+    ),
+)
+
+_DESTRUCTIVO = re.compile(r"\b(DROP|DELETE)\b", re.IGNORECASE)
+_COMENTARIOS = re.compile(r"--[^\n]*|/\*.*?\*/", re.DOTALL)
+
+
+def _sentencias(sql: str) -> list[str]:
+    """Divide el SQL en sentencias completas (sin comentarios)."""
+    limpio = _COMENTARIOS.sub(" ", sql)
+    sentencias: list[str] = []
+    actual = ""
+    for linea in limpio.splitlines(keepends=True):
+        actual += linea
+        if sqlite3.complete_statement(actual):
+            if actual.strip().strip(";").strip():
+                sentencias.append(actual.strip())
+            actual = ""
+    if actual.strip():
+        sentencias.append(actual.strip())
+    return sentencias
+
+
+def validar(migraciones) -> None:
+    """Verifica numeración 1..n sin huecos y que solo agreguen esquema."""
+    versiones = [m.version for m in migraciones]
+    if versiones != list(range(1, len(versiones) + 1)):
+        raise MigracionesInvalidas(
+            f"Las migraciones deben numerarse 1..n sin huecos ni desorden: {versiones}"
+        )
+    for m in migraciones:
+        if _DESTRUCTIVO.search(_COMENTARIOS.sub(" ", m.sql)):
+            raise MigracionesInvalidas(
+                f"La migración {m.version} contiene DROP o DELETE; solo se permite agregar"
+            )
+
+
+def version_actual(con: sqlite3.Connection) -> int:
+    return con.execute("PRAGMA user_version").fetchone()[0]
+
+
+def migrar(con: sqlite3.Connection, migraciones=MIGRACIONES) -> int:
+    """Aplica las migraciones pendientes y devuelve la versión final."""
+    migraciones = tuple(migraciones)
+    validar(migraciones)
+    ultima = len(migraciones)
+    actual = version_actual(con)
+    if actual > ultima:
+        raise BaseMasNueva(
+            f"La base está en la versión {actual} y esta aplicación solo conoce hasta la {ultima}"
+        )
+    for m in migraciones[actual:]:
+        with transaccion(con):
+            for sentencia in _sentencias(m.sql):
+                con.execute(sentencia)
+            con.execute(f"PRAGMA user_version={int(m.version)}")
+    return version_actual(con)
