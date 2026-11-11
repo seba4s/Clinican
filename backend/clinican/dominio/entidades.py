@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
+from enum import Enum
 from typing import Any
 
 from clinican.dominio.cupos import CategoriaCupo, Servicio, Tamano
@@ -78,3 +79,47 @@ class RegistroAuditoria:
     entidad: str
     entidad_id: int | None
     detalle: dict[str, Any] = field(default_factory=dict)
+
+
+class EstadoNotificacion(Enum):
+    PENDIENTE = "pendiente"
+    ENVIADA = "enviada"
+    DESCARTADA = "descartada"
+    FALLIDA = "fallida"
+
+
+@dataclass(frozen=True)
+class NotificacionSalida:
+    id: int
+    turno_id: int
+    tipo: str
+    programada_para: datetime
+    estado: EstadoNotificacion
+    intentos: int
+    ultimo_error: str | None
+    motivo_descarte: str | None
+    creada_en: datetime
+    enviada_en: datetime | None
+    cerrada_en: datetime | None
+
+
+@dataclass(frozen=True)
+class Ficha:
+    id: int
+    turno_id: int
+    servicios_realizados: str
+    detalles_corte: str
+    precio_final: int
+    observaciones: str
+    creada_en: datetime
+
+
+@dataclass(frozen=True)
+class SesionDesenredado:
+    id: int
+    mascota_id: int
+    ficha_id: int
+    numero_sesion: int
+    avance: str
+    porcentaje: int | None
+    fecha: date

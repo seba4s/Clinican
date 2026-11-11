@@ -37,7 +37,7 @@ class Escenario:
 
     def propietario(self, nombre: str | None = None, saldo: int = 0):
         self._n += 1
-        p = clientes.crear_propietario(self.con, nombre or f"Cliente {self._n}", "3000000", ahora=AHORA)
+        p = clientes.crear_propietario(self.con, nombre or f"Cliente {self._n}", "3001234567", ahora=AHORA)
         if saldo:
             repo_clientes.sumar_saldo(self.con, p.id, saldo)
         return clientes.obtener_propietario(self.con, p.id)

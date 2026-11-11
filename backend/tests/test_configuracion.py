@@ -19,6 +19,7 @@ def test_valores_por_defecto(con):
     assert cfg.minutos_expiracion == 30
     assert cfg.canal_notificaciones == "archivo"
     assert cfg.carpeta_respaldos == "respaldos"
+    assert cfg.horas_antes_recordatorio == 24  # PROVISIONAL
     for dia in range(6):
         assert cfg.horario.dias[dia] == Jornada(time(9, 0), time(16, 30))
     assert cfg.horario.dias[6] is None

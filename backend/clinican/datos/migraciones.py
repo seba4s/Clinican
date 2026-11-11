@@ -12,6 +12,16 @@ import sqlite3
 from dataclasses import dataclass
 
 from clinican.datos.conexion import transaccion
+from clinican.dominio.precios import FECHA_PRECIOS_INICIALES, PRECIOS_INICIALES
+
+
+def _semilla_precios() -> str:
+    """INSERT de los precios iniciales del dominio (valores enteros y fecha fija)."""
+    filas = ", ".join(
+        f"('{categoria.value}', {int(valor)}, '{FECHA_PRECIOS_INICIALES.isoformat()}')"
+        for categoria, valor in PRECIOS_INICIALES.items()
+    )
+    return f"INSERT INTO precios (categoria, valor, vigente_desde) VALUES {filas};"
 
 
 class ErrorMigracion(RuntimeError):
@@ -158,6 +168,75 @@ MIGRACIONES: tuple[Migracion, ...] = (
             detalle TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(detalle))
         );
         CREATE INDEX ix_auditoria_entidad ON auditoria(entidad, entidad_id);
+        """,
+    ),
+    Migracion(
+        version=8,
+        descripcion="Historial de precios por categoría, con los precios iniciales",
+        sql=f"""
+        CREATE TABLE precios (
+            id INTEGER PRIMARY KEY,
+            categoria TEXT NOT NULL
+                CHECK (categoria IN ('maquina', 'grande', 'tijera', 'complicado')),
+            valor INTEGER NOT NULL CHECK (typeof(valor) = 'integer' AND valor >= 0),
+            vigente_desde TEXT NOT NULL CHECK (date(vigente_desde) = vigente_desde),
+            registrado_en TEXT
+        );
+        CREATE INDEX ix_precios_categoria_fecha ON precios(categoria, vigente_desde);
+        {_semilla_precios()}
+        """,
+    ),
+    Migracion(
+        version=9,
+        descripcion="Fichas de servicio y sesiones de desenredado",
+        sql="""
+        CREATE TABLE fichas (
+            id INTEGER PRIMARY KEY,
+            turno_id INTEGER NOT NULL UNIQUE REFERENCES turnos(id),
+            servicios_realizados TEXT NOT NULL DEFAULT '',
+            detalles_corte TEXT NOT NULL DEFAULT '',
+            precio_final INTEGER NOT NULL
+                CHECK (typeof(precio_final) = 'integer' AND precio_final >= 0),
+            observaciones TEXT NOT NULL DEFAULT '',
+            creada_en TEXT NOT NULL
+        );
+        CREATE TABLE sesiones_desenredado (
+            id INTEGER PRIMARY KEY,
+            mascota_id INTEGER NOT NULL REFERENCES mascotas(id),
+            ficha_id INTEGER NOT NULL REFERENCES fichas(id),
+            numero_sesion INTEGER NOT NULL CHECK (numero_sesion >= 1),
+            avance TEXT NOT NULL DEFAULT '',
+            porcentaje INTEGER CHECK (porcentaje IS NULL OR porcentaje BETWEEN 0 AND 100),
+            fecha TEXT NOT NULL,
+            UNIQUE (mascota_id, numero_sesion)
+        );
+        CREATE INDEX ix_sesiones_ficha ON sesiones_desenredado(ficha_id);
+        """,
+    ),
+    Migracion(
+        version=10,
+        descripcion="Bandeja de salida de notificaciones",
+        sql="""
+        CREATE TABLE notificaciones_salida (
+            id INTEGER PRIMARY KEY,
+            turno_id INTEGER NOT NULL REFERENCES turnos(id),
+            tipo TEXT NOT NULL,
+            programada_para TEXT NOT NULL,
+            estado TEXT NOT NULL DEFAULT 'pendiente'
+                CHECK (estado IN ('pendiente', 'enviada', 'descartada', 'fallida')),
+            intentos INTEGER NOT NULL DEFAULT 0 CHECK (intentos >= 0),
+            ultimo_error TEXT,
+            motivo_descarte TEXT,
+            creada_en TEXT NOT NULL,
+            enviada_en TEXT,
+            cerrada_en TEXT,
+            CHECK ((estado = 'enviada') = (enviada_en IS NOT NULL)),
+            CHECK ((estado = 'descartada') = (motivo_descarte IS NOT NULL)),
+            CHECK ((estado = 'pendiente') = (cerrada_en IS NULL))
+        );
+        CREATE INDEX ix_notificaciones_estado_programada
+            ON notificaciones_salida(estado, programada_para);
+        CREATE INDEX ix_notificaciones_turno ON notificaciones_salida(turno_id);
         """,
     ),
 )

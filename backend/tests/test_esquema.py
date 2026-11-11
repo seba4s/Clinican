@@ -7,6 +7,7 @@ from clinican.datos.migraciones import MIGRACIONES, migrar, version_actual
 
 TABLAS = {
     "configuracion", "propietarios", "razas", "mascotas", "turnos", "bloqueos", "auditoria",
+    "precios", "fichas", "sesiones_desenredado", "notificaciones_salida",
 }
 
 
@@ -15,10 +16,12 @@ def _nombres(con, tipo):
 
 
 def test_tablas_e_indices(con):
-    assert version_actual(con) == len(MIGRACIONES) == 7
+    assert version_actual(con) == len(MIGRACIONES) == 10
     assert TABLAS <= _nombres(con, "table")
     assert {"usuarios", "roles", "permisos"}.isdisjoint(_nombres(con, "table"))
-    assert {"ix_turnos_inicio_estado", "ix_turnos_propietario"} <= _nombres(con, "index")
+    assert {
+        "ix_turnos_inicio_estado", "ix_turnos_propietario", "ix_notificaciones_estado_programada",
+    } <= _nombres(con, "index")
 
 
 def test_subir_desde_version_1_conserva_configuracion(tmp_path):
@@ -26,7 +29,7 @@ def test_subir_desde_version_1_conserva_configuracion(tmp_path):
     try:
         migrar(c, MIGRACIONES[:1])
         c.execute("INSERT INTO configuracion VALUES ('abono', '15000')")
-        assert migrar(c) == 7
+        assert migrar(c) == len(MIGRACIONES)
         assert c.execute("SELECT valor FROM configuracion").fetchall() == [("15000",)]
     finally:
         c.close()

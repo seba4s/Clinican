@@ -53,3 +53,43 @@ def test_casos_de_uso_de_agenda_sin_red(sin_red, con, esc):
     b = agenda.crear_bloqueo(con, Bloqueo(LUNES, time(15), time(17)), ahora=a_las(9))
     assert len(agenda.disponibilidad(con, LUNES, ahora=a_las(9))) == 12
     agenda.quitar_bloqueo(con, b.id, ahora=a_las(9))
+
+
+def test_despachador_y_adaptadores_sin_red(sin_red, con, esc, ruta_db, tmp_path):
+    """Archivo, consola y WhatsApp (con urlopen simulado) no abren sockets reales."""
+    import io
+
+    from clinican.adaptadores.notificador_archivo import NotificadorArchivo
+    from clinican.adaptadores.notificador_consola import NotificadorConsola
+    from clinican.adaptadores.notificador_whatsapp import NotificadorWhatsApp
+    from clinican.servicios.despachador import Despachador
+
+    class Respuesta:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    enviados = []
+    whatsapp = NotificadorWhatsApp(
+        entorno={"CLINICAN_WHATSAPP_TOKEN": "t", "CLINICAN_WHATSAPP_NUMERO_ID": "1"},
+        abrir_url=lambda req, timeout: enviados.append(req) or Respuesta(),
+    )
+    for i, notificador in enumerate(
+        [NotificadorArchivo(tmp_path), NotificadorConsola(io.StringIO()), whatsapp]
+    ):
+        t = esc.turno(C.MAQUINA, inicio=a_las(10 + i))
+        agenda.registrar_abono(con, t.id, 20000, ahora=AHORA)
+        assert Despachador(ruta_db, notificador).procesar_una_vez(AHORA).enviadas == 1
+    assert len(enviados) == 1
+    # Sin el simulador, WhatsApp no puede salir a la red: falla y queda para reintento
+    t = esc.turno(C.MAQUINA, inicio=a_las(15))
+    agenda.registrar_abono(con, t.id, 20000, ahora=AHORA)
+    sin_simular = NotificadorWhatsApp(
+        entorno={"CLINICAN_WHATSAPP_TOKEN": "t", "CLINICAN_WHATSAPP_NUMERO_ID": "1"}
+    )
+    resumen = Despachador(ruta_db, sin_simular).procesar_una_vez(AHORA)
+    assert resumen.reintentos == 1

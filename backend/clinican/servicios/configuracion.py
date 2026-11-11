@@ -17,6 +17,7 @@ from clinican.dominio.abonos import validar_pesos
 from clinican.dominio.agenda import HorarioSemanal, Jornada
 from clinican.dominio.cupos import CategoriaCupo, CuposPorFranja
 from clinican.dominio.errores import DatoInvalido
+from clinican.dominio.notificaciones import HORAS_ANTES_RECORDATORIO
 from clinican.servicios.auditoria import auditar
 
 
@@ -53,6 +54,11 @@ def _horario_de_texto(texto: str) -> HorarioSemanal:
 def _validar_entero_positivo(valor: Any) -> None:
     if isinstance(valor, bool) or not isinstance(valor, int) or valor <= 0:
         raise TypeError("debe ser un entero mayor que cero")
+
+
+def _validar_entero_no_negativo(valor: Any) -> None:
+    if isinstance(valor, bool) or not isinstance(valor, int) or valor < 0:
+        raise TypeError("debe ser un entero mayor o igual a cero")
 
 
 def _validar_pesos(valor: Any) -> None:
@@ -100,6 +106,8 @@ CLAVES: dict[str, Clave] = {
         Clave("horario", HorarioSemanal(), _validar_horario, _horario_a_texto, _horario_de_texto),
         Clave("canal_notificaciones", "archivo", _validar_texto, str, str),
         Clave("carpeta_respaldos", "respaldos", _validar_texto, str, str),
+        # PROVISIONAL: 24 h por defecto, pendiente de confirmar por Sebas.
+        Clave("horas_antes_recordatorio", HORAS_ANTES_RECORDATORIO, _validar_entero_no_negativo, str, int),
     )
 }
 
@@ -112,6 +120,7 @@ class ConfigClinica:
     horario: HorarioSemanal
     canal_notificaciones: str
     carpeta_respaldos: str
+    horas_antes_recordatorio: int
 
 
 def _clave(nombre: str) -> Clave:

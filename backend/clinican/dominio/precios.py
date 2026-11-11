@@ -15,6 +15,10 @@ from typing import Hashable, Iterable, Mapping
 from clinican.dominio.abonos import validar_pesos
 from clinican.dominio.cupos import CategoriaCupo
 
+# Fecha con la que se siembran los precios iniciales: "desde siempre", para que
+# cualquier turno (incluso de fechas pasadas) tenga un precio vigente.
+FECHA_PRECIOS_INICIALES = date(2000, 1, 1)
+
 PRECIOS_INICIALES: Mapping[CategoriaCupo, int] = MappingProxyType(
     {
         CategoriaCupo.MAQUINA: 45000,

@@ -9,6 +9,7 @@ meterse en medio. El reloj se recibe en ``ahora``: nada aquí lee la hora.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date, datetime
 
 from clinican.datos import repo_agenda, repo_clientes
@@ -39,7 +40,7 @@ from clinican.dominio.errores import (
 )
 from clinican.dominio.estados import EstadoTurno, MotivoLiberacion, transicionar
 from clinican.dominio.turnos import contar_ocupacion, esta_activo, validar_franja
-from clinican.servicios import configuracion
+from clinican.servicios import configuracion, fichas, notificaciones
 from clinican.servicios.auditoria import auditar
 from clinican.servicios.configuracion import ConfigClinica
 
@@ -207,6 +208,10 @@ def crear_turno(con, mascota_id: int, inicio: datetime, servicio: Servicio, *, a
             servicio=servicio.value, categoria=categoria.value, estado=estado.value,
             abono_requerido=cfg.abono, saldo_aplicado=cubierto,
         )
+        if estado is E.CONFIRMADO:
+            notificaciones.programar_recordatorio(
+                con, turno_id, franja.inicio, cfg.horas_antes_recordatorio, ahora
+            )
     return obtener_turno(con, turno_id)
 
 
@@ -251,6 +256,10 @@ def registrar_abono(con, turno_id: int, monto: int, *, ahora: datetime) -> Turno
             auditar(con, ahora, "abonar", "turno", turno.id, monto=monto, aplicado=aplicado,
                     excedente_a_favor=excedente, faltante=turno.faltante - aplicado,
                     confirmado=completo)
+            if completo:
+                notificaciones.programar_recordatorio(
+                    con, turno.id, turno.inicio, cfg.horas_antes_recordatorio, ahora
+                )
     if vencio_a_las is not None:
         raise AbonoRechazado(
             f"El abono venció a las {_hora(vencio_a_las)}; el turno se liberó. "
@@ -299,6 +308,11 @@ def mover_turno(con, turno_id: int, nuevo_inicio: datetime, *, ahora: datetime) 
             repo_agenda.actualizar_turno(con, turno.id, inicio=franja.inicio)
             auditar(con, ahora, "mover", "turno", turno.id,
                     antes=turno.inicio.isoformat(), despues=franja.inicio.isoformat())
+            notificaciones.descartar_pendientes(con, turno.id, "El turno se movió", ahora)
+            if turno.estado is E.CONFIRMADO:
+                notificaciones.programar_recordatorio(
+                    con, turno.id, franja.inicio, cfg.horas_antes_recordatorio, ahora
+                )
     if vencido:
         raise OperacionNoPermitida("El abono del turno venció y el turno se liberó")
     return obtener_turno(con, turno_id)
@@ -367,8 +381,28 @@ def iniciar_atencion(con, turno_id: int, *, ahora: datetime) -> Turno:
     return _cambiar_estado(con, turno_id, E.EN_ATENCION, ahora)
 
 
-def marcar_atendido(con, turno_id: int, *, ahora: datetime) -> Turno:
-    return _cambiar_estado(con, turno_id, E.ATENDIDO, ahora)
+def marcar_atendido(
+    con,
+    turno_id: int,
+    *,
+    ahora: datetime,
+    servicios_realizados: str = "",
+    detalles_corte: str = "",
+    observaciones: str = "",
+) -> Turno:
+    """Pasa el turno a ATENDIDO y crea su ficha de servicio en la misma transacción."""
+    _con_zona(ahora, "ahora")
+    with transaccion(con):
+        turno = obtener_turno(con, turno_id)
+        transicionar(turno.estado, E.ATENDIDO)
+        repo_agenda.actualizar_turno(con, turno.id, estado=E.ATENDIDO)
+        auditar(con, ahora, "cambiar_estado", "turno", turno.id,
+                antes=turno.estado.value, despues=E.ATENDIDO.value)
+        fichas.crear_ficha_en_transaccion(
+            con, replace(turno, estado=E.ATENDIDO), ahora,
+            servicios_realizados, detalles_corte, observaciones,
+        )
+    return obtener_turno(con, turno_id)
 
 
 def marcar_entregado(con, turno_id: int, *, ahora: datetime) -> Turno:
