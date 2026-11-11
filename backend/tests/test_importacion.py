@@ -11,7 +11,7 @@ from clinican.servicios.auditoria import historial
 from clinican.servicios.importacion import COLUMNAS, mapear_encabezados
 from conftest import AHORA
 
-PLANTILLA_REAL = Path(__file__).resolve().parents[2] / "plantilla_importacion.xlsx"
+PLANTILLA_REAL = Path(__file__).resolve().parents[1] / "plantilla_importacion.xlsx"
 ENCABEZADOS = list(COLUMNAS.values())
 
 
