@@ -12,9 +12,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
-from clinican.datos import repo_notificaciones
+from clinican.datos import repo_agenda, repo_notificaciones
+from clinican.datos.conexion import transaccion
 from clinican.dominio.agenda import ZONA
 from clinican.dominio.entidades import EstadoNotificacion, NotificacionSalida
+from clinican.dominio.errores import NoEncontrado, OperacionNoPermitida
+from clinican.dominio.estados import EstadoTurno
 from clinican.dominio.notificaciones import TIPO_RECORDATORIO, hora_recordatorio
 from clinican.servicios.auditoria import auditar
 
@@ -75,3 +78,25 @@ def descartar_pendientes(con, turno_id: int, motivo: str, ahora: datetime) -> li
 
 def notificaciones_de_turno(con, turno_id: int) -> list[NotificacionSalida]:
     return repo_notificaciones.de_turno(con, turno_id)
+
+
+def reintentar(con, notificacion_id: int, *, ahora: datetime) -> NotificacionSalida:
+    """Vuelve a poner en la bandeja un recordatorio FALLIDO para enviarlo ya.
+
+    Solo si el turno sigue confirmado y no ha empezado. Los intentos vuelven a cero.
+    """
+    with transaccion(con):
+        n = repo_notificaciones.obtener(con, notificacion_id)
+        if n is None:
+            raise NoEncontrado(f"No existe la notificación {notificacion_id}")
+        if n.estado is not EstadoNotificacion.FALLIDA:
+            raise OperacionNoPermitida("Solo se puede reintentar un recordatorio fallido")
+        turno = repo_agenda.obtener_turno(con, n.turno_id)
+        if turno is None or turno.estado is not EstadoTurno.CONFIRMADO or turno.inicio <= ahora:
+            raise OperacionNoPermitida("El turno ya no está confirmado o ya empezó: no hace falta recordarlo")
+        repo_notificaciones.actualizar_notificacion(
+            con, n.id, estado=EstadoNotificacion.PENDIENTE, intentos=0, ultimo_error=None,
+            programada_para=ahora, cerrada_en=None,
+        )
+        auditar(con, ahora, "reintentar", "notificacion", n.id, turno_id=n.turno_id)
+    return repo_notificaciones.obtener(con, notificacion_id)

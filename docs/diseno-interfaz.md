@@ -1,6 +1,6 @@
-# Diseño de la interfaz de escritorio (propuesta)
+# Diseño de la interfaz de escritorio
 
-Propuesta para revisar antes de construir las pantallas. Maquetas:
+Diseño aprobado e implementado en `backend/clinican/ui/`. Maquetas:
 https://claude.ai/artifact/HtdrHdoHjrouHad9Aeu3fp
 
 Plataforma: Windows 11, sin internet, CustomTkinter. El código de la interfaz va
@@ -87,8 +87,9 @@ dinero.
 - Atajos: Ctrl+N nuevo turno, Ctrl+F buscar cliente, ← → cambiar de día,
   Inicio volver a hoy, Esc cerrar diálogo.
 
-## Decisiones abiertas
+## Decisiones
 
-- Solo modo claro (como la aplicación anterior) o seguir el modo oscuro de
-  Windows.
-- Si el abono se descuenta del precio final al entregar ("Cobrar al entregar").
+- La aplicación sigue el modo claro u oscuro de Windows. Los colores del modo
+  oscuro están en `backend/clinican/ui/tema.py`, con su contraste.
+- Al entregar se cobra el precio final menos lo abonado (abono pagado más saldo
+  aplicado).
