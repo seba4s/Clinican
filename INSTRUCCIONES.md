@@ -46,6 +46,12 @@ Las mismas pruebas corren en GitHub Actions en cada push y pull request (`.githu
 Abre la ventana de CLINICAN. La base queda en `%USERPROFILE%\Clinican\clinican.db` (o en la ruta de la variable
 `CLINICAN_BD`). Para correr solo el backend, sin ventana, hasta Ctrl+C: `main.py --sin-interfaz`.
 
+Para abrirlo desde el escritorio, sin consola, crea el acceso directo una sola vez (queda con el ícono del perro):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\crear_acceso_directo.ps1
+```
+
 ## Documentación
 
 - Diseño documentado: [`docs/arquitectura/diseno_documentado.pdf`](docs/arquitectura/diseno_documentado.pdf)
