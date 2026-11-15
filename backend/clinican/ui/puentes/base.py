@@ -47,12 +47,18 @@ def _señales(clase: type) -> tuple[str, ...]:
     return _CACHE_SEÑALES[clase]
 
 
-def propiedad(tipo, nombre: str, señal: Signal):
-    """Propiedad de solo lectura para QML que lee ``self._<nombre>``; ``señal`` es de la misma clase."""
+def propiedad(tipo, nombre: str, señal: Signal | None = None):
+    """Propiedad de solo lectura para QML que lee ``self._<nombre>``; ``señal`` es de la misma clase.
+
+    Sin ``señal`` es constante: QML no la vuelve a leer (sirve para valores iniciales de formularios,
+    que si no se reescribirían sobre lo que la persona está escribiendo en cada cambio del diálogo).
+    """
 
     def leer(self):
         return getattr(self, "_" + nombre)
 
+    if señal is None:
+        return Property(tipo, leer, constant=True)
     return Property(tipo, leer, notify=señal)
 
 

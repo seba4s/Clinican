@@ -276,7 +276,7 @@ class DialogoCliente(Dialogo):
         }
         self._validadores.update(cedula=_validar_cedula, celular=_validar_celular)
 
-    inicial = propiedad("QVariantMap", "inicial", cambioCliente)
+    inicial = propiedad("QVariantMap", "inicial")
 
     @Slot(str, str, str, str, bool, str, str)
     def guardar(self, nombre: str, cedula: str, celular: str, direccion: str, autorizo: bool,
@@ -348,7 +348,7 @@ class DialogoMascota(Dialogo):
     nombresRazas = propiedad("QVariantList", "nombres_razas", cambioMascota)
     tamanos = propiedad("QVariantList", "tamanos", cambioMascota)
     tamano = propiedad(str, "tamano", cambioMascota)
-    inicial = propiedad("QVariantMap", "inicial", cambioMascota)
+    inicial = propiedad("QVariantMap", "inicial")
 
     @Slot(str)
     def elegir_tamano(self, valor: str) -> None:
@@ -418,7 +418,7 @@ class DialogoUnir(Dialogo):
         self._sin_resultados = False
         self.buscar(self._inicial)
 
-    inicial = propiedad(str, "inicial", cambioUnir)
+    inicial = propiedad(str, "inicial")
     resultados = propiedad("QVariantList", "resultados", cambioUnir)
     sinResultados = propiedad(bool, "sin_resultados", cambioUnir)
 

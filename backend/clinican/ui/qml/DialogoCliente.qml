@@ -8,9 +8,9 @@ DialogoMarco {
     Campo { id: nombre; titulo: "Nombre"; ancho: 460; texto: dlg.d.inicial.nombre; error: dlg.d.errores.nombre || "" }
     RowLayout {
         spacing: 20
-        Campo { id: cedula; titulo: "Cédula"; ancho: 220; texto: dlg.d.inicial.cedula; error: dlg.d.errores.cedula || ""
+        Campo { id: cedula; objectName: "cedulaCliente"; titulo: "Cédula"; ancho: 220; texto: dlg.d.inicial.cedula; error: dlg.d.errores.cedula || ""
                 onEditado: (t) => dlg.d.validar("cedula", t) }
-        Campo { id: celular; titulo: "Celular"; ancho: 220; texto: dlg.d.inicial.celular; error: dlg.d.errores.celular || ""
+        Campo { id: celular; objectName: "celularCliente"; titulo: "Celular"; ancho: 220; texto: dlg.d.inicial.celular; error: dlg.d.errores.celular || ""
                 onEditado: (t) => dlg.d.validar("celular", t) }
     }
     Campo { id: direccion; titulo: "Dirección (opcional)"; ancho: 460; texto: dlg.d.inicial.direccion }
