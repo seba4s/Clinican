@@ -257,7 +257,9 @@ def test_hoja_tipo_excel_agrupa_por_hora_y_agenda_desde_libre(ventana, con):
     assert len(items(ventana, "libre")) > 0  # los cupos libres se dibujan
     # Tocar un cupo libre abre el nuevo turno en esa hora y categoría
     diez_qml = next(g for g in hoja if g["hora"] == "10:00")
-    clave = diez_qml["filas"][-1]["libres"][0]["clave"]
+    libres_diez = [f for f in diez_qml["filas"] if f["tipo"] == "libre"]
+    assert sorted(f["cupo"] for f in libres_diez) == ["Complicado", "Grande", "Máquina", "Tijera"]  # una fila por cupo
+    clave = next(f["clave"] for f in libres_diez if f["cupo"] == "Máquina")
     ag.elegir_libre(clave)
     d = ventana.app._dialogo
     assert d.selector.elegida == a_las(10) and d.categoria_sugerida is C.MAQUINA

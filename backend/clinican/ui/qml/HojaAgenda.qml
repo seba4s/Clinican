@@ -2,8 +2,8 @@ import QtQuick
 import QtQuick.Controls
 
 // Agenda del día como una hoja de cálculo: encabezado verde fijo, la hora combinada a la
-// izquierda de cada franja (una fila por turno) y una fila «Libre» con los cupos que quedan;
-// cada cupo libre se toca para agendar ahí mismo.
+// izquierda de cada franja (una fila por turno) y una fila vacía por cada cupo que queda
+// libre; se toca para agendar ahí mismo.
 Item {
     id: hoja
     required property var p           // presentador de la agenda
@@ -119,38 +119,42 @@ Item {
                     width: parent.width - 2 * hoja.pad; wrapMode: Text.NoWrap }
         }
         Texto {
-            visible: fila.f.tipo === "pasada" || fila.f.tipo === "libre"
+            visible: fila.f.tipo === "pasada"
             x: hoja.pad; anchors.verticalCenter: parent.verticalCenter
-            text: fila.f.tipo === "pasada" ? "Sin turnos" : "Libre"
+            text: "Sin turnos"
             tamano: tema.medida.etiqueta + 1; suave: true
         }
         Rectangle { visible: fila.f.tipo !== "bloqueo"; x: fila.cx(2); width: 1; height: parent.height; color: tema.color.linea }
         Rectangle { visible: fila.f.tipo !== "bloqueo"; anchors.bottom: parent.bottom; width: parent.width; height: 1; color: tema.color.linea }
 
-        // Cupos libres de la franja: cada uno agenda directamente ahí.
-        Row {
+        // Un cupo libre: fila vacía de la tabla (Cupo y Estado a la vista); se toca para agendar ahí.
+        Item {
+            objectName: "libre"
+            anchors.fill: parent
             visible: fila.f.tipo === "libre"
-            x: fila.cx(2) + hoja.pad / 2
-            width: parent.width - x - hoja.pad / 2
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 6
-            clip: true
+            Rectangle {
+                anchors.fill: parent
+                color: zonaLibre.containsMouse ? tema.color.hoverNeutro : "transparent"
+                Behavior on color { ColorAnimation { duration: 120 } }
+            }
             Repeater {
-                model: fila.f.tipo === "libre" ? fila.f.libres : []
-                Rectangle {
-                    required property var modelData
-                    objectName: "libre"
-                    height: hoja.altoFila - 10
-                    width: chipTexto.implicitWidth + 18
-                    radius: 6
-                    color: zonaLibre.containsMouse ? tema.color.hoverNeutro : tema.color.superficie
-                    border.color: tema.color.bordeCampo
-                    Behavior on color { ColorAnimation { duration: 120 } }
-                    Texto { id: chipTexto; anchors.centerIn: parent; text: modelData.texto; suave: true; tamano: tema.medida.etiqueta + 1; wrapMode: Text.NoWrap }
-                    MouseArea { id: zonaLibre; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                onClicked: hoja.p.elegir_libre(modelData.clave) }
+                model: fila.f.tipo === "libre" ? 8 : 0
+                Item {
+                    required property int index
+                    x: fila.cx(index + 1); width: fila.ancho(index + 1); height: hoja.altoFila
+                    Rectangle { visible: index > 0; width: 1; height: parent.height; color: tema.color.linea }
+                    Texto {
+                        visible: index === 0 || index === 7
+                        x: hoja.pad; width: parent.width - hoja.pad * 1.5
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: index === 0 ? (fila.f.cupo || "") : "Libre"
+                        suave: true; elide: Text.ElideRight; wrapMode: Text.NoWrap
+                        tamano: tema.medida.etiqueta + 1
+                    }
                 }
             }
+            MouseArea { id: zonaLibre; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        enabled: fila.f.tipo === "libre"; onClicked: hoja.p.elegir_libre(fila.f.clave) }
         }
 
         // Fila de un turno.
