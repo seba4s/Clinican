@@ -20,9 +20,8 @@ DialogoMarco {
         Layout.fillWidth: true
         spacing: 0
         RowLayout {
-            visible: dlg.d.sinResultados
-            Texto { text: "No hay clientes con ese dato."; suave: true }
-            Boton { text: "Crear cliente nuevo"; tipo: "enlace"; onClicked: dlg.d.cliente_nuevo(buscar.texto) }
+            Texto { visible: dlg.d.sinResultados; text: "No hay clientes con ese dato."; suave: true }
+            Boton { objectName: "clienteNuevo"; visible: !dlg.d.cliente.nombre; text: "+ Cliente nuevo"; tipo: "enlace"; onClicked: dlg.d.cliente_nuevo(buscar.texto) }
         }
         Repeater {
             model: dlg.d.resultados
