@@ -7,7 +7,7 @@ Funciona en Windows 11, sin internet, con una base de datos local.
 
 | Carpeta | Contenido |
 |---|---|
-| `backend/` | El programa: agenda por franjas con cupos, abonos, saldo a favor, fichas, precios, recordatorios, respaldos e importación desde Excel, con su interfaz de escritorio en CustomTkinter (`backend/clinican/ui`). Incluye sus pruebas y la plantilla `plantilla_importacion.xlsx`. |
+| `backend/` | El programa: agenda por franjas con cupos, abonos, saldo a favor, fichas, precios, recordatorios, respaldos e importación desde Excel, con su interfaz de escritorio en PySide6/QML (`backend/clinican/ui`). Incluye sus pruebas y la plantilla `plantilla_importacion.xlsx`. |
 | `docs/arquitectura/` | Diseño documentado del proyecto integrador (drivers, escenarios, estilo, C4, tácticas, riesgos), en HTML y PDF. |
 | `docs/adr/` | Registros de decisión arquitectónica (ADR-001 a 003). |
 | `docs/diseno-interfaz.md` | Diseño acordado de la interfaz. |

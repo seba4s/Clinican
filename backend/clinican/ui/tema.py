@@ -1,14 +1,10 @@
 """Colores, letra y medidas de la interfaz (ver docs/diseno-interfaz.md).
 
-Cada color es una pareja (modo claro, modo oscuro): CustomTkinter elige según
-el modo de Windows. Contrastes medidos con WCAG sobre la superficie de cada modo.
+Cada color es una pareja (modo claro, modo oscuro): la interfaz QML elige según
+el modo de Windows (ver clinican/ui/puentes/tema.py). Contrastes medidos con WCAG sobre la superficie de cada modo.
 """
 
 from __future__ import annotations
-
-import tkinter.font as tkfont
-
-import customtkinter as ctk
 
 from clinican.dominio.estados import EstadoTurno
 
@@ -29,6 +25,29 @@ SELECCION_FONDO: Color = TINTA  # sección activa: invertida
 SELECCION_TEXTO: Color = ("#FFFFFF", "#14121D")
 HOVER_NEUTRO: Color = ("#ECEDE8", "#34323C")
 VELO = ("#14121D", "#000000")
+
+# Hoja de la agenda (encabezado verde de la marca, como la fila de títulos de Excel).
+VERDE: Color = ("#B7CF53", "#B7CF53")
+VERDE_LINEA: Color = ("#9DB33C", "#9DB33C")
+TINTA_SOBRE_VERDE: Color = ("#14121D", "#14121D")
+FONDO_HORA: Color = ("#EEF4D6", "#252D10")
+FONDO_SELECCION: Color = ("#FCE4F1", "#3B1D30")
+LINEA: Color = ("#DEDFD8", "#3A3842")
+
+# Franja de aviso dentro de la ventana.
+AVISO_OK: Color = ("#EEF4D6", "#2A3311")
+AVISO_ERROR: Color = ("#FDE7EA", "#3A1E24")
+
+# Vidrio (#AARRGGBB): paneles translúcidos sobre el fondo desenfocado. Bastante opacos
+# para que los contrastes medidos sobre la superficie sigan valiendo.
+VIDRIO: Color = ("#C8FFFFFF", "#B825232C")
+VIDRIO_FUERTE: Color = ("#E6FFFFFF", "#E025232C")  # diálogos y menús
+VIDRIO_BRILLO: Color = ("#FFFFFFFF", "#33FFFFFF")  # filo de luz del borde superior
+VIDRIO_BORDE: Color = ("#14000000", "#1FFFFFFF")
+SOMBRA: Color = ("#22000000", "#66000000")
+MANCHA_1: Color = ("#55FE028D", "#40FE028D")  # fucsia de la marca, solo decorativo
+MANCHA_2: Color = ("#66B7CF53", "#38B7CF53")  # lima de la marca, solo decorativo
+MANCHA_3: Color = ("#4D5FD3EA", "#335FD3EA")
 
 # Estado del turno -> (fondo, texto, borde, texto corto, ícono). Siempre se muestra el texto.
 ESTADOS: dict[EstadoTurno, tuple[Color, Color, Color, str, str]] = {
@@ -52,33 +71,6 @@ TITULO = 28
 SUBTITULO = 20
 CUERPO = 15
 ETIQUETA = 13
-
-_familia: str | None = None
-
-
-def familia() -> str:
-    """Segoe UI Variable si existe (Windows 11), si no Segoe UI o la del sistema."""
-    global _familia
-    if _familia is None:
-        disponibles = set(tkfont.families())
-        for nombre in ("Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI"):
-            if nombre in disponibles:
-                _familia = nombre
-                break
-        else:
-            _familia = "TkDefaultFont"
-    return _familia
-
-
-def fuente(tamano: int = CUERPO, negrita: bool = False) -> ctk.CTkFont:
-    return ctk.CTkFont(family=familia(), size=tamano, weight="bold" if negrita else "normal")
-
-
-def configurar() -> None:
-    """Sigue el modo claro u oscuro de Windows."""
-    ctk.set_appearance_mode("system")
-    ctk.set_default_color_theme("blue")
-
 
 def estilo_estado(estado: EstadoTurno) -> tuple[Color, Color, Color, str, str]:
     return ESTADOS[estado]
