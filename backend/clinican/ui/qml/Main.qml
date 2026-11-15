@@ -43,7 +43,7 @@ ApplicationWindow {
             anchors.fill: parent
             spacing: 0
             BarraLateral {
-                Layout.preferredWidth: 220
+                Layout.preferredWidth: 236
                 Layout.fillHeight: true
                 Layout.margins: 12
                 Layout.rightMargin: 0

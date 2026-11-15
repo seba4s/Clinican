@@ -42,6 +42,7 @@ class App(Presentador):
         self._aviso_error = False
         self._aviso_visible = False
         self._insignia = "Recordatorios"
+        self._fallidos = 0
         self._dialogo: Dialogo | None = None
         self._al_cerrar = None
         self._cerrados: list[Dialogo] = []  # QML puede seguir animando el cierre
@@ -69,6 +70,7 @@ class App(Presentador):
     avisoError = propiedad(bool, "aviso_error", cambioApp)
     avisoVisible = propiedad(bool, "aviso_visible", cambioApp)
     insignia = propiedad(str, "insignia", cambioApp)
+    fallidos = propiedad(int, "fallidos", cambioApp)
     dialogo = propiedad(QObject, "dialogo", cambioApp)
 
     @Property("QVariantList", constant=True)
@@ -112,7 +114,7 @@ class App(Presentador):
             registro.exception("No se pudo leer la bandeja")
             return
         texto = "Recordatorios" + (f"   ·  {fallidas} fallido{'s' if fallidas != 1 else ''}" if fallidas else "")
-        self.poner(insignia=texto)
+        self.poner(insignia=texto, fallidos=fallidas)
 
     # ------------------------------------------------------------------ navegación
     @Slot(str)

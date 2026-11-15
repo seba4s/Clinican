@@ -404,3 +404,50 @@ def test_importar_excel_muestra_el_informe(ventana, tmp_path):
     ventana.app.ctx.importar_excel = None
     cl.importar(archivo.as_uri())
     assert ventana.app.avisoError and "no está disponible" in ventana.app.aviso
+
+
+def test_recordatorios_fallidos_se_reintentan_y_corrigen(ventana, con, esc, ruta_db):
+    from clinican.dominio.entidades import EstadoNotificacion as EN
+    from clinican.servicios.notificaciones import ErrorEnvio
+    from clinican.servicios.despachador import Despachador
+    from clinican.servicios.notificaciones import notificaciones_de_turno
+    from clinican.ui.puentes.clientes import DialogoCliente
+
+    class Falla:
+        def enviar(self, mensaje):
+            raise ErrorEnvio("número no válido")
+
+    t = agenda.registrar_abono(con, esc.turno(inicio=a_las(16), ahora=AHORA).id, 20000, ahora=AHORA)
+    d = Despachador(ruta_db, Falla())
+    momento = AHORA
+    for _ in range(4):
+        d.procesar_una_vez(momento)
+        momento = notificaciones_de_turno(con, t.id)[0].programada_para
+    assert notificaciones_de_turno(con, t.id)[0].estado is EN.FALLIDA
+
+    app = ventana.app
+    app.actualizar_insignias()
+    # El despachador también intentó los recordatorios de los turnos del escenario.
+    total = len([n for n in rec_fallidas(con)])
+    assert total >= 1 and app.insignia == f"Recordatorios   ·  {total} fallido{'s' if total != 1 else ''}"
+    rec = app.ir("Recordatorios")
+    procesar()
+    fallidos = next(m for m in rec.metricas if m["titulo"] == "Fallidos")
+    assert fallidos["valor"] == str(total) and fallidos["alerta"]
+    f = next(f for f in rec.fallidas if f["propietarioId"] == t.propietario_id)
+    assert f["vigente"] and f["error"] == "Respuesta del canal: número no válido"
+    rec.corregir(f["propietarioId"])
+    assert isinstance(app._dialogo, DialogoCliente) and dialogo_qml(ventana) is not None
+    app._dialogo.cancelar()
+    rec.reintentar(f["id"])
+    assert notificaciones_de_turno(con, t.id)[0].estado is EN.PENDIENTE
+    assert len(rec.fallidas) == total - 1 and "en cola" in app.aviso
+    assert app.insignia == ("Recordatorios" if total == 1 else f"Recordatorios   ·  {total - 1} fallido{'s' if total != 2 else ''}")
+    assert rec.proximas and all(fila[3] == "—" for fila in rec.proximas)
+
+
+def rec_fallidas(con):
+    from clinican.dominio.entidades import EstadoNotificacion as EN
+    from clinican.servicios import consultas
+
+    return [None] * consultas.estado_bandeja(con, limite=1).conteo.get(EN.FALLIDA, 0)

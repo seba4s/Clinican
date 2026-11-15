@@ -37,13 +37,22 @@ Tarjeta {
                     radius: tema.medida.radio
                     color: !activo && zona.containsMouse ? tema.color.hoverNeutro : "transparent"
                     Texto {
-                        anchors { left: parent.left; leftMargin: 14; right: parent.right; verticalCenter: parent.verticalCenter }
-                        text: modelData === "Recordatorios" ? app.insignia : modelData
+                        anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }
+                        text: modelData
                         negrita: activo
                         color: activo ? tema.color.seleccionTexto : tema.color.tinta
-                        elide: Text.ElideRight
                         wrapMode: Text.NoWrap
                         Behavior on color { ColorAnimation { duration: 200 } }
+                    }
+                    // Recordatorios fallidos, como insignia a la derecha.
+                    Chip {
+                        readonly property var e: tema.estados["PENDIENTE_ABONO"] || ({})
+                        visible: modelData === "Recordatorios" && app.fallidos > 0
+                        anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
+                        texto: app.fallidos + (app.fallidos === 1 ? " fallido" : " fallidos")
+                        tamano: 12
+                        color: e.fondo || "transparent"
+                        letra: e.letra || tema.color.tinta
                     }
                     MouseArea { id: zona; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: app.ir(modelData) }
                 }
