@@ -100,6 +100,7 @@ ApplicationWindow {
             focus: true
             onLoaded: {
                 item.altoMaximo = Qt.binding(function () { return ventana.height - 40 })
+                item.anchoMaximo = Qt.binding(function () { return ventana.width - 40 })
                 item.forceActiveFocus()
                 aparecer.restart()
             }

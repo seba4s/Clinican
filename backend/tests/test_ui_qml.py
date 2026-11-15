@@ -280,3 +280,127 @@ def test_atajos_y_un_dialogo_a_la_vez(ventana):
     primero.cancelar()
     app.buscarCliente()
     assert app.actual == "Clientes"
+
+
+def test_cliente_nuevo_y_mascota(ventana, con):
+    from clinican.ui.puentes.clientes import DialogoCliente, DialogoMascota
+
+    cl = ventana.app.ir("Clientes")
+    cl.nuevo_cliente("3001234567")
+    d = ventana.app._dialogo
+    assert isinstance(d, DialogoCliente) and dialogo_qml(ventana) is not None
+    assert d.inicial["celular"] == "3001234567" and d.inicial["nombre"] == ""
+    d.guardar("Ana Quintero", "1020", "3001234567", "", False, d.inicial["fecha"], "")
+    p = d.resultado
+    assert p.telefono == "3001234567"
+    # Al crear el cliente se abre de una vez el diálogo de su mascota.
+    m = ventana.app._dialogo
+    assert isinstance(m, DialogoMascota) and m.propietario_id == p.id and dialogo_qml(ventana) is not None
+    m.guardar("", "Sin raza", False, "", "")
+    assert m.errores["nombre"] and m.abierto
+    m.guardar("Chispa", "Raza que no existe", False, "", "")
+    assert "Elige una raza de la lista" in m.error_general
+    m.elegir_tamano("Grande")
+    m.guardar("Chispa", "Sin raza", True, "3", "Muerde")
+    assert m.resultado.complicado and m.resultado.tamano.name == "GRANDE" and m.resultado.fecha_nacimiento
+    assert cl.seleccion == p.id and cl.detalle["mascotas"][0]["nombre"] == "Chispa"
+    assert cl.detalle["mascotas"][0]["cupo"] == "CUPO COMPLICADO"
+
+    cl.nuevo_cliente("")
+    corto = ventana.app._dialogo
+    corto.guardar("X", "1", "300", "", False, corto.inicial["fecha"], "")
+    assert corto.resultado is None and corto.abierto and corto.errores["celular"]
+    corto.cancelar()
+
+
+def test_cliente_autoriza_y_revoca_datos(ventana, con):
+    from clinican.servicios import autorizaciones
+    from clinican.ui import formato as fmt
+
+    cl = ventana.app.ir("Clientes")
+    cl.nuevo_cliente("3009998877")
+    d = ventana.app._dialogo
+    d.guardar("Luis Pantoja", "5050", "3009998877", "", True, "05/11/2026", "Formato firmado")
+    p = d.resultado
+    ventana.app._dialogo.cancelar()  # el diálogo de la mascota
+    vigente = autorizaciones.autorizacion_vigente(con, p.id)
+    assert vigente is not None and vigente.medio == "Formato firmado"
+    assert fmt.fecha_numerica(vigente.fecha) == "05/11/2026"
+    assert cl.detalle["metricas"][3]["valor"] == "Autorizó"
+
+    cl.editar()
+    futura = ventana.app._dialogo
+    assert futura.inicial["autorizo"]
+    futura.guardar("Luis Pantoja", "5050", "3009998877", "", True, "01/01/2099", "Formato firmado")
+    assert futura.resultado is None and futura.abierto and "posterior a hoy" in futura.errores["fecha"]
+    futura.cancelar()
+
+    cl.editar()
+    e = ventana.app._dialogo
+    e.guardar("Luis Pantoja", "5050", "3009998877", "", False, e.inicial["fecha"], "")
+    assert autorizaciones.autorizacion_vigente(con, p.id) is None
+    assert len(autorizaciones.historial(con, p.id)) == 2
+    assert cl.detalle["metricas"][3]["valor"] == "Sin autorización"
+
+
+def test_clientes_busca_une_e_historial(ventana, con, esc):
+    from clinican.servicios import clientes
+
+    cl = ventana.app.ir("Clientes")
+    uno = esc.propietario("Rosa Benavides")
+    otro = esc.propietario("Rosa B.")  # mismo celular de prueba: posible duplicado
+    esc.mascota(propietario=otro)
+    cl.buscar("Rosa")
+    assert {f["id"] for f in cl.lista} == {uno.id, otro.id}
+    assert all(f["linea2"].startswith("Posible duplicado") for f in cl.lista)
+    cl.elegir(uno.id)
+    cl.unir()
+    u = ventana.app._dialogo
+    assert dialogo_qml(ventana) is not None
+    u.aceptar()
+    assert u.error_general == "Elige el cliente duplicado."
+    u.buscar("Rosa B")
+    u.elegir(otro.id)
+    assert any(r["elegido"] for r in u.resultados)
+    u.aceptar()
+    assert not clientes.obtener_propietario(con, otro.id).activo
+    assert len(cl.detalle["mascotas"]) == 1 and "Clientes unidos" in ventana.app._aviso
+
+    # Historial con ficha: el precio abre la ficha para corregirla.
+    t = agenda.obtener_turno(con, ventana.ids["grande"])
+    cl.elegir(t.propietario_id)
+    fila = next(f for f in cl.detalle["historial"] if f["turnoId"] == t.id)
+    assert fila["precio"] == "$70.000"
+    cl.ver_ficha(t.id)
+    assert dialogo_qml(ventana) is not None and ventana.app._dialogo.textoGuardar == "Guardar cambios"
+    ventana.app._dialogo.cancelar()
+
+    cl.elegir(uno.id)
+    cl.nuevo_turno_cliente()  # una sola mascota: abre el turno con ella
+    assert ventana.app._dialogo is not None and ventana.app.actual == "Agenda"
+    ventana.app._dialogo.cancelar()
+
+
+def test_importar_excel_muestra_el_informe(ventana, tmp_path):
+    from types import SimpleNamespace
+
+    from clinican.ui.puentes.base import Informacion
+
+    llamadas = []
+
+    def importar(con, ruta, ahora):
+        llamadas.append(ruta)
+        return SimpleNamespace(aceptadas=[1, 2], rechazadas=[SimpleNamespace(fila=4, motivo="sin cédula")])
+
+    ventana.app.ctx.importar_excel = importar
+    cl = ventana.app.ir("Clientes")
+    archivo = tmp_path / "mascotas.xlsx"
+    cl.importar(archivo.as_uri())
+    assert llamadas == [archivo]
+    d = ventana.app._dialogo
+    assert isinstance(d, Informacion) and dialogo_qml(ventana) is not None
+    assert d.subtitulo == "2 filas aceptadas, 1 rechazadas." and d.detalle == "Fila 4: sin cédula"
+    d.aceptar()
+    ventana.app.ctx.importar_excel = None
+    cl.importar(archivo.as_uri())
+    assert ventana.app.avisoError and "no está disponible" in ventana.app.aviso

@@ -17,11 +17,13 @@ FocusScope {
     property bool enfocarCancelar: false
     property bool enterPrincipal: true
     property real altoMaximo: 600
+    property real anchoMaximo: 1200
     default property alias contenido: cuerpo.data
     signal principal()
     signal izquierda()
 
-    width: d.ancho + 56
+    // Como mínimo el ancho pedido; crece si el contenido lo necesita (sin pasar la ventana).
+    width: Math.min(Math.max(d.ancho, cuerpo.implicitWidth) + 56, anchoMaximo)
     height: Math.min(columna.implicitHeight + 48, altoMaximo)
     focus: true
 
