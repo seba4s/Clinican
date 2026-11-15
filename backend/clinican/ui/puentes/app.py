@@ -172,10 +172,35 @@ class App(Presentador):
             registro.exception("Falló el refresco periódico")
 
 
+def _precargar_bibliotecas_qt() -> None:
+    """En Windows, carga antes los controles de Qt para que el plugin del estilo los encuentre.
+
+    Con el Python de la Microsoft Store, Qt no halla por su cuenta las bibliotecas
+    ``Qt6QuickControls2*.dll`` de PySide6 y falla con «No se puede encontrar el módulo».
+    Si ya están cargadas en el proceso, Windows las resuelve por nombre.
+    """
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        import glob
+        import os
+
+        import PySide6
+
+        carpeta = os.path.dirname(PySide6.__file__)
+        os.add_dll_directory(carpeta)
+        for ruta in sorted(glob.glob(os.path.join(carpeta, "Qt6QuickControls2*.dll"))):
+            ctypes.WinDLL(ruta)
+    except Exception:
+        registro.exception("No se pudieron precargar las bibliotecas de Qt (se sigue sin precarga)")
+
+
 class Ventana:
     """Arma el motor de QML con el tema, las ayudas y la aplicación, y carga ``Main.qml``."""
 
     def __init__(self, ctx: Contexto):
+        _precargar_bibliotecas_qt()
         QQuickStyle.setStyle("Basic")
         self.qapp = QGuiApplication.instance() or QGuiApplication(sys.argv[:1])
         self.qapp.setApplicationName("Clinican")
