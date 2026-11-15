@@ -209,8 +209,8 @@ def crear_turno(con, mascota_id: int, inicio: datetime, servicio: Servicio, *, a
             abono_requerido=cfg.abono, saldo_aplicado=cubierto,
         )
         if estado is E.CONFIRMADO:
-            notificaciones.programar_recordatorio(
-                con, turno_id, franja.inicio, cfg.horas_antes_recordatorio, ahora
+            notificaciones.programar_recordatorios(
+                con, turno_id, franja.inicio, cfg, ahora
             )
     return obtener_turno(con, turno_id)
 
@@ -257,8 +257,8 @@ def registrar_abono(con, turno_id: int, monto: int, *, ahora: datetime) -> Turno
                     excedente_a_favor=excedente, faltante=turno.faltante - aplicado,
                     confirmado=completo)
             if completo:
-                notificaciones.programar_recordatorio(
-                    con, turno.id, turno.inicio, cfg.horas_antes_recordatorio, ahora
+                notificaciones.programar_recordatorios(
+                    con, turno.id, turno.inicio, cfg, ahora
                 )
     if vencio_a_las is not None:
         raise AbonoRechazado(
@@ -310,8 +310,8 @@ def mover_turno(con, turno_id: int, nuevo_inicio: datetime, *, ahora: datetime) 
                     antes=turno.inicio.isoformat(), despues=franja.inicio.isoformat())
             notificaciones.descartar_pendientes(con, turno.id, "El turno se movió", ahora)
             if turno.estado is E.CONFIRMADO:
-                notificaciones.programar_recordatorio(
-                    con, turno.id, franja.inicio, cfg.horas_antes_recordatorio, ahora
+                notificaciones.programar_recordatorios(
+                    con, turno.id, franja.inicio, cfg, ahora
                 )
     if vencido:
         raise OperacionNoPermitida("El abono del turno venció y el turno se liberó")

@@ -431,7 +431,7 @@ def test_recordatorios_fallidos_se_reintentan_y_corrigen(ventana, con, esc, ruta
 
     t = agenda.registrar_abono(con, esc.turno(inicio=a_las(16), ahora=AHORA).id, 20000, ahora=AHORA)
     d = Despachador(ruta_db, Falla())
-    momento = AHORA
+    momento = a_las(15)  # el recordatorio de 1 h antes
     for _ in range(4):
         d.procesar_una_vez(momento)
         momento = notificaciones_de_turno(con, t.id)[0].programada_para
@@ -578,12 +578,15 @@ def test_ajustes_recordatorios_y_respaldos(ventana, con, tmp_path):
     aj.ir("Recordatorios y WhatsApp")
     procesar()
     assert {c["valor"] for c in aj.datos["canales"]} == {"archivo", "whatsapp", "consola"}
-    aj.guardar_recordatorios("consola", "muchas")
+    assert aj.datos["horas"] == "24" and aj.datos["horasFinal"] == "1"
+    aj.guardar_recordatorios("consola", "muchas", "x")
     procesar()
     assert aj.errores["horas"] and item(ventana, "horasAntes").property("error")
-    aj.guardar_recordatorios("consola", "12")
+    assert aj.errores["horasFinal"] and item(ventana, "horasAntesFinal").property("error")
+    aj.guardar_recordatorios("consola", "12", "2")
     cfg = configuracion.cargar(con)
     assert cfg.canal_notificaciones == "consola" and cfg.horas_antes_recordatorio == 12 and not aj.errores
+    assert cfg.horas_antes_recordatorio_final == 2
 
     aj.ir("Respaldos")
     procesar()

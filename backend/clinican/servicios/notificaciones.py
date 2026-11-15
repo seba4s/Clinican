@@ -14,11 +14,16 @@ from typing import Protocol, runtime_checkable
 
 from clinican.datos import repo_agenda, repo_notificaciones
 from clinican.datos.conexion import transaccion
-from clinican.dominio.agenda import ZONA
 from clinican.dominio.entidades import EstadoNotificacion, NotificacionSalida
 from clinican.dominio.errores import NoEncontrado, OperacionNoPermitida
 from clinican.dominio.estados import EstadoTurno
-from clinican.dominio.notificaciones import TIPO_RECORDATORIO, hora_recordatorio
+from clinican.dominio.notificaciones import (  # noqa: F401 (texto y parámetros se reexportan)
+    TIPO_RECORDATORIO,
+    TIPO_RECORDATORIO_FINAL,
+    parametros_recordatorio,
+    planificar_recordatorios,
+    texto_recordatorio,
+)
 from clinican.servicios.auditoria import auditar
 
 
@@ -36,30 +41,32 @@ class Mensaje:
     mascota: str
     inicio: datetime
     texto: str
+    # Datos para canales con plantilla aprobada: día en palabras, mascota y hora.
+    parametros: tuple[str, ...] = ()
 
 
 @runtime_checkable
 class Notificador(Protocol):
-    def enviar(self, mensaje: Mensaje) -> None:
-        """Entrega el mensaje o lanza ErrorEnvio."""
+    def enviar(self, mensaje: Mensaje) -> str | None:
+        """Entrega el mensaje o lanza ErrorEnvio. Puede devolver el id que le dio el canal."""
 
 
-def texto_recordatorio(propietario: str, mascota: str, inicio: datetime) -> str:
-    """Texto PROVISIONAL del recordatorio (para canales de texto libre)."""
-    local = inicio.astimezone(ZONA)
-    return (
-        f"Hola {propietario}, le recordamos el turno de peluquería de {mascota} "
-        f"el {local.strftime('%d/%m/%Y')} a las {local.strftime('%H:%M')}."
+def programar_recordatorios(con, turno_id: int, inicio: datetime, cfg, ahora: datetime) -> list[int]:
+    """Inserta los recordatorios del turno (24 h y 1 h antes, según ``cfg``).
+
+    Debe llamarse dentro de la transacción del turno.
+    """
+    anticipaciones = (
+        (TIPO_RECORDATORIO, cfg.horas_antes_recordatorio),
+        (TIPO_RECORDATORIO_FINAL, cfg.horas_antes_recordatorio_final),
     )
-
-
-def programar_recordatorio(con, turno_id: int, inicio: datetime, horas_antes: int, ahora: datetime) -> int:
-    """Inserta el recordatorio del turno. Debe llamarse dentro de la transacción del turno."""
-    cuando = hora_recordatorio(inicio, horas_antes, ahora)
-    nid = repo_notificaciones.insertar(con, turno_id, TIPO_RECORDATORIO, cuando, ahora)
-    auditar(con, ahora, "programar", "notificacion", nid, turno_id=turno_id,
-            tipo=TIPO_RECORDATORIO, programada_para=cuando.isoformat())
-    return nid
+    ids = []
+    for tipo, cuando in planificar_recordatorios(inicio, anticipaciones, ahora):
+        nid = repo_notificaciones.insertar(con, turno_id, tipo, cuando, ahora)
+        auditar(con, ahora, "programar", "notificacion", nid, turno_id=turno_id,
+                tipo=tipo, programada_para=cuando.isoformat())
+        ids.append(nid)
+    return ids
 
 
 def descartar_pendientes(con, turno_id: int, motivo: str, ahora: datetime) -> list[int]:

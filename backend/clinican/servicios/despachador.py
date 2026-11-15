@@ -5,7 +5,9 @@ En cada ciclo:
 
 1. Toma las notificaciones pendientes cuya hora ya llegó.
 2. Justo antes de enviar, en una transacción, verifica que el turno siga
-   CONFIRMADO y no haya empezado; si no, la DESCARTA con motivo. Si sigue
+   CONFIRMADO y no haya empezado; si no, la DESCARTA con motivo. También
+   descarta el primer recordatorio (24 h) si salió tarde y ya es hora del
+   último (1 h), para no mandar dos seguidos. Si sigue
    válida, cuenta el intento y la "reserva" corriendo su hora al siguiente
    reintento (así otro despachador no la toma mientras se envía, y si el
    programa se cae a mitad, se reintenta sola).
@@ -30,9 +32,20 @@ from clinican.datos.conexion import abrir, transaccion
 from clinican.dominio.agenda import ZONA
 from clinican.dominio.entidades import EstadoNotificacion as EN
 from clinican.dominio.estados import EstadoTurno
-from clinican.dominio.notificaciones import ESPERAS_REINTENTO, espera_tras_fallo, limite_retencion
+from clinican.dominio.notificaciones import (
+    ESPERAS_REINTENTO,
+    TIPO_RECORDATORIO_FINAL,
+    espera_tras_fallo,
+    limite_retencion,
+)
 from clinican.servicios.auditoria import auditar
-from clinican.servicios.notificaciones import ErrorEnvio, Mensaje, Notificador, texto_recordatorio
+from clinican.servicios.notificaciones import (
+    ErrorEnvio,
+    Mensaje,
+    Notificador,
+    parametros_recordatorio,
+    texto_recordatorio,
+)
 
 registro = logging.getLogger(__name__)
 
@@ -44,6 +57,15 @@ class ResumenDespacho:
     reintentos: int = 0
     fallidas: int = 0
     purgadas: int = 0
+
+
+def _ya_toca_el_final(con, turno_id: int, ahora: datetime) -> bool:
+    """¿El último recordatorio del turno ya llegó a su hora (pendiente) o ya salió?"""
+    return any(
+        otra.tipo == TIPO_RECORDATORIO_FINAL
+        and (otra.estado is EN.ENVIADA or (otra.estado is EN.PENDIENTE and otra.programada_para <= ahora))
+        for otra in repo_notificaciones.de_turno(con, turno_id)
+    )
 
 
 class Despachador:
@@ -75,14 +97,14 @@ class Despachador:
                 mensaje = self._reservar(con, pendiente.id, ahora, resumen)
                 if mensaje is None:
                     continue
-                error = None
+                error = id_externo = None
                 try:
-                    self._notificador.enviar(mensaje)
+                    id_externo = self._notificador.enviar(mensaje)
                 except ErrorEnvio as e:
                     error = str(e) or type(e).__name__
                 except Exception as e:  # un fallo del canal no debe tumbar el despachador
                     error = f"Error inesperado: {e!r}"
-                self._registrar_resultado(con, pendiente.id, error, ahora, resumen)
+                self._registrar_resultado(con, pendiente.id, error, ahora, resumen, id_externo)
             with transaccion(con):
                 resumen.purgadas = repo_notificaciones.purgar_cerradas(con, limite_retencion(ahora))
                 if resumen.purgadas:
@@ -102,6 +124,8 @@ class Despachador:
                 motivo = f"El turno ya no está confirmado ({turno.estado.value})"
             elif turno.inicio <= ahora:
                 motivo = "El turno ya empezó"
+            elif n.tipo != TIPO_RECORDATORIO_FINAL and _ya_toca_el_final(con, n.turno_id, ahora):
+                motivo = "Salió tarde y ya es hora del último recordatorio"
             if motivo is not None:
                 repo_notificaciones.actualizar_notificacion(
                     con, n.id, estado=EN.DESCARTADA, motivo_descarte=motivo, cerrada_en=ahora
@@ -124,11 +148,13 @@ class Despachador:
             propietario=propietario.nombre,
             mascota=mascota.nombre,
             inicio=turno.inicio.astimezone(ZONA),
-            texto=texto_recordatorio(propietario.nombre, mascota.nombre, turno.inicio),
+            texto=texto_recordatorio(mascota.nombre, turno.inicio, ahora),
+            parametros=parametros_recordatorio(mascota.nombre, turno.inicio, ahora),
         )
 
     def _registrar_resultado(
-        self, con, notificacion_id: int, error: str | None, ahora: datetime, resumen: ResumenDespacho
+        self, con, notificacion_id: int, error: str | None, ahora: datetime, resumen: ResumenDespacho,
+        id_externo=None,
     ) -> None:
         with transaccion(con):
             n = repo_notificaciones.obtener(con, notificacion_id)
@@ -136,7 +162,8 @@ class Despachador:
                 repo_notificaciones.actualizar_notificacion(
                     con, n.id, estado=EN.ENVIADA, enviada_en=ahora, cerrada_en=ahora
                 )
-                auditar(con, ahora, "enviar", "notificacion", n.id, intentos=n.intentos)
+                extra = {"id_externo": str(id_externo)} if id_externo else {}
+                auditar(con, ahora, "enviar", "notificacion", n.id, intentos=n.intentos, **extra)
                 resumen.enviadas += 1
                 return
             espera = espera_tras_fallo(n.intentos)

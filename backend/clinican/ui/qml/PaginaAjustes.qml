@@ -316,12 +316,17 @@ Item {
                               + "Sin ellos, cada envío falla y queda en Recordatorios › Fallidos."
                         tamano: tema.medida.etiqueta; suave: true
                     }
-                    Campo { id: horas; objectName: "horasAntes"; titulo: "Horas antes del turno"; ancho: 120
-                            texto: pagina.datos.horas || ""; error: pagina.p.errores.horas || "" }
+                    RowLayout {
+                        spacing: 16
+                        Campo { id: horas; objectName: "horasAntes"; titulo: "Primer recordatorio (horas antes)"; ancho: 200
+                                texto: pagina.datos.horas || ""; error: pagina.p.errores.horas || "" }
+                        Campo { id: horasFinal; objectName: "horasAntesFinal"; titulo: "Último recordatorio (horas antes)"; ancho: 200
+                                texto: pagina.datos.horasFinal || ""; error: pagina.p.errores.horasFinal || "" }
+                    }
                 }
             }
             Boton { objectName: "guardarRecordatorios"; text: "Guardar"; tipo: "principal"
-                    onClicked: pagina.p.guardar_recordatorios(r.canal, horas.texto) }
+                    onClicked: pagina.p.guardar_recordatorios(r.canal, horas.texto, horasFinal.texto) }
         }
     }
 
