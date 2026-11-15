@@ -271,7 +271,7 @@ class PantallaAgenda(Pantalla):
         self.nuevo_turno()
 
     def nuevo_turno(self, inicio: datetime | None = None, categoria: CategoriaCupo | None = None,
-                    mascota_id: int | None = None) -> None:
+                    mascota_id: int | None = None, dia=None) -> None:
         from clinican.ui.puentes.dialogos_turno import DialogoNuevoTurno
 
         def listo(turno) -> None:
@@ -281,8 +281,24 @@ class PantallaAgenda(Pantalla):
                 self.avisar(f"Turno agendado a las {fmt.hora(turno.inicio)}: {estado}.")
                 self.app.actualizar_insignias()
 
-        self.app.abrir(DialogoNuevoTurno(self, self.ctx, dia=fmt.local(inicio).date() if inicio else self.dia,
+        self.app.abrir(DialogoNuevoTurno(self, self.ctx, dia=dia or (fmt.local(inicio).date() if inicio else self.dia),
                                          inicio=inicio, categoria=categoria, mascota_id=mascota_id), listo)
+
+    def cliente_nuevo_para_turno(self, texto: str, dia, inicio, categoria) -> None:
+        """Registra cliente y mascota desde «Nuevo turno» y vuelve a ese diálogo con la mascota elegida."""
+        from clinican.ui.puentes.clientes import DialogoCliente, DialogoMascota
+
+        def volver(mascota_id=None) -> None:
+            self.nuevo_turno(inicio, categoria, mascota_id, dia=dia)
+
+        def con_cliente(nuevo) -> None:
+            if not nuevo:
+                volver()
+                return
+            self.avisar(f"Cliente {nuevo.nombre} creado. Agrégale su mascota para agendar.")
+            self.app.abrir(DialogoMascota(self.ctx, nuevo.id), lambda m: volver(m.id if m else None))
+
+        self.app.abrir(DialogoCliente(self.ctx, None, texto), con_cliente)
 
     def registrar_abono(self, turno) -> None:
         from clinican.ui.puentes.dialogos_turno import DialogoAbono

@@ -165,9 +165,9 @@ class DialogoNuevoTurno(Dialogo):
 
     @Slot(str)
     def cliente_nuevo(self, texto: str) -> None:
-        app = self.pantalla.app
+        pantalla, dia, inicio, cat = self.pantalla, self.selector.dia, self.selector.elegida, self.categoria_sugerida
         self.cerrar()
-        app.ir("Clientes").nuevo_cliente(texto.strip())
+        pantalla.cliente_nuevo_para_turno(texto.strip(), dia, inicio, cat)
 
     @Slot(int)
     def elegir_cliente(self, propietario_id: int) -> None:

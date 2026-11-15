@@ -632,3 +632,28 @@ def test_clientes_busqueda_tolerante_y_cerrar_perfil(ventana, con, esc):
     assert cl.seleccionado == p.id and not cl.detalle.get("vacio")
     cl.cerrar()
     assert cl.seleccionado == -1 and cl.detalle.get("vacio")
+
+
+def test_nuevo_turno_registra_cliente_y_mascota_sin_salir(ventana, con, esc):
+    from clinican.ui.puentes.clientes import DialogoCliente, DialogoMascota
+    from clinican.ui.puentes.dialogos_turno import DialogoNuevoTurno
+
+    ag = ventana.app.ir("Agenda")
+    ag.nuevo()
+    d = ventana.app._dialogo
+    assert isinstance(d, DialogoNuevoTurno)
+    d.cliente_nuevo("Laura Gómez")
+    c = ventana.app._dialogo
+    assert isinstance(c, DialogoCliente) and ventana.app.actual == "Agenda"
+    c.guardar("Laura Gómez", "1098765", "3151112233", "", False, c.inicial["fecha"], "")
+    m = ventana.app._dialogo
+    assert isinstance(m, DialogoMascota)
+    m.cancelar()
+    nuevo = ventana.app._dialogo
+    assert isinstance(nuevo, DialogoNuevoTurno) and nuevo.propietario is None
+    nuevo.cliente_nuevo("Pedro Ríos")
+    ventana.app._dialogo.guardar("Pedro Ríos", "2087654", "3162223344", "", False, c.inicial["fecha"], "")
+    ventana.app._dialogo.guardar("Luna", "Sin raza", False, "3", "")
+    final = ventana.app._dialogo
+    assert isinstance(final, DialogoNuevoTurno)
+    assert final.propietario.nombre == "Pedro Ríos" and final._mascota_id and final._mascota().nombre == "Luna"
