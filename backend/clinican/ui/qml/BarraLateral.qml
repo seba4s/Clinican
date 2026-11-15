@@ -64,5 +64,11 @@ Tarjeta {
             Layout.fillWidth: true; Layout.leftMargin: 12; Layout.topMargin: 16
         }
         Item { Layout.fillHeight: true }
+        Boton {
+            objectName: "alternarTema"
+            Layout.fillWidth: true
+            text: tema.oscuro ? "Modo claro" : "Modo oscuro"
+            onClicked: tema.alternar()
+        }
     }
 }

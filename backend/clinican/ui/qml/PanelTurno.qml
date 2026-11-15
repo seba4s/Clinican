@@ -25,7 +25,7 @@ Tarjeta {
             Texto { visible: panel.d.vacio; Layout.fillWidth: true; suave: true
                     text: "Elige un turno de la hoja para ver sus datos y lo que puedes hacer con él." }
             Texto { visible: panel.d.vacio; Layout.fillWidth: true; Layout.topMargin: 12; suave: true
-                    text: "Toca una fila «Libre» de la hoja para agendar directamente en ese cupo." }
+                    text: "Toca una hora «Libre» de la hoja para agendar directamente en ella." }
 
             Texto { visible: !panel.d.vacio; text: panel.d.encabezado || ""; tamano: tema.medida.etiqueta; suave: true; Layout.fillWidth: true }
             Texto { visible: !panel.d.vacio; text: panel.d.titulo || ""; tamano: 22; negrita: true; Layout.fillWidth: true }

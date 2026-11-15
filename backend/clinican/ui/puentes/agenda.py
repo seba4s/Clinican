@@ -30,7 +30,7 @@ class PantallaAgenda(Pantalla):
         self.dia = self.ctx.hoy()
         self.seleccion: int | None = None
         self._turnos: dict[int, TurnoEnAgenda] = {}
-        self._libres: list[tuple[datetime, CategoriaCupo]] = []
+        self._libres: list[tuple[datetime, CategoriaCupo | None]] = []
         self._lista_pendientes: list = []
         self._acciones_panel: list = []
         self._titulo_dia = ""
@@ -120,11 +120,10 @@ class PantallaAgenda(Pantalla):
                 elif fila.tipo == "pasada":
                     filas.append({"tipo": "pasada"})
                 elif fila.tipo == "libre":
-                    # Cada cupo libre es una fila vacía de la tabla, lista para llenar.
-                    for cat, n in fila.libres.items():
-                        for _ in range(n):
-                            filas.append({"tipo": "libre", "cupo": fmt.CATEGORIA[cat], "clave": len(self._libres)})
-                            self._libres.append((fila.inicio, cat))
+                    # Una hora sin turnos es una sola fila vacía; con turnos, estos ocupan la franja.
+                    if not any(f.tipo == "turno" for f in grupo.filas):
+                        filas.append({"tipo": "libre", "clave": len(self._libres)})
+                        self._libres.append((fila.inicio, None))
                 else:
                     item = fila.item
                     turno = item.turno

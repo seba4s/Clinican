@@ -14,7 +14,7 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6.QtQuick", exc_type=ImportError)
 
-from PySide6.QtCore import QCoreApplication, QObject  # noqa: E402
+from PySide6.QtCore import QCoreApplication, QObject, QSettings, QStandardPaths  # noqa: E402
 
 from clinican.datos.conexion import abrir  # noqa: E402
 from clinican.dominio.cupos import CategoriaCupo as C  # noqa: E402
@@ -45,6 +45,8 @@ def ventana(ruta_db, con, esc):
     agenda.marcar_atendido(con, grande.id, ahora=AHORA)
 
     ctx = Contexto(abrir=lambda: abrir(ruta_db), ruta_db=ruta_db, reloj=lambda: AHORA_UI)
+    QStandardPaths.setTestModeEnabled(True)  # la preferencia de tema no toca la configuración real
+    QSettings("Clinican", "Clinican").clear()
     v = Ventana(ctx)
     v.ids = {"pendiente": pendiente.id, "confirmado": confirmado.id,
              "en_atencion": en_atencion.id, "grande": grande.id}
@@ -53,6 +55,7 @@ def ventana(ruta_db, con, esc):
     procesar()
     avisos = list(v.avisos_qml)
     v.cerrar()
+    QSettings("Clinican", "Clinican").clear()
     assert not avisos, "\n".join(avisos)
 
 
@@ -232,7 +235,7 @@ def test_formatos():
     assert fmt.minutos_restantes(a_las(10), a_las(9, 48)) == "vence en 12 min"
 
 
-def test_hoja_tipo_excel_agrupa_por_hora_y_agenda_desde_libre(ventana, con):
+def test_hoja_tipo_excel_agrupa_por_hora_y_agenda_desde_libre(ventana, con, esc):
     from clinican.dominio.agenda import Bloqueo
     from clinican.ui.tablero import ORDEN_CATEGORIAS, agrupar, armar_tablero
 
@@ -255,20 +258,27 @@ def test_hoja_tipo_excel_agrupa_por_hora_y_agenda_desde_libre(ventana, con):
     assert [g["hora"] for g in hoja][:2] == ["09:00", "09:30"]
     assert any(g["bloqueo"] and g["filas"][0]["texto"].startswith("Bloqueado de 12:00 a 13:00") for g in hoja)
     assert len(items(ventana, "libre")) > 0  # los cupos libres se dibujan
-    # Tocar un cupo libre abre el nuevo turno en esa hora y categoría
+    # Un turno ocupa toda la franja: con turnos no hay filas «Libre»; una hora vacía es una sola fila
     diez_qml = next(g for g in hoja if g["hora"] == "10:00")
-    libres_diez = [f for f in diez_qml["filas"] if f["tipo"] == "libre"]
-    assert sorted(f["cupo"] for f in libres_diez) == ["Complicado", "Grande", "Máquina", "Tijera"]  # una fila por cupo
-    clave = next(f["clave"] for f in libres_diez if f["cupo"] == "Máquina")
-    ag.elegir_libre(clave)
+    assert [f["tipo"] for f in diez_qml["filas"]] == ["turno"]
+    una_hora = next(g for g in hoja if g["hora"] == "13:00")
+    assert [f["tipo"] for f in una_hora["filas"]] == ["libre"]
+    # Tocar la hora libre abre el nuevo turno en esa hora
+    ag.elegir_libre(una_hora["filas"][0]["clave"])
     d = ventana.app._dialogo
-    assert d.selector.elegida == a_las(10) and d.categoria_sugerida is C.MAQUINA
+    assert d.selector.elegida == a_las(13) and d.categoria_sugerida is None
     d.cancelar()
     # Elegir un turno marca la fila sin volver a armar la hoja
     antes = ag.grupos
     ag.seleccionar(ventana.ids["confirmado"])
     assert ag.seleccion == ventana.ids["confirmado"] and ag.seleccionado == ventana.ids["confirmado"]
     assert ag.grupos is antes
+    # Un segundo turno a la misma hora divide la franja entre los dos
+    esc.turno(inicio=a_las(10), ahora=a_las(9, 30))
+    ag.refrescar()
+    procesar()
+    diez_qml = next(g for g in ag.grupos if g["hora"] == "10:00")
+    assert [f["tipo"] for f in diez_qml["filas"]] == ["turno", "turno"]
 
 
 def test_atajos_y_un_dialogo_a_la_vez(ventana):
@@ -589,3 +599,20 @@ def test_ajustes_recordatorios_y_respaldos(ventana, con, tmp_path):
     aj.restaurar(aj.datos["copias"][0]["nombre"])
     ventana.app._dialogo.aceptar()
     assert "Base restaurada" in ventana.app.aviso
+
+
+def test_boton_alterna_modo_claro_y_oscuro_y_lo_recuerda(ventana):
+    from clinican.ui.puentes.tema import Tema
+
+    boton = item(ventana, "alternarTema")
+    ventana.tema.forzar(False)
+    procesar()
+    assert boton.property("text") == "Modo oscuro"
+    boton.clicked.emit()
+    procesar()
+    assert ventana.tema.oscuro and boton.property("text") == "Modo claro"
+    assert ventana.raiz.property("color") is not None  # la ventana se repinta sin avisos de QML
+    assert Tema().oscuro  # una ventana nueva recuerda la elección
+    boton.clicked.emit()
+    procesar()
+    assert not ventana.tema.oscuro and not Tema().oscuro
