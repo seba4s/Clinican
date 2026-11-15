@@ -94,19 +94,40 @@ Atajos: Ctrl+N nuevo turno, Ctrl+F buscar cliente, Ctrl+1 a Ctrl+4 secciones,
 | `CLINICAN_WHATSAPP_NUMERO_ID` | Id del número emisor de WhatsApp. |
 | `CLINICAN_WHATSAPP_PLANTILLA` | Nombre de la plantilla aprobada. Por defecto `recordatorio_turno`. |
 | `CLINICAN_WHATSAPP_IDIOMA` | Idioma de la plantilla. Por defecto `es`. |
+| `CLINICAN_WHATSAPP_VERSION` | Versión de la Graph API. Por defecto `v25.0`. |
 
 Si falta el token o el id del número, WhatsApp queda inactivo: cada envío falla,
 se reintenta a los 1, 5 y 15 minutos y luego queda como FALLIDO.
 
-La plantilla `recordatorio_turno` debe crearse y aprobarse en Meta con 4
-parámetros de cuerpo, en este orden:
-
-1. nombre del propietario,
-2. nombre de la mascota,
-3. fecha (dd/mm/aaaa),
-4. hora (HH:MM).
-
 Los celulares se guardan con 10 dígitos. Al enviar por WhatsApp se les antepone 57.
+
+### Recordatorios por WhatsApp
+
+Cada turno confirmado recibe dos recordatorios: **24 horas antes** y **1 hora antes**
+(ambos configurables en Ajustes; 0 apaga uno). Si el turno se agenda con menos de
+24 h de anticipación solo sale el de 1 h, y con menos de 1 h no sale ninguno. Si el
+PC estuvo apagado, los pendientes salen al abrir Clinican; si ya es hora del de 1 h,
+el de 24 h atrasado se descarta. «Hoy» o «el día de mañana» se calcula al enviar.
+
+Activarlo:
+
+1. En WhatsApp Manager de Meta, crea la plantilla **`recordatorio_turno`**, categoría
+   **Utilidad**, idioma **Español**, con este cuerpo exacto:
+
+   > Estimado cliente, le recordamos que {{1}}, tiene un turno de peluquería para {{2}}, a las {{3}}. En caso de no poder asistir, avisar con anterioridad para evitar pérdida del saldo abonado. Muchas gracias.
+
+   Ejemplos para la revisión: {{1}} `el día de mañana, jueves 8 de octubre (08/10/2026)`,
+   {{2}} `Roma`, {{3}} `9:00 am`.
+2. Guarda el token y el id del número (sin escribirlos en ningún archivo):
+   `powershell -ExecutionPolicy Bypass -File .\configurar_whatsapp.ps1`
+3. Prueba el envío sin crear turnos: `python probar_whatsapp.py 3001234567`
+   (con el número de prueba de Meta, ese celular debe estar en su lista de destinatarios).
+4. En Clinican › Ajustes › Recordatorios y WhatsApp elige **WhatsApp**, guarda y vuelve a abrir Clinican.
+
+Si un envío falla, Recordatorios › Fallidos muestra la causa en español (token vencido,
+plantilla no aprobada, número no permitido, etc.). «Enviado» significa que Meta aceptó
+el mensaje; la confirmación de entrega o lectura no se consulta (necesitaría un servidor
+público para los webhooks).
 
 Configuración guardada en la base (tabla `configuracion`; si una clave falta,
 se usa su valor por defecto):
@@ -121,6 +142,7 @@ se usa su valor por defecto):
 | `carpeta_respaldos` | `respaldos` (junto a la base si es relativa) |
 | `respaldos_a_conservar` | 30 |
 | `horas_antes_recordatorio` | 24 |
+| `horas_antes_recordatorio_final` | 1 |
 
 Con el canal `archivo`, los recordatorios se escriben, uno por línea, en
 `recordatorios.txt`, en la carpeta de la base.
@@ -184,9 +206,9 @@ Una fila mala no detiene la importación. Para cada fila:
   - Todo el dinero se maneja en pesos enteros, sin decimales.
 - **Ficha de servicio**: se crea al marcar el turno como atendido. Su precio
   final es el vigente en la fecha del turno y se puede editar (queda auditado).
-- **Recordatorio**: se envía 24 horas antes del turno (configurable), o de
-  inmediato si falta menos. Antes de enviarlo se verifica que el turno siga
-  confirmado y no haya empezado.
+- **Recordatorios**: dos por turno confirmado, 24 horas y 1 hora antes (configurables);
+  si se agenda con menos anticipación, ese recordatorio no sale. Antes de enviarlo
+  se verifica que el turno siga confirmado y no haya empezado.
 - **Propietario**: la cédula es obligatoria y única, y el celular tiene
   exactamente 10 dígitos. Dos propietarios duplicados se pueden unir.
 - **Autorización de datos (Ley 1581 de 2012)**: en Editar cliente se marca si el dueño
