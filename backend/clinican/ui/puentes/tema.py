@@ -1,8 +1,12 @@
-"""Colores y letra para QML, tomados de ``tema.py``, según el modo claro u oscuro de Windows."""
+"""Colores y letra para QML, tomados de ``tema.py``, según el modo claro u oscuro.
+
+Sigue el modo de Windows hasta que se usa el botón de la barra lateral; desde entonces se
+recuerda la elección (preferencia de la ventana, guardada con ``QSettings``).
+"""
 
 from __future__ import annotations
 
-from PySide6.QtCore import Property, QObject, Qt, Signal, Slot
+from PySide6.QtCore import Property, QObject, QSettings, Qt, Signal, Slot
 from PySide6.QtGui import QFontDatabase, QGuiApplication
 
 from clinican.dominio.estados import EstadoTurno
@@ -39,7 +43,9 @@ class Tema(QObject):
     def __init__(self, app: QGuiApplication | None = None):
         super().__init__()
         self._familia = familia()
-        self._forzado: bool | None = None
+        self._ajustes = QSettings("Clinican", "Clinican")
+        guardado = self._ajustes.value("tema/oscuro")
+        self._forzado: bool | None = None if guardado is None else str(guardado).lower() in ("true", "1")
         self._hints = (app or QGuiApplication.instance()).styleHints()
         self._hints.colorSchemeChanged.connect(lambda _esquema: self.cambioTema.emit())
 
@@ -51,6 +57,14 @@ class Tema(QObject):
     def forzar(self, oscuro: bool | None) -> None:
         """Solo para capturas y pruebas: fija el modo sin depender de Windows."""
         self._forzado = oscuro
+        self.cambioTema.emit()
+
+    @Slot()
+    def alternar(self) -> None:
+        """Botón de la barra lateral: cambia entre modo claro y oscuro y recuerda la elección."""
+        self._forzado = not self._es_oscuro()
+        self._ajustes.setValue("tema/oscuro", self._forzado)
+        self._ajustes.sync()
         self.cambioTema.emit()
 
     def _par(self, par) -> str:

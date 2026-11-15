@@ -2,8 +2,9 @@ import QtQuick
 import QtQuick.Controls
 
 // Agenda del día como una hoja de cálculo: encabezado verde fijo, la hora combinada a la
-// izquierda de cada franja (una fila por turno) y una fila vacía por cada cupo que queda
-// libre; se toca para agendar ahí mismo.
+// izquierda de cada franja. Un turno ocupa toda la franja (dos filas de alto); si se agenda
+// otro turno a la misma hora, la franja se divide entre los turnos. Una hora sin turnos es una
+// sola fila vacía que se toca para agendar ahí mismo.
 Item {
     id: hoja
     required property var p           // presentador de la agenda
@@ -72,7 +73,11 @@ Item {
             required property var modelData
             readonly property var g: modelData
             width: lista.width
-            height: g.filas.length * hoja.altoFila
+            // Turnos y horas libres ocupan la franja entera (mínimo dos filas); al sumar turnos se reparte.
+            readonly property real filasFranja: (g.filas[0].tipo === "turno" || g.filas[0].tipo === "libre")
+                                                ? Math.max(2, g.filas.length) : g.filas.length
+            readonly property real alturaFila: height / g.filas.length
+            height: filasFranja * hoja.altoFila
 
             // Celda de la hora, combinada para toda la franja.
             Rectangle {
@@ -80,7 +85,7 @@ Item {
                 color: grupo.g.bloqueo ? tema.color.verde : tema.color.fondoHora
                 Rectangle { visible: grupo.g.actual; width: 4; height: parent.height; color: tema.color.accion }
                 Texto {
-                    x: hoja.pad; y: (hoja.altoFila - height) / 2
+                    x: hoja.pad; y: (grupo.height - height) / 2
                     width: parent.width - hoja.pad * 1.5
                     text: grupo.g.hora; negrita: true; tamano: tema.medida.etiqueta + 1; elide: Text.ElideRight; wrapMode: Text.NoWrap
                     color: grupo.g.bloqueo ? tema.color.tintaSobreVerde
@@ -92,7 +97,7 @@ Item {
                 width: parent.width - x
                 Repeater {
                     model: grupo.g.filas
-                    delegate: Fila { required property var modelData; f: modelData; width: parent.width }
+                    delegate: Fila { required property var modelData; f: modelData; alto: grupo.alturaFila; width: parent.width }
                 }
             }
             Rectangle { x: hoja.xs[1]; width: 1; height: parent.height; color: tema.color.linea }
@@ -103,10 +108,11 @@ Item {
     component Fila: Item {
         id: fila
         property var f
+        property real alto: hoja.altoFila
         readonly property bool esTurno: f.tipo === "turno"
         readonly property bool elegida: esTurno && f.id === hoja.p.seleccionado
         readonly property real x0: hoja.xs[1]
-        height: hoja.altoFila
+        height: alto
         function cx(i) { return hoja.xs[i] - x0 }
         function ancho(i) { return hoja.xs[i + 1] - hoja.xs[i] }
 
@@ -127,7 +133,7 @@ Item {
         Rectangle { visible: fila.f.tipo !== "bloqueo"; x: fila.cx(2); width: 1; height: parent.height; color: tema.color.linea }
         Rectangle { visible: fila.f.tipo !== "bloqueo"; anchors.bottom: parent.bottom; width: parent.width; height: 1; color: tema.color.linea }
 
-        // Un cupo libre: fila vacía de la tabla (Cupo y Estado a la vista); se toca para agendar ahí.
+        // Hora sin turnos: una fila vacía de la tabla ("Libre" en Estado); se toca para agendar ahí.
         Item {
             objectName: "libre"
             anchors.fill: parent
@@ -141,13 +147,13 @@ Item {
                 model: fila.f.tipo === "libre" ? 8 : 0
                 Item {
                     required property int index
-                    x: fila.cx(index + 1); width: fila.ancho(index + 1); height: hoja.altoFila
+                    x: fila.cx(index + 1); width: fila.ancho(index + 1); height: fila.alto
                     Rectangle { visible: index > 0; width: 1; height: parent.height; color: tema.color.linea }
                     Texto {
-                        visible: index === 0 || index === 7
+                        visible: index === 7
                         x: hoja.pad; width: parent.width - hoja.pad * 1.5
                         anchors.verticalCenter: parent.verticalCenter
-                        text: index === 0 ? (fila.f.cupo || "") : "Libre"
+                        text: "Libre"
                         suave: true; elide: Text.ElideRight; wrapMode: Text.NoWrap
                         tamano: tema.medida.etiqueta + 1
                     }
@@ -171,7 +177,7 @@ Item {
                 Item {
                     required property int index
                     required property string modelData
-                    x: fila.cx(index + 1); width: fila.ancho(index + 1); height: hoja.altoFila
+                    x: fila.cx(index + 1); width: fila.ancho(index + 1); height: fila.alto
                     Rectangle { visible: index > 0; width: 1; height: parent.height; color: tema.color.linea }
                     Texto {
                         x: hoja.pad; width: parent.width - hoja.pad * 1.5
@@ -186,9 +192,9 @@ Item {
             Rectangle {
                 readonly property var e: fila.esTurno ? (tema.estados[fila.f.estado] || ({})) : ({})
                 x: fila.cx(8) + 4; width: fila.ancho(8) - 8
-                y: 5; height: hoja.altoFila - 10; radius: 4
+                height: Math.min(fila.alto - 10, 26); y: (fila.alto - height) / 2; radius: 4
                 color: e.fondo || "transparent"
-                Rectangle { x: -4; width: 1; height: hoja.altoFila; y: -5; color: tema.color.linea }
+                Rectangle { x: -4; width: 1; height: fila.alto; y: -parent.y; color: tema.color.linea }
                 Texto { x: hoja.pad - 4; width: parent.width - hoja.pad; anchors.verticalCenter: parent.verticalCenter
                         text: fila.f.estadoTexto || ""; negrita: true; tamano: tema.medida.etiqueta + 1
                         color: parent.e.letra || tema.color.tinta; elide: Text.ElideRight; wrapMode: Text.NoWrap }
