@@ -334,7 +334,7 @@ class DialogoAbono(Dialogo):
         self._inicial = fmt.pesos(turno.faltante)
         self._validadores["valor"] = lambda t: None if self._monto(t) else "Escribe un valor mayor que cero"
 
-    inicial = propiedad(str, "inicial", cambioAbono)
+    inicial = propiedad(str, "inicial")
 
     @staticmethod
     def _monto(texto: str) -> int:
@@ -368,7 +368,7 @@ class DialogoInasistencia(Dialogo):
         self.turno = turno
         self._inicial = fmt.local(ctx.ahora()).strftime("%d/%m/%Y %H:%M")
 
-    inicial = propiedad(str, "inicial", cambioInasistencia)
+    inicial = propiedad(str, "inicial")
 
     @Slot(bool, str)
     def marcar(self, avisó: bool, cuando: str) -> None:

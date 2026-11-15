@@ -343,7 +343,7 @@ class DialogoRaza(Dialogo):
 
     opciones = propiedad("QVariantList", "opciones", cambioRaza)
     tamano = propiedad(str, "tamano", cambioRaza)
-    inicial = propiedad("QVariantMap", "inicial", cambioRaza)
+    inicial = propiedad("QVariantMap", "inicial")
 
     @Slot(str)
     def elegir_tamano(self, valor: str) -> None:

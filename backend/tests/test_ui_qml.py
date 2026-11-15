@@ -657,3 +657,20 @@ def test_nuevo_turno_registra_cliente_y_mascota_sin_salir(ventana, con, esc):
     final = ventana.app._dialogo
     assert isinstance(final, DialogoNuevoTurno)
     assert final.propietario.nombre == "Pedro Ríos" and final._mascota_id and final._mascota().nombre == "Luna"
+
+
+def test_formulario_cliente_no_borra_lo_escrito(ventana, con):
+    """Validar al escribir cambia el diálogo; los campos no deben volver a su valor inicial."""
+    ventana.app.ir("Clientes").nuevo_cliente()
+    d = ventana.app._dialogo
+    raiz = dialogo_qml(ventana)
+    celular = raiz.findChild(QObject, "celularCliente")
+    cedula = raiz.findChild(QObject, "cedulaCliente")
+    for campo, validar in ((celular, "celular"), (cedula, "cedula")):
+        escrito = ""
+        for ch in "3001234":
+            escrito += ch
+            campo.setProperty("texto", escrito)
+            d.validar(validar, escrito)
+            procesar()
+            assert campo.property("texto") == escrito, validar
