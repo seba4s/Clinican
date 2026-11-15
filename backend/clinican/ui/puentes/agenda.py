@@ -120,13 +120,11 @@ class PantallaAgenda(Pantalla):
                 elif fila.tipo == "pasada":
                     filas.append({"tipo": "pasada"})
                 elif fila.tipo == "libre":
-                    chips = []
+                    # Cada cupo libre es una fila vacía de la tabla, lista para llenar.
                     for cat, n in fila.libres.items():
-                        chips.append({"texto": f"+ {fmt.CATEGORIA[cat]}" + (f" · {n}" if n > 1 else ""),
-                                      "corto": f"+ {fmt.CATEGORIA[cat][:3]}." + (f" {n}" if n > 1 else ""),
-                                      "clave": len(self._libres)})
-                        self._libres.append((fila.inicio, cat))
-                    filas.append({"tipo": "libre", "libres": chips})
+                        for _ in range(n):
+                            filas.append({"tipo": "libre", "cupo": fmt.CATEGORIA[cat], "clave": len(self._libres)})
+                            self._libres.append((fila.inicio, cat))
                 else:
                     item = fila.item
                     turno = item.turno
