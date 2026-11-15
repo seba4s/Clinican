@@ -616,3 +616,19 @@ def test_boton_alterna_modo_claro_y_oscuro_y_lo_recuerda(ventana):
     boton.clicked.emit()
     procesar()
     assert not ventana.tema.oscuro and not Tema().oscuro
+
+
+def test_clientes_busqueda_tolerante_y_cerrar_perfil(ventana, con, esc):
+    cl = ventana.app.ir("Clientes")
+    p = esc.propietario("Sebastián López")
+    m = esc.mascota(propietario=p)
+    for texto in ("sebastian", "SEBASTIÁN", "lopez sebastian", "LÓPEZ", m.nombre.upper(), m.nombre[:4]):
+        cl.buscar(texto)
+        assert p.id in {f["id"] for f in cl.lista}, texto
+    cl.buscar("zzz")
+    assert cl.lista == []
+    cl.buscar("")
+    cl.elegir(p.id)
+    assert cl.seleccionado == p.id and not cl.detalle.get("vacio")
+    cl.cerrar()
+    assert cl.seleccionado == -1 and cl.detalle.get("vacio")

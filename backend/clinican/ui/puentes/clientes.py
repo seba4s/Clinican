@@ -84,6 +84,11 @@ class PantallaClientes(Pantalla):
         self.seleccion = propietario_id
         self.refrescar()
 
+    @Slot()
+    def cerrar(self) -> None:
+        self.seleccion = None
+        self.refrescar()
+
     # ------------------------------------------------------------------ detalle
     def _datos_detalle(self) -> None:
         if self.seleccion is None:
