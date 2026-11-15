@@ -10,6 +10,7 @@ ColumnLayout {
     property alias entrada: entrada
     property string error: ""
     property int ancho: 260
+    Layout.fillWidth: false
     signal editado(string texto)
     signal confirmado()
     spacing: 4
