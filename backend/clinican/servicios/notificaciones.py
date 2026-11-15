@@ -47,8 +47,8 @@ class Mensaje:
 
 @runtime_checkable
 class Notificador(Protocol):
-    def enviar(self, mensaje: Mensaje) -> None:
-        """Entrega el mensaje o lanza ErrorEnvio."""
+    def enviar(self, mensaje: Mensaje) -> str | None:
+        """Entrega el mensaje o lanza ErrorEnvio. Puede devolver el id que le dio el canal."""
 
 
 def programar_recordatorios(con, turno_id: int, inicio: datetime, cfg, ahora: datetime) -> list[int]:

@@ -214,20 +214,29 @@ class PantallaAjustes(Pantalla):
     def _recordatorios(self) -> None:
         with self.ctx.con() as con:
             cfg = configuracion.cargar(con)
-        self._titulo("Recordatorios y WhatsApp", "Por dónde salen los recordatorios y con cuánta anticipación. "
-                                                 "El cambio de canal se aplica la próxima vez que abras Clinican.",
+        self._titulo("Recordatorios y WhatsApp", "Por dónde salen los recordatorios y con cuánta anticipación "
+                                                 "(0 apaga ese recordatorio). El cambio de canal se aplica la "
+                                                 "próxima vez que abras Clinican.",
                      canal=cfg.canal_notificaciones, horas=str(cfg.horas_antes_recordatorio),
+                     horasFinal=str(cfg.horas_antes_recordatorio_final),
                      canales=[{"valor": v, "texto": t} for v, t in CANALES])
 
-    @Slot(str, str)
-    def guardar_recordatorios(self, canal: str, horas: str) -> None:
-        try:
-            h = _entero(horas, "Horas antes")
-        except DatoInvalido as e:
-            self.poner(errores={"horas": str(e)})
+    @Slot(str, str, str)
+    def guardar_recordatorios(self, canal: str, horas: str, horas_final: str) -> None:
+        errores = {}
+        valores = {}
+        for clave, texto, nombre in (("horas", horas, "Primer recordatorio"),
+                                     ("horasFinal", horas_final, "Último recordatorio")):
+            try:
+                valores[clave] = _entero(texto, nombre)
+            except DatoInvalido as e:
+                errores[clave] = str(e)
+        self.poner(errores=errores)
+        if errores:
             return
-        self.poner(errores={})
-        self._guardar_config([("canal_notificaciones", canal), ("horas_antes_recordatorio", h)],
+        self._guardar_config([("canal_notificaciones", canal),
+                              ("horas_antes_recordatorio", valores["horas"]),
+                              ("horas_antes_recordatorio_final", valores["horasFinal"])],
                              "Guardado. El canal nuevo se usa desde el próximo inicio.")
 
     # ------------------------------------------------------------------ respaldos

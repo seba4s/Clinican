@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 from PySide6.QtCore import Signal, Slot
 
 from clinican.dominio.entidades import EstadoNotificacion as EN
@@ -65,13 +67,15 @@ class PantallaRecordatorios(Pantalla):
             t, p, m = datos[n.id]
             proximas.append([fmt.momento(n.programada_para, hoy), f"{m.nombre} · {p.nombre}",
                              fmt.momento(t.inicio, hoy), str(n.intentos) if n.intentos else "—"])
-        ejemplo = notificaciones.texto_recordatorio("Carlos", "Daisy", self.ctx.ahora())
+        ahora = self.ctx.ahora()
+        ejemplo = notificaciones.texto_recordatorio("Daisy", ahora + timedelta(hours=24), ahora)
         self.poner(
             canal=f"Canal: {canal} · se revisa cada minuto",
             metricas=[{"titulo": a, "valor": str(b), "nota": c, "alerta": d} for a, b, c, d in metricas],
             fallidas=fallidas, proximas=proximas,
-            explicacion=f"Cada recordatorio sale {cfg.horas_antes_recordatorio} horas antes (o de inmediato si falta "
-                        f"menos), y solo si el turno sigue confirmado. Ejemplo: «{ejemplo}»")
+            explicacion=f"Cada turno confirmado recibe un recordatorio {cfg.horas_antes_recordatorio} horas antes "
+                        f"y otro {cfg.horas_antes_recordatorio_final} hora(s) antes, solo si sigue confirmado. "
+                        f"Si se agenda con menos anticipación, ese recordatorio no sale. Ejemplo: «{ejemplo}»")
 
     @Slot(int)
     def reintentar(self, notificacion_id: int) -> None:
