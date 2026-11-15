@@ -99,6 +99,7 @@ Item {
                     Boton { text: "Editar"; onClicked: pagina.p.editar() }
                     Boton { text: "Unir con otro…"; onClicked: pagina.p.unir() }
                     Boton { text: "+ Nuevo turno"; tipo: "principal"; onClicked: pagina.p.nuevo_turno_cliente() }
+                    Boton { objectName: "cerrarCliente"; text: "Cerrar"; onClicked: pagina.p.cerrar() }
                 }
                 Item { width: 1; height: 16 }
                 RowLayout {
