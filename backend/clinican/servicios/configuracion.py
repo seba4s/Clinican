@@ -17,7 +17,7 @@ from clinican.dominio.abonos import validar_pesos
 from clinican.dominio.agenda import HorarioSemanal, Jornada
 from clinican.dominio.cupos import CategoriaCupo, CuposPorFranja
 from clinican.dominio.errores import DatoInvalido
-from clinican.dominio.notificaciones import HORAS_ANTES_RECORDATORIO
+from clinican.dominio.notificaciones import HORAS_ANTES_RECORDATORIO, HORAS_ANTES_RECORDATORIO_FINAL
 from clinican.servicios.auditoria import auditar
 
 
@@ -107,8 +107,11 @@ CLAVES: dict[str, Clave] = {
         Clave("canal_notificaciones", "archivo", _validar_texto, str, str),
         Clave("carpeta_respaldos", "respaldos", _validar_texto, str, str),
         Clave("respaldos_a_conservar", 30, _validar_entero_positivo, str, int),
-        # 24 h antes por defecto (confirmado), configurable.
+        # Primer recordatorio: 24 h antes por defecto (confirmado), configurable.
         Clave("horas_antes_recordatorio", HORAS_ANTES_RECORDATORIO, _validar_entero_no_negativo, str, int),
+        # Segundo recordatorio: 1 h antes por defecto (confirmado), configurable; 0 lo apaga.
+        Clave("horas_antes_recordatorio_final", HORAS_ANTES_RECORDATORIO_FINAL, _validar_entero_no_negativo,
+              str, int),
     )
 }
 
@@ -123,6 +126,7 @@ class ConfigClinica:
     carpeta_respaldos: str
     respaldos_a_conservar: int
     horas_antes_recordatorio: int
+    horas_antes_recordatorio_final: int
 
 
 def _clave(nombre: str) -> Clave:

@@ -61,8 +61,9 @@ def test_pendientes_de_abono(con, esc):
 
 
 def test_estado_bandeja(con, esc, ruta_db):
+    miercoles = LUNES + timedelta(days=2)
     for hora in (9, 10, 11):
-        t = esc.turno(inicio=a_las(hora))
+        t = esc.turno(inicio=a_las(hora, dia=miercoles))
         agenda.registrar_abono(con, t.id, 20000, ahora=AHORA)
     lejano = esc.turno(inicio=a_las(9, dia=LUNES + timedelta(days=3)))
     agenda.registrar_abono(con, lejano.id, 20000, ahora=AHORA)
@@ -78,11 +79,13 @@ def test_estado_bandeja(con, esc, ruta_db):
                 raise ErrorEnvio("sin señal")
 
     d = Despachador(ruta_db, Falla())
-    momento = AHORA
+    momento = a_las(11, dia=LUNES + timedelta(days=1))  # martes: tocan los de 24 h del miércoles
     for espera in (0, 1, 5, 15):
         momento += timedelta(minutes=espera)
         d.procesar_una_vez(momento)
     estado = consultas.estado_bandeja(con)
-    assert estado.conteo == {EN.PENDIENTE: 1, EN.ENVIADA: 2, EN.DESCARTADA: 0, EN.FALLIDA: 1}
-    assert [n.turno_id for n in estado.proximas] == [lejano.id]
+    # Pendientes: los 3 de 1 h del miércoles y los 2 del turno lejano
+    assert estado.conteo == {EN.PENDIENTE: 5, EN.ENVIADA: 2, EN.DESCARTADA: 0, EN.FALLIDA: 1}
+    ids = [n.turno_id for n in estado.proximas]
+    assert len(ids) == 5 and ids.count(lejano.id) == 2 and ids[-1] == lejano.id
     assert estado.fallidas_recientes[0].ultimo_error == "sin señal"

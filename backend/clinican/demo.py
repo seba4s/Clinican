@@ -13,7 +13,7 @@ from __future__ import annotations
 import ast
 import tempfile
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 from clinican.adaptadores.notificador_whatsapp import NotificadorWhatsApp
@@ -152,7 +152,8 @@ def seccion_sin_red(ruta: Path) -> None:
             print(f"  Turno #{t.id} de Kira a las 10:00: {t.estado.value} (sin red, sin problema)")
         finally:
             con.close()
-        resumen = Despachador(ruta, whatsapp).procesar_una_vez(AHORA)
+        # Turno a las 10:00: su recordatorio de 1 h antes sale a las 9:00.
+        resumen = Despachador(ruta, whatsapp).procesar_una_vez(_a_las(9))
     con = abrir(ruta)
     try:
         estado = consultas.estado_bandeja(con)
@@ -182,8 +183,8 @@ def seccion_cambio_de_canal(ruta: Path) -> None:
             elegido = configuracion.cargar(con).canal_notificaciones
             notificador = notificador_para(elegido, ruta.parent)
             print(f"  Canal configurado: {elegido} -> {type(notificador).__name__}")
-            # El recordatorio de Kira (sección 3) no sale aquí: su reintento aún no llega.
-            Despachador(ruta, notificador).procesar_una_vez(AHORA + timedelta(seconds=1))
+            # Sale el recordatorio de 1 h antes. El de Kira (sección 3) ya no sale: su turno empezó.
+            Despachador(ruta, notificador).procesar_una_vez(_a_las(hora - 1))
             if canal == "archivo":
                 lineas = (ruta.parent / "recordatorios.txt").read_text(encoding="utf-8").splitlines()
                 print(f"  recordatorios.txt -> {lineas[-1]}")

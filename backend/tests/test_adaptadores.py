@@ -1,7 +1,6 @@
 import io
 import json
 import urllib.error
-from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -163,7 +162,7 @@ def test_canal_configurado_de_extremo_a_extremo(con, esc, ruta_db, tmp_path):
     assert canal == "archivo"
     t = esc.turno(inicio=a_las(10))
     agenda.registrar_abono(con, t.id, 20000, ahora=AHORA)
-    Despachador(ruta_db, notificadores.notificador_para(canal, tmp_path)).procesar_una_vez(AHORA)
+    Despachador(ruta_db, notificadores.notificador_para(canal, tmp_path)).procesar_una_vez(a_las(9))
     contenido = (tmp_path / "recordatorios.txt").read_text(encoding="utf-8")
     assert f"turno {t.id}" in contenido
 
@@ -188,10 +187,8 @@ def test_agregar_canal_sms_sin_tocar_la_agenda(con, esc, ruta_db, tmp_path, monk
 
     t = esc.turno(inicio=a_las(10))
     agenda.registrar_abono(con, t.id, 20000, ahora=AHORA)
-    Despachador(ruta_db, notificadores.notificador_para("sms", tmp_path)).procesar_una_vez(
-        AHORA + timedelta(seconds=1)
-    )
-    assert NotificadorSMSFalso.enviados == [("3001234567", agenda_texto(con, t.id))]
+    Despachador(ruta_db, notificadores.notificador_para("sms", tmp_path)).procesar_una_vez(a_las(9))
+    assert NotificadorSMSFalso.enviados == [("3001234567", agenda_texto(con, t.id, a_las(9)))]
 
     # La agenda y el despachador no conocen ningún canal concreto
     servicios = Path(agenda.__file__).parent
@@ -201,13 +198,9 @@ def test_agregar_canal_sms_sin_tocar_la_agenda(con, esc, ruta_db, tmp_path, monk
             assert nombre not in codigo, (archivo, nombre)
 
 
-def agenda_texto(con, turno_id):
+def agenda_texto(con, turno_id, ahora):
     from clinican.servicios.notificaciones import texto_recordatorio
     from clinican.servicios import clientes
 
     t = agenda.obtener_turno(con, turno_id)
-    return texto_recordatorio(
-        clientes.obtener_propietario(con, t.propietario_id).nombre,
-        clientes.obtener_mascota(con, t.mascota_id).nombre,
-        t.inicio,
-    )
+    return texto_recordatorio(clientes.obtener_mascota(con, t.mascota_id).nombre, t.inicio, ahora)
