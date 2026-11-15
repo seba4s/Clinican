@@ -3,7 +3,7 @@
 Diseño aprobado e implementado en `backend/clinican/ui/`. Maquetas:
 https://claude.ai/artifact/HtdrHdoHjrouHad9Aeu3fp
 
-Plataforma: Windows 11, sin internet, CustomTkinter. El código de la interfaz va
+Plataforma: Windows 11, sin internet, PySide6/QML. El código de la interfaz va
 en `backend/clinican/ui/` y solo puede usar `servicios` y `dominio`.
 
 ## Idea central

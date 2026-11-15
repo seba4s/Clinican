@@ -3,7 +3,7 @@
 Agenda de la peluquería para Windows: turnos por franjas de 30 minutos con cupos
 por categoría, abonos, saldo a favor, fichas de servicio, recordatorios con
 bandeja de salida, respaldos e importación desde Excel. Usa la biblioteca
-estándar de Python, `customtkinter` y `pillow` (interfaz) y `openpyxl` (Excel).
+estándar de Python, `PySide6` (interfaz Qt/QML) y `openpyxl` (Excel).
 
 Funciona sin internet. Solo el canal de WhatsApp usa la red, y si falla, los
 recordatorios quedan pendientes y se reintentan.
@@ -71,8 +71,9 @@ Al cerrar la ventana (o con Ctrl+C sin interfaz) hace un respaldo.
 
 ## Interfaz
 
-Diseño acordado en `docs/diseno-interfaz.md`. Sigue el modo claro u oscuro de
-Windows.
+Diseño acordado en `docs/diseno-interfaz.md`. Hecha en PySide6 con QML: paneles
+de vidrio translúcido sobre un fondo desenfocado, esquinas redondeadas y
+transiciones suaves. Sigue el modo claro u oscuro de Windows.
 
 | Sección | Qué hay |
 |---|---|
@@ -205,7 +206,9 @@ clinican/
   datos/        SQLite: conexión, migraciones, repositorios (único lugar con SQL)
   servicios/    casos de uso (transacciones, auditoría, bandeja, despachador, respaldos)
   adaptadores/  canales de notificación (archivo, consola, WhatsApp) e importación Excel
-  ui/           interfaz CustomTkinter (solo usa servicios y dominio)
+  ui/           interfaz PySide6/QML (solo usa servicios y dominio)
+    puentes/    presentadores en Python: llaman a los servicios y le pasan datos a QML
+    qml/        pantallas y componentes QML (solo dibujan)
   demo.py       demostración (raíz de composición)
 main.py         arranque: base, servicios en segundo plano y ventana (raíz de composición)
 ```

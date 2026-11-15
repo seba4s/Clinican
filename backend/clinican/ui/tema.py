@@ -1,7 +1,7 @@
 """Colores, letra y medidas de la interfaz (ver docs/diseno-interfaz.md).
 
-Cada color es una pareja (modo claro, modo oscuro): CustomTkinter elige según
-el modo de Windows. Contrastes medidos con WCAG sobre la superficie de cada modo.
+Cada color es una pareja (modo claro, modo oscuro): la interfaz QML elige según
+el modo de Windows (ver clinican/ui/puentes/tema.py). Contrastes medidos con WCAG sobre la superficie de cada modo.
 """
 
 from __future__ import annotations
@@ -71,39 +71,6 @@ TITULO = 28
 SUBTITULO = 20
 CUERPO = 15
 ETIQUETA = 13
-
-_familia: str | None = None
-
-
-def familia() -> str:
-    """Segoe UI Variable si existe (Windows 11), si no Segoe UI o la del sistema."""
-    global _familia
-    if _familia is None:
-        import tkinter.font as tkfont
-
-        disponibles = set(tkfont.families())
-        for nombre in ("Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI"):
-            if nombre in disponibles:
-                _familia = nombre
-                break
-        else:
-            _familia = "TkDefaultFont"
-    return _familia
-
-
-def fuente(tamano: int = CUERPO, negrita: bool = False):
-    import customtkinter as ctk
-
-    return ctk.CTkFont(family=familia(), size=tamano, weight="bold" if negrita else "normal")
-
-
-def configurar() -> None:
-    """Sigue el modo claro u oscuro de Windows."""
-    import customtkinter as ctk
-
-    ctk.set_appearance_mode("system")
-    ctk.set_default_color_theme("blue")
-
 
 def estilo_estado(estado: EstadoTurno) -> tuple[Color, Color, Color, str, str]:
     return ESTADOS[estado]
