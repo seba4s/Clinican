@@ -451,3 +451,139 @@ def rec_fallidas(con):
     from clinican.servicios import consultas
 
     return [None] * consultas.estado_bandeja(con, limite=1).conteo.get(EN.FALLIDA, 0)
+
+
+def test_ajustes_abre_todas_las_secciones(ventana, con):
+    from clinican.ui.puentes.ajustes import SECCIONES
+
+    aj = ventana.app.ir("Ajustes")
+    for seccion in SECCIONES:
+        aj.ir(seccion)
+        procesar()
+        assert aj.tituloSeccion == seccion and aj.explicacion
+        assert item(ventana, "seccionAjustes").property("item") is not None
+        assert item(ventana, "seccion" + seccion).property("activo")
+    for seccion in reversed(SECCIONES):  # al volver, ninguna sección lee datos de otra (sin avisos QML)
+        aj.ir(seccion)
+        procesar()
+    aj.ir("Registro de cambios")
+    assert aj.datos["cambios"]  # el escenario dejó cambios registrados
+
+
+def test_ajustes_horario_se_escribe_y_se_guarda(ventana, con):
+    from clinican.servicios import configuracion
+
+    aj = ventana.app.ir("Ajustes")
+    aj.ir("Horario y bloqueos")
+    procesar()
+    campos = items(ventana, "campoHora")
+    assert len(campos) == 14  # dos por día
+    # El orden de items() no es el de la pantalla: se ubica el «hasta» del lunes por su fila.
+    lunes = [c for c in campos if c.parentItem().property("modelData")["dia"] == 0]
+    hasta = max(lunes, key=lambda c: c.x())
+    hasta.setProperty("texto", "1530")
+    item(ventana, "guardarHorario").clicked.emit()
+    procesar()
+    assert configuracion.cargar(con).horario.dias[0].ultima_franja.strftime("%H:%M") == "15:30"
+    assert ventana.app.aviso == "Horario guardado." and not ventana.app.avisoError
+    # Una hora que no se entiende avisa y no guarda.
+    aj.guardar_horario([{"abierto": True, "desde": "nueve", "hasta": "16:30"}] + [{"abierto": False}] * 6)
+    assert ventana.app.avisoError and "lunes" in ventana.app.aviso
+    assert configuracion.cargar(con).horario.dias[0].ultima_franja.strftime("%H:%M") == "15:30"
+    # Bloqueo desde Ajustes
+    aj.nuevo_bloqueo()
+    d = ventana.app._dialogo
+    assert dialogo_qml(ventana) is not None
+    d.bloquear((ventana.app.ctx.hoy() + timedelta(days=1)).strftime("%d/%m/%Y"), False, "12:00", "13:00", "Prueba")
+    procesar()
+    assert any("Prueba" in b["texto"] for b in aj.datos["bloqueos"])
+    bloqueo = next(b for b in aj.datos["bloqueos"] if "Prueba" in b["texto"])
+    aj.quitar_bloqueo(bloqueo["id"])
+    assert not any("Prueba" in b["texto"] for b in aj.datos["bloqueos"])
+
+
+def test_ajustes_cupos_precios_y_razas(ventana, con):
+    from clinican.servicios import clientes, configuracion, precios
+    from clinican.ui.puentes.ajustes import DialogoPrecio, DialogoRaza
+
+    aj = ventana.app.ir("Ajustes")
+    aj.ir("Cupos y abono")
+    procesar()
+    cantidades = {c["valor"]: c["cantidad"] for c in aj.datos["categorias"]}
+    cantidades["tijera"] = "3"
+    aj.guardar_cupos(cantidades, "$25.000", "20")
+    cfg = configuracion.cargar(con)
+    assert cfg.cupos.capacidad(C.TIJERA) == 3 and cfg.abono == 25000 and cfg.minutos_expiracion == 20
+    aj.guardar_cupos(cantidades, "$25.000", "0")
+    assert ventana.app.avisoError and "Minutos" in ventana.app.aviso
+
+    aj.ir("Precios")
+    procesar()
+    assert len(aj.datos["precios"]) == len(C)
+    item(ventana, "cambiarmaquina").clicked.emit()
+    d = ventana.app._dialogo
+    assert isinstance(d, DialogoPrecio) and not d.corregir and dialogo_qml(ventana) is not None
+    d.guardar("48.000", "fecha mala")
+    assert d.error_general and ventana.app._dialogo is d
+    manana = ventana.app.ctx.hoy() + timedelta(days=1)
+    d.guardar("48.000", manana.strftime("%d/%m/%Y"))
+    assert ventana.app._dialogo is None and ventana.app.aviso == "Precio guardado."
+    assert precios.precio_en_fecha(con, C.MAQUINA, manana) == 48000
+    maquina = next(f for f in aj.datos["precios"] if f["categoria"] == "maquina")
+    assert maquina["historial"][0]["futuro"]
+    aj.precio("maquina", 0)
+    d = ventana.app._dialogo
+    assert d.corregir and d.valor == "$48.000"
+    procesar()
+    assert not item(ventana, "desdePrecio").property("visible")
+    d.guardar("49.000", "")
+    assert precios.precio_en_fecha(con, C.MAQUINA, manana) == 49000
+
+    aj.ir("Razas")
+    procesar()
+    item(ventana, "razaNueva").clicked.emit()
+    d = ventana.app._dialogo
+    assert isinstance(d, DialogoRaza) and dialogo_qml(ventana) is not None
+    d.guardar("", "")
+    assert d.error_general  # el nombre es obligatorio
+    d.elegir_tamano("Grande")
+    d.guardar("Gran danés", "corto")
+    assert ventana.app._dialogo is None and ventana.app.aviso == "Raza guardada."
+    fila = next(r for r in aj.datos["razas"] if r["nombre"] == "Gran danés")
+    assert fila["tamano"].lower() == "grande" and fila["pelaje"] == "corto"
+    aj.raza(fila["id"])
+    d = ventana.app._dialogo
+    assert d.inicial["editar"] and d.tamano == "Grande"
+    d.baja()
+    assert not any(r.nombre == "Gran danés" for r in clientes.buscar_razas(con))
+
+
+def test_ajustes_recordatorios_y_respaldos(ventana, con, tmp_path):
+    from clinican.servicios import configuracion
+    from clinican.ui.puentes.base import Confirmacion
+
+    aj = ventana.app.ir("Ajustes")
+    aj.ir("Recordatorios y WhatsApp")
+    procesar()
+    assert {c["valor"] for c in aj.datos["canales"]} == {"archivo", "whatsapp", "consola"}
+    aj.guardar_recordatorios("consola", "muchas")
+    procesar()
+    assert aj.errores["horas"] and item(ventana, "horasAntes").property("error")
+    aj.guardar_recordatorios("consola", "12")
+    cfg = configuracion.cargar(con)
+    assert cfg.canal_notificaciones == "consola" and cfg.horas_antes_recordatorio == 12 and not aj.errores
+
+    aj.ir("Respaldos")
+    procesar()
+    antes = len(aj.datos["copias"])
+    item(ventana, "respaldar").clicked.emit()
+    assert len(aj.datos["copias"]) == antes + 1 and "Respaldo creado" in ventana.app.aviso
+    procesar()
+    item(ventana, "restaurar").clicked.emit()
+    d = ventana.app._dialogo
+    assert isinstance(d, Confirmacion) and dialogo_qml(ventana) is not None
+    d.cancelar()
+    assert ventana.app._dialogo is None
+    aj.restaurar(aj.datos["copias"][0]["nombre"])
+    ventana.app._dialogo.aceptar()
+    assert "Base restaurada" in ventana.app.aviso
