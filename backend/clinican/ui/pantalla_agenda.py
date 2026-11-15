@@ -17,57 +17,12 @@ from clinican.ui import formato as fmt
 from clinican.ui import tema
 from clinican.ui.app import Pantalla
 from clinican.ui.componentes import boton, chip_estado, confirmar, etiqueta, tarjeta
-from clinican.ui.hoja_agenda import HojaAgenda, agrupar
+from clinican.ui.hoja_agenda import HojaAgenda
+from clinican.ui.tablero import agrupar
+
+from clinican.ui.tablero import ORDEN_CATEGORIAS, FilaTablero, armar_tablero, capacidad  # noqa: F401
 
 E = EstadoTurno
-ORDEN_CATEGORIAS = (CategoriaCupo.MAQUINA, CategoriaCupo.GRANDE, CategoriaCupo.TIJERA, CategoriaCupo.COMPLICADO)
-
-
-@dataclass
-class FilaTablero:
-    inicio: datetime
-    pasada: bool
-    bloqueo: str | None = None
-    puestos: dict[CategoriaCupo, list[TurnoEnAgenda | None]] = field(default_factory=dict)
-
-
-def capacidad(cupos, categoria: CategoriaCupo) -> int:
-    return cupos.capacidad(categoria)
-
-
-def armar_tablero(con, dia: date, ahora: datetime) -> tuple[list[FilaTablero], list[TurnoEnAgenda], int]:
-    """Filas del día (también las bloqueadas), turnos fuera de agenda y cupos libres."""
-    cfg = configuracion.cargar(con)
-    bloqueos = agenda.bloqueos_del_dia(con, dia)
-    reservables = {f.franja.inicio: f for f in consultas.agenda_del_dia(con, dia, ahora=ahora)}
-    filas: list[FilaTablero] = []
-    fuera: list[TurnoEnAgenda] = []
-    libres = 0
-    for franja in generar_franjas(dia, cfg.horario):
-        fila = FilaTablero(franja.inicio, pasada=franja.fin <= ahora)
-        datos = reservables.get(franja.inicio)
-        if datos is None:
-            motivo = next((b.motivo for b in bloqueos if b.cubre(franja)), "")
-            fila.bloqueo = motivo or "sin motivo"
-            filas.append(fila)
-            continue
-        for categoria in ORDEN_CATEGORIAS:
-            fila.puestos[categoria] = []
-        for t in datos.turnos:
-            vencido = t.turno.estado is E.PENDIENTE_ABONO and vence_en(t.turno.creado_en, cfg.minutos_expiracion) <= ahora
-            if ocupa_cupo(t.turno.estado) and not vencido:
-                fila.puestos[t.turno.categoria].append(t)
-            else:
-                fuera.append(t)
-        for categoria in ORDEN_CATEGORIAS:
-            cap = capacidad(cfg.cupos, categoria)
-            ocupados = fila.puestos[categoria]
-            vacios = max(0, cap - len(ocupados))
-            if not fila.pasada:
-                libres += vacios
-            fila.puestos[categoria] = ocupados + [None] * vacios
-        filas.append(fila)
-    return filas, fuera, libres
 
 
 class PantallaAgenda(Pantalla):

@@ -22,6 +22,7 @@ from clinican.dominio.estados import EstadoTurno
 from clinican.servicios.consultas import TurnoEnAgenda
 from clinican.ui import formato as fmt
 from clinican.ui import tema
+from clinican.ui.tablero import FilaHoja, GrupoHora, agrupar  # noqa: F401
 
 # (título, peso del ancho)
 COLUMNAS = (
@@ -44,27 +45,6 @@ TINTA_SOBRE_VERDE = ("#14121D", "#14121D")
 FONDO_HORA = ("#EEF4D6", "#252D10")
 FONDO_SELECCION = ("#FCE4F1", "#3B1D30")
 LINEA = ("#DEDFD8", "#3A3842")
-
-
-@dataclass
-class FilaHoja:
-    """Una fila dibujada. ``tipo``: turno, libre, pasada o bloqueo."""
-
-    tipo: str
-    inicio: datetime
-    item: TurnoEnAgenda | None = None
-    libres: dict[CategoriaCupo, int] = field(default_factory=dict)
-    texto: str = ""
-    hasta: datetime | None = None
-
-
-@dataclass
-class GrupoHora:
-    """Las filas de una misma franja: la hora se combina en una sola celda."""
-
-    inicio: datetime
-    pasada: bool
-    filas: list[FilaHoja]
 
 
 class HojaAgenda(ctk.CTkFrame):
@@ -363,30 +343,3 @@ class HojaAgenda(ctk.CTkFrame):
             pasos = -1 if evento.delta > 0 else 1
         if self.lienzo.yview() != (0.0, 1.0):
             self.lienzo.yview_scroll(pasos * 2, "units")
-
-
-def agrupar(filas_tablero, orden: tuple[CategoriaCupo, ...]) -> list[GrupoHora]:
-    """Convierte las filas del tablero (franjas con puestos) en grupos de filas de la hoja.
-
-    Las franjas bloqueadas seguidas con el mismo motivo se juntan en una sola banda.
-    """
-    grupos: list[GrupoHora] = []
-    for f in filas_tablero:
-        if f.bloqueo:
-            previo = grupos[-1] if grupos else None
-            fin = f.inicio + timedelta(minutes=30)
-            if previo and previo.filas[0].tipo == "bloqueo" and previo.filas[0].texto == f.bloqueo \
-                    and previo.filas[0].hasta == f.inicio:
-                previo.filas[0].hasta = fin
-                continue
-            grupos.append(GrupoHora(f.inicio, f.pasada, [FilaHoja("bloqueo", f.inicio, texto=f.bloqueo, hasta=fin)]))
-            continue
-        filas = [FilaHoja("turno", f.inicio, item=t) for cat in orden for t in f.puestos.get(cat, []) if t]
-        libres = {cat: sum(1 for t in f.puestos.get(cat, []) if t is None) for cat in orden}
-        libres = {cat: n for cat, n in libres.items() if n}
-        if libres and not f.pasada:
-            filas.append(FilaHoja("libre", f.inicio, libres=libres))
-        if not filas:
-            filas.append(FilaHoja("pasada", f.inicio))
-        grupos.append(GrupoHora(f.inicio, f.pasada, filas))
-    return grupos
