@@ -6,7 +6,7 @@ from clinican.dominio.entidades import EstadoNotificacion as EN
 from clinican.dominio.estados import EstadoTurno as E
 from clinican.servicios import agenda, consultas
 from clinican.servicios.despachador import Despachador
-from conftest import AHORA, LUNES, a_las
+from escenario import AHORA, LUNES, a_las
 
 
 def test_agenda_del_dia(con, esc):

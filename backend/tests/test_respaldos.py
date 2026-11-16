@@ -9,7 +9,7 @@ from clinican.datos.migraciones import MIGRACIONES, BaseMasNueva, migrar
 from clinican.dominio.errores import DatoInvalido, NoEncontrado
 from clinican.servicios import clientes, configuracion, respaldos
 from clinican.servicios.auditoria import historial
-from conftest import AHORA
+from escenario import AHORA
 
 
 def _carpeta(ruta_db):

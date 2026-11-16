@@ -21,7 +21,7 @@ from clinican.dominio.estados import MotivoLiberacion as M
 from clinican.dominio.estados import TransicionInvalida
 from clinican.servicios import agenda, clientes, configuracion
 from clinican.servicios.auditoria import historial
-from conftest import AHORA, DOMINGO, LUNES, a_las, timedelta
+from escenario import AHORA, DOMINGO, LUNES, a_las, timedelta
 
 MIN30 = timedelta(minutes=30)
 

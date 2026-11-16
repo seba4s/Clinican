@@ -5,7 +5,7 @@ from clinican.dominio.cupos import CategoriaCupo, Servicio, Tamano
 from clinican.dominio.errores import DatoInvalido, NoEncontrado, OperacionNoPermitida
 from clinican.servicios import agenda, clientes
 from clinican.servicios.auditoria import historial
-from conftest import AHORA, a_las, timedelta
+from escenario import AHORA, a_las, timedelta
 
 
 # --------------------------------------------------------------------------- propietarios

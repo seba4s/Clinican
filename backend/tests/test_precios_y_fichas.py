@@ -8,7 +8,7 @@ from clinican.dominio.estados import EstadoTurno as E
 from clinican.dominio.precios import FECHA_PRECIOS_INICIALES, PRECIOS_INICIALES
 from clinican.servicios import agenda, fichas, precios
 from clinican.servicios.auditoria import historial
-from conftest import AHORA, LUNES, a_las, timedelta
+from escenario import AHORA, LUNES, a_las, timedelta
 
 
 # --------------------------------------------------------------------------- precios

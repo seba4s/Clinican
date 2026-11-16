@@ -18,7 +18,7 @@ from clinican.dominio.estados import EstadoTurno as E
 from clinican.dominio.turnos import contar_ocupacion
 from clinican.servicios import agenda
 from clinican.servicios.auditoria import historial
-from conftest import AHORA, LUNES, PERFIL, Escenario, a_las
+from escenario import AHORA, LUNES, PERFIL, Escenario, a_las
 
 CUPOS = CuposPorFranja()
 TIEMPO_MAXIMO = 60

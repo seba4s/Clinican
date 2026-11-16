@@ -13,7 +13,7 @@ from clinican.servicios import agenda, configuracion
 from clinican.servicios.auditoria import historial
 from clinican.servicios.despachador import Despachador
 from clinican.servicios.notificaciones import ErrorEnvio, notificaciones_de_turno
-from conftest import AHORA, LUNES, a_las
+from escenario import AHORA, LUNES, a_las
 
 MIERCOLES = LUNES + timedelta(days=2)
 

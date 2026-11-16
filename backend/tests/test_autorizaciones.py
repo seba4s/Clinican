@@ -9,7 +9,7 @@ from clinican.dominio.errores import DatoInvalido, NoEncontrado, OperacionNoPerm
 from clinican.servicios import autorizaciones, clientes
 from clinican.servicios.auditoria import historial as auditoria
 from clinican.servicios.despachador import Despachador
-from conftest import AHORA, a_las
+from escenario import AHORA, a_las
 
 HOY = AHORA.date()
 

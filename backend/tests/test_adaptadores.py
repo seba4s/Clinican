@@ -6,14 +6,13 @@ from pathlib import Path
 import pytest
 
 from clinican.adaptadores import notificador_whatsapp, notificadores
-from clinican.adaptadores.notificador_archivo import NotificadorArchivo
-from clinican.adaptadores.notificador_consola import NotificadorConsola
+from clinican.adaptadores.notificadores import NotificadorArchivo, NotificadorConsola
 from clinican.adaptadores.notificador_whatsapp import NotificadorWhatsApp, normalizar_telefono
 from clinican.dominio.errores import DatoInvalido
 from clinican.servicios import agenda
 from clinican.servicios.despachador import Despachador
 from clinican.servicios.notificaciones import ErrorEnvio, Mensaje, Notificador
-from conftest import AHORA, a_las
+from escenario import AHORA, a_las
 
 MENSAJE = Mensaje(
     notificacion_id=1, turno_id=7, tipo="recordatorio", telefono="300 123 4567",

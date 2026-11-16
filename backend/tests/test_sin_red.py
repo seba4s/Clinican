@@ -9,7 +9,7 @@ from clinican.dominio.agenda import Bloqueo
 from clinican.dominio.cupos import CategoriaCupo as C
 from clinican.dominio.estados import EstadoTurno as E
 from clinican.servicios import agenda, clientes, configuracion
-from conftest import AHORA, LUNES, a_las
+from escenario import AHORA, LUNES, a_las
 
 
 @pytest.fixture
@@ -59,8 +59,8 @@ def test_despachador_y_adaptadores_sin_red(sin_red, con, esc, ruta_db, tmp_path)
     """Archivo, consola y WhatsApp (con urlopen simulado) no abren sockets reales."""
     import io
 
-    from clinican.adaptadores.notificador_archivo import NotificadorArchivo
-    from clinican.adaptadores.notificador_consola import NotificadorConsola
+    from clinican.adaptadores.notificadores import NotificadorArchivo
+    from clinican.adaptadores.notificadores import NotificadorConsola
     from clinican.adaptadores.notificador_whatsapp import NotificadorWhatsApp
     from clinican.servicios.despachador import Despachador
 

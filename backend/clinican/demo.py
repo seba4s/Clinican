@@ -18,7 +18,7 @@ from pathlib import Path
 
 from clinican.adaptadores.notificador_whatsapp import NotificadorWhatsApp
 from clinican.adaptadores.notificadores import notificador_para
-from clinican.adaptadores.red_simulada import sin_red
+from clinican.adaptadores.notificadores import sin_red
 from clinican.datos.conexion import abrir
 from clinican.datos.migraciones import migrar
 from clinican.dominio.agenda import ZONA
@@ -51,9 +51,11 @@ def _a_las(hora: int, minuto: int = 0) -> datetime:
 
 def dependencias_reales() -> dict[str, set[str]]:
     raiz = Path(__file__).resolve().parent
+    carpetas = {c: raiz / c for c in CAPAS}
+    carpetas["ui"] = raiz.parents[1] / "frontend" / "interfaz"
     deps = {c: set() for c in CAPAS}
     for capa in CAPAS:
-        for archivo in (raiz / capa).rglob("*.py"):
+        for archivo in carpetas[capa].rglob("*.py"):
             for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):
                 nombres = []
                 if isinstance(nodo, ast.ImportFrom) and nodo.module and not nodo.level:
@@ -62,7 +64,9 @@ def dependencias_reales() -> dict[str, set[str]]:
                     nombres = [a.name for a in nodo.names]
                 for nombre in nombres:
                     partes = nombre.split(".")
-                    if partes[0] == "clinican" and len(partes) > 1 and partes[1] in CAPAS and partes[1] != capa:
+                    if partes[0] == "interfaz" and capa != "ui":
+                        deps[capa].add("ui")
+                    elif partes[0] == "clinican" and len(partes) > 1 and partes[1] in CAPAS and partes[1] != capa:
                         deps[capa].add(partes[1])
     return deps
 

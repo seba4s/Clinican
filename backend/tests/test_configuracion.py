@@ -9,7 +9,7 @@ from clinican.dominio.cupos import CuposPorFranja
 from clinican.dominio.errores import DatoInvalido
 from clinican.servicios import configuracion
 from clinican.servicios.auditoria import historial
-from conftest import AHORA
+from escenario import AHORA
 
 
 def test_valores_por_defecto(con):
