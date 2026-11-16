@@ -21,9 +21,6 @@ from clinican.dominio.notificaciones import HORAS_ANTES_RECORDATORIO, HORAS_ANTE
 from clinican.servicios.auditoria import auditar
 
 
-# --------------------------------------------------------------------------- conversores
-
-
 def _cupos_a_texto(c: CuposPorFranja) -> str:
     return json.dumps({cat.value: c.capacidad(cat) for cat in CategoriaCupo}, sort_keys=True)
 
@@ -107,9 +104,7 @@ CLAVES: dict[str, Clave] = {
         Clave("canal_notificaciones", "archivo", _validar_texto, str, str),
         Clave("carpeta_respaldos", "respaldos", _validar_texto, str, str),
         Clave("respaldos_a_conservar", 30, _validar_entero_positivo, str, int),
-        # Primer recordatorio: 24 h antes por defecto (confirmado), configurable.
         Clave("horas_antes_recordatorio", HORAS_ANTES_RECORDATORIO, _validar_entero_no_negativo, str, int),
-        # Segundo recordatorio: 1 h antes por defecto (confirmado), configurable; 0 lo apaga.
         Clave("horas_antes_recordatorio_final", HORAS_ANTES_RECORDATORIO_FINAL, _validar_entero_no_negativo,
               str, int),
     )

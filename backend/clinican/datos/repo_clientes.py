@@ -10,7 +10,6 @@ from clinican.datos._util import actualizar
 from clinican.dominio.cupos import Tamano
 from clinican.dominio.entidades import Mascota, Propietario, Raza
 
-# --------------------------------------------------------------------------- propietarios
 
 _PROP = "id, nombre, telefono, saldo_a_favor, activo, fusionado_en, cedula, direccion, celular2"
 
@@ -73,8 +72,6 @@ def buscar_propietarios(
     return [_propietario(f) for f in filas]
 
 
-# --------------------------------------------------------------------------- razas
-
 _RAZA = "id, nombre, tamano, pelaje, activo"
 
 
@@ -118,8 +115,6 @@ def buscar_razas(
     ).fetchall()
     return [_raza(f) for f in filas]
 
-
-# --------------------------------------------------------------------------- mascotas
 
 _MASC = (
     "id, propietario_id, nombre, raza_id, tamano, pelaje, complicado, activo, fecha_nacimiento, "

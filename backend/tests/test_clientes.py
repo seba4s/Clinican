@@ -5,10 +5,7 @@ from clinican.dominio.cupos import CategoriaCupo, Servicio, Tamano
 from clinican.dominio.errores import DatoInvalido, NoEncontrado, OperacionNoPermitida
 from clinican.servicios import agenda, clientes
 from clinican.servicios.auditoria import historial
-from conftest import AHORA, a_las, timedelta
-
-
-# --------------------------------------------------------------------------- propietarios
+from escenario import AHORA, a_las, timedelta
 
 
 def test_crear_editar_buscar_desactivar_propietario(con):
@@ -73,9 +70,6 @@ def test_propietario_inexistente(con):
         clientes.editar_propietario(con, 99, nombre="X", ahora=AHORA)
 
 
-# --------------------------------------------------------------------------- razas
-
-
 def test_razas(con):
     poodle = clientes.crear_raza(con, "Poodle", Tamano.PEQUENO, "rizado", ahora=AHORA)
     assert (poodle.tamano, poodle.pelaje) == (Tamano.PEQUENO, "rizado")
@@ -91,9 +85,6 @@ def test_razas(con):
     assert "Labrador" in activas and "Poodle" not in activas
     with pytest.raises(DatoInvalido):
         clientes.crear_raza(con, "Pug", "pequeño", ahora=AHORA)
-
-
-# --------------------------------------------------------------------------- mascotas
 
 
 def test_mascota_toma_tamano_y_pelaje_de_la_raza(con, esc):
@@ -140,15 +131,11 @@ def test_editar_buscar_desactivar_mascota(con, esc):
         clientes.editar_mascota(con, m.id, raza_id=999, ahora=AHORA)
 
 
-# --------------------------------------------------------------------------- unir propietarios
-
-
 def test_unir_propietarios(con, esc):
     origen = esc.propietario("Ana (duplicada)", saldo=5000)
     destino = esc.propietario("Ana", saldo=1000)
-    turno = esc.turno(propietario=origen)  # usa los 5000 de saldo de origen
+    turno = esc.turno(propietario=origen)
     esc.mascota(propietario=origen)
-    # Una inasistencia avisada a tiempo en el historial del origen
     t2 = esc.turno(inicio=a_las(10), propietario=origen)
     agenda.registrar_abono(con, t2.id, t2.faltante, ahora=AHORA)
     agenda.marcar_inasistencia(con, t2.id, aviso_en=a_las(10) - timedelta(hours=13),
@@ -203,9 +190,6 @@ def test_turno_de_mascota_inactiva_rechazado(con, esc):
     assert agenda.turnos_del_dia(con, a_las(9).date()) == []
 
 
-# --------------------------------------------------------------------------- cédula y datos nuevos
-
-
 def test_razas_de_la_plantilla_sin_tamano(con):
     razas = {r.nombre: r for r in clientes.buscar_razas(con)}
     assert len(razas) == 14
@@ -235,7 +219,7 @@ def test_cedula_obligatoria_unica_y_normalizada(con):
 
 
 def test_propietario_anterior_sin_cedula_debe_darla_al_editar(con):
-    pid = repo_clientes.insertar_propietario(con, "Antiguo", "3001234567")  # dato previo a la cédula
+    pid = repo_clientes.insertar_propietario(con, "Antiguo", "3001234567")
     with pytest.raises(DatoInvalido, match="cédula"):
         clientes.editar_propietario(con, pid, nombre="Antiguo Pérez", ahora=AHORA)
     p = clientes.editar_propietario(con, pid, nombre="Antiguo Pérez", cedula="777777", ahora=AHORA)

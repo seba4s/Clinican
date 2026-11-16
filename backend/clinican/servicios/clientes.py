@@ -55,9 +55,6 @@ def _cambios(**campos: Any) -> dict[str, Any]:
     return {k: v for k, v in campos.items() if v is not SIN_CAMBIO}
 
 
-# --------------------------------------------------------------------------- propietarios
-
-
 def obtener_propietario(con, propietario_id: int) -> Propietario:
     propietario = repo_clientes.obtener_propietario(con, propietario_id)
     if propietario is None:
@@ -154,7 +151,7 @@ def desactivar_propietario(con, propietario_id: int, *, ahora: datetime) -> Prop
 def buscar_propietarios(con, texto: str = "", incluir_inactivos: bool = False) -> list[Propietario]:
     texto = texto.strip()
     if texto and re.fullmatch(r"[\d\s\-]+", texto):
-        texto = re.sub(r"[\s\-]", "", texto)  # buscar "300 123" igual que "300123"
+        texto = re.sub(r"[\s\-]", "", texto)
     return repo_clientes.buscar_propietarios(con, texto, incluir_inactivos)
 
 
@@ -191,9 +188,6 @@ def unir_propietarios(con, origen_id: int, destino_id: int, *, ahora: datetime) 
             saldo_trasladado=origen.saldo_a_favor,
         )
     return obtener_propietario(con, destino_id)
-
-
-# --------------------------------------------------------------------------- razas
 
 
 def obtener_raza(con, raza_id: int) -> Raza:
@@ -252,9 +246,6 @@ def desactivar_raza(con, raza_id: int, *, ahora: datetime) -> Raza:
 
 def buscar_razas(con, texto: str = "", incluir_inactivas: bool = False) -> list[Raza]:
     return repo_clientes.buscar_razas(con, texto.strip(), incluir_inactivas)
-
-
-# --------------------------------------------------------------------------- mascotas
 
 
 def obtener_mascota(con, mascota_id: int) -> Mascota:

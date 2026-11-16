@@ -13,7 +13,7 @@ from generador import generar
 
 pytestmark = pytest.mark.lento
 
-DIA = date(2026, 11, 6)  # viernes con datos
+DIA = date(2026, 11, 6)
 AHORA = datetime(2026, 11, 6, 7, 0, tzinfo=ZONA)
 
 

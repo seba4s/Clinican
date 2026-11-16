@@ -68,7 +68,6 @@ def test_transaccion_anidada_rechazada(con):
         with pytest.raises(TransaccionAnidada):
             with transaccion(con):
                 pass
-    # La transacción externa sigue y confirma normalmente
     assert con.execute("SELECT COUNT(*) FROM t").fetchone()[0] == 1
 
 
@@ -80,7 +79,6 @@ def test_begin_immediate_bloquea_otra_escritura(con, ruta):
                 with transaccion(otra):
                     pass
             assert not otra.in_transaction
-        # Liberado el bloqueo, la segunda conexión puede escribir
         with transaccion(otra):
             otra.execute("INSERT INTO t (v) VALUES ('b')")
     finally:

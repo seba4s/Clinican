@@ -18,7 +18,7 @@ from clinican.dominio.estados import EstadoTurno as E
 from clinican.dominio.turnos import contar_ocupacion
 from clinican.servicios import agenda
 from clinican.servicios.auditoria import historial
-from conftest import AHORA, LUNES, PERFIL, Escenario, a_las
+from escenario import AHORA, LUNES, PERFIL, Escenario, a_las
 
 CUPOS = CuposPorFranja()
 TIEMPO_MAXIMO = 60
@@ -45,7 +45,7 @@ def _en_paralelo(ruta_db, tareas):
         try:
             barrera.wait(timeout=TIEMPO_MAXIMO)
             resultados[i] = ("ok", tarea(con))
-        except Exception as error:  # se inspecciona en la prueba
+        except Exception as error:
             resultados[i] = ("error", error)
         finally:
             con.close()
@@ -72,7 +72,7 @@ def test_dos_creaciones_compiten_por_el_ultimo_cupo(con, ruta_db):
     esc = Escenario(con)
     franjas = _franjas(20)
     for inicio in franjas:
-        esc.turno(C.MAQUINA, inicio=inicio)  # queda 1 de 2 libre
+        esc.turno(C.MAQUINA, inicio=inicio)
         a, b = esc.mascota(C.MAQUINA), esc.mascota(C.MAQUINA)
         servicio = PERFIL[C.MAQUINA][2]
         resultados = _en_paralelo(ruta_db, [
@@ -102,12 +102,10 @@ def test_turno_vence_mientras_se_registra_el_abono(con, ruta_db):
         liberaciones = [r for r in historial(con, "turno", t.id) if r.accion == "liberar"]
         assert barrido[0] == "ok", barrido
         if abono[0] == "ok":
-            # El abono llegó primero: el barrido ya no lo encontró pendiente
             assert final.estado is E.CONFIRMADO and final.abono_pagado == 20000
             assert t.id not in barrido[1] and liberaciones == []
             confirmados += 1
         else:
-            # El barrido llegó primero: el abono se rechaza y no queda dinero registrado
             assert isinstance(abono[1], AbonoRechazado), repr(abono[1])
             assert final.estado is E.LIBERADO and final.abono_pagado == 0
             assert t.id in barrido[1] and len(liberaciones) == 1

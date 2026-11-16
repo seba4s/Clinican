@@ -17,7 +17,7 @@ HOJA = "Mascotas"
 
 def leer_filas(ruta: str | Path) -> list[tuple[int, dict[str, Any]]]:
     """Filas de la hoja Mascotas como (número de fila en Excel, {clave: valor})."""
-    import openpyxl  # import perezoso
+    import openpyxl
 
     ruta = Path(ruta)
     if not ruta.is_file():

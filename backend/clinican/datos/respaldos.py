@@ -46,7 +46,6 @@ def copiar(ruta_origen: str | Path, ruta_destino: str | Path) -> None:
         copia = sqlite3.connect(str(destino))
         try:
             origen.backup(copia)
-            # La copia queda autocontenida (sin archivos -wal aparte)
             copia.execute("PRAGMA journal_mode=DELETE")
         finally:
             copia.close()

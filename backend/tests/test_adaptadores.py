@@ -6,14 +6,13 @@ from pathlib import Path
 import pytest
 
 from clinican.adaptadores import notificador_whatsapp, notificadores
-from clinican.adaptadores.notificador_archivo import NotificadorArchivo
-from clinican.adaptadores.notificador_consola import NotificadorConsola
+from clinican.adaptadores.notificadores import NotificadorArchivo, NotificadorConsola
 from clinican.adaptadores.notificador_whatsapp import NotificadorWhatsApp, normalizar_telefono
 from clinican.dominio.errores import DatoInvalido
 from clinican.servicios import agenda
 from clinican.servicios.despachador import Despachador
 from clinican.servicios.notificaciones import ErrorEnvio, Mensaje, Notificador
-from conftest import AHORA, a_las
+from escenario import AHORA, a_las
 
 MENSAJE = Mensaje(
     notificacion_id=1, turno_id=7, tipo="recordatorio", telefono="300 123 4567",
@@ -22,9 +21,6 @@ MENSAJE = Mensaje(
     parametros=("hoy, lunes 9 de noviembre (09/11/2026)", "Toby", "10:00 am"),
 )
 ENTORNO = {"CLINICAN_WHATSAPP_TOKEN": "secreto-123", "CLINICAN_WHATSAPP_NUMERO_ID": "555"}
-
-
-# --------------------------------------------------------------------------- archivo y consola
 
 
 def test_archivo_una_linea_por_recordatorio(tmp_path):
@@ -49,9 +45,6 @@ def test_consola():
     salida = io.StringIO()
     NotificadorConsola(salida).enviar(MENSAJE)
     assert salida.getvalue().startswith("[recordatorio] 2026-11-09 10:00 | turno 7")
-
-
-# --------------------------------------------------------------------------- WhatsApp
 
 
 class RespuestaFalsa:
@@ -216,9 +209,6 @@ def test_normalizar_telefono(entrada, salida):
     assert normalizar_telefono(entrada) == salida
 
 
-# --------------------------------------------------------------------------- registro
-
-
 def test_notificador_para_cada_canal(tmp_path):
     assert isinstance(notificadores.notificador_para("archivo", tmp_path), NotificadorArchivo)
     assert isinstance(notificadores.notificador_para("Consola", tmp_path), NotificadorConsola)
@@ -241,9 +231,6 @@ def test_canal_configurado_de_extremo_a_extremo(con, esc, ruta_db, tmp_path):
     assert f"turno {t.id}" in contenido
 
 
-# --------------------------------------------------------------------------- modificabilidad
-
-
 class NotificadorSMSFalso:
     """Canal nuevo: solo su clase y su nombre en el registro."""
 
@@ -264,7 +251,6 @@ def test_agregar_canal_sms_sin_tocar_la_agenda(con, esc, ruta_db, tmp_path, monk
     Despachador(ruta_db, notificadores.notificador_para("sms", tmp_path)).procesar_una_vez(a_las(9))
     assert NotificadorSMSFalso.enviados == [("3001234567", agenda_texto(con, t.id, a_las(9)))]
 
-    # La agenda y el despachador no conocen ningún canal concreto
     servicios = Path(agenda.__file__).parent
     for archivo in ("agenda.py", "despachador.py", "notificaciones.py"):
         codigo = (servicios / archivo).read_text(encoding="utf-8").lower()

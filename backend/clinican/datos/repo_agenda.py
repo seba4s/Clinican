@@ -12,7 +12,6 @@ from clinican.dominio.cupos import CategoriaCupo, Servicio
 from clinican.dominio.entidades import Turno
 from clinican.dominio.estados import EstadoTurno, MotivoLiberacion
 
-# --------------------------------------------------------------------------- turnos
 
 COLUMNAS_TURNO = (
     "id, mascota_id, propietario_id, inicio, servicio, categoria, estado, motivo_liberacion, "
@@ -135,9 +134,6 @@ def mover_turnos_de_propietario(con: sqlite3.Connection, origen: int, destino: i
         "UPDATE turnos SET propietario_id = ? WHERE propietario_id = ?", (destino, origen)
     )
     return cur.rowcount
-
-
-# --------------------------------------------------------------------------- bloqueos
 
 
 def _bloqueo(f) -> Bloqueo:

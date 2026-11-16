@@ -8,17 +8,13 @@ from typing import Sequence
 from clinican.dominio.agenda import ZONA
 from clinican.dominio.fechas_texto import dia_en_texto, hora_en_texto
 
-# Primer recordatorio (24 h antes por defecto) y último (1 h antes por defecto).
 TIPO_RECORDATORIO = "recordatorio"
 TIPO_RECORDATORIO_FINAL = "recordatorio_final"
 
-# Esperas tras cada intento fallido: máximo 3 reintentos después del primer intento.
 ESPERAS_REINTENTO = (timedelta(minutes=1), timedelta(minutes=5), timedelta(minutes=15))
 
-# Los registros cerrados (enviados, descartados o fallidos) se purgan después de esto.
 DIAS_RETENCION = 90
 
-# Horas de anticipación por defecto (confirmado: 24 h y 1 h antes; configurables).
 HORAS_ANTES_RECORDATORIO = 24
 HORAS_ANTES_RECORDATORIO_FINAL = 1
 

@@ -5,6 +5,5 @@ __pycache__/
 build/
 dist/
 *.spec
-# Solo las carpetas de datos de la raíz (no el paquete clinican/datos)
 /datos/
 /respaldos/

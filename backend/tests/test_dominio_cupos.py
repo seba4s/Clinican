@@ -78,7 +78,6 @@ def test_libres_y_cabe():
     llena = {C.MAQUINA: 2, C.GRANDE: 1}
     assert cupos_libres(c, llena, C.MAQUINA) == 0 and not cabe_uno_mas(c, llena, C.MAQUINA)
     assert not cabe_uno_mas(c, llena, C.GRANDE)
-    # Las categorías son independientes
     assert cabe_uno_mas(c, llena, C.TIJERA) and cabe_uno_mas(c, llena, C.COMPLICADO)
 
 
