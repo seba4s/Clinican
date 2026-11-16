@@ -1,8 +1,6 @@
 import QtQuick
 import QtQuick.Shapes
 
-// Fondo de la ventana: tres resplandores suaves con los colores de la marca, para que los
-// paneles de vidrio tengan algo que dejar ver. Solo decorativo.
 Item {
     id: f
     Rectangle { anchors.fill: parent; color: tema.color.fondo }

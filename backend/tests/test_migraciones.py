@@ -25,7 +25,6 @@ def _tablas(con):
     }
 
 
-# Base de una sola migración para probar el mecanismo sin depender del esquema real.
 BASE = MIGRACIONES[:1]
 
 V2 = Migracion(2, "pacientes", "CREATE TABLE pacientes (id INTEGER PRIMARY KEY, nombre TEXT);")
@@ -75,7 +74,6 @@ def test_fallo_a_mitad_deja_version_anterior_sin_tablas_parciales(con):
     assert version_actual(con) == 1
     assert not con.in_transaction
     assert {"parcial", "otra_parcial"}.isdisjoint(_tablas(con))
-    # Corregida la migración, se aplica normalmente
     assert migrar(con, (*BASE, V2)) == 2
 
 

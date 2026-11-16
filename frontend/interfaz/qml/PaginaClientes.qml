@@ -3,7 +3,6 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
 
-// Clientes: lista con búsqueda a la izquierda y la ficha del propietario a la derecha.
 Item {
     id: pagina
     readonly property var p: app.clientes

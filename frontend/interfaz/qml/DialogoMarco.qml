@@ -3,8 +3,6 @@ import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
 
-// Marco de todos los diálogos: título, contenido, error general y botones abajo (siempre a
-// la vista aunque la pantalla sea baja). Esc cierra; Enter equivale al botón principal.
 FocusScope {
     id: marco
     required property var d
@@ -22,7 +20,6 @@ FocusScope {
     signal principal()
     signal izquierda()
 
-    // Como mínimo el ancho pedido; crece si el contenido lo necesita (sin pasar la ventana).
     width: Math.min(Math.max(d.ancho, cuerpo.implicitWidth) + 56, anchoMaximo)
     height: Math.min(columna.implicitHeight + 48, altoMaximo)
     focus: true

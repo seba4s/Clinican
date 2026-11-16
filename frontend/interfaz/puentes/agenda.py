@@ -55,7 +55,6 @@ class PantallaAgenda(Pantalla):
     seleccionado = propiedad(int, "seleccionado", cambioAgenda)
     panel = propiedad("QVariantMap", "panel", cambioAgenda)
 
-    # ------------------------------------------------------------------ navegación por días
     @Slot()
     def dia_anterior(self) -> None:
         self.dia -= timedelta(days=1)
@@ -74,7 +73,6 @@ class PantallaAgenda(Pantalla):
         self.seleccion = None
         self.refrescar()
 
-    # ------------------------------------------------------------------ datos
     def refrescar(self, periodico: bool = False) -> None:
         ahora = self.ctx.ahora()
         hoy = self.ctx.hoy()
@@ -120,7 +118,6 @@ class PantallaAgenda(Pantalla):
                 elif fila.tipo == "pasada":
                     filas.append({"tipo": "pasada"})
                 elif fila.tipo == "libre":
-                    # Una hora sin turnos es una sola fila vacía; con turnos, estos ocupan la franja.
                     if not any(f.tipo == "turno" for f in grupo.filas):
                         filas.append({"tipo": "libre", "clave": len(self._libres)})
                         self._libres.append((fila.inicio, None))
@@ -189,7 +186,6 @@ class PantallaAgenda(Pantalla):
         inicio, categoria = self._libres[clave]
         self.nuevo_turno(inicio=inicio, categoria=categoria)
 
-    # ------------------------------------------------------------------ panel del turno
     def _datos_panel(self) -> None:
         item = self._turnos.get(self.seleccion) if self.seleccion is not None else None
         if item is None:
@@ -265,7 +261,6 @@ class PantallaAgenda(Pantalla):
         if 0 <= indice < len(self._acciones_panel):
             self._acciones_panel[indice][1]()
 
-    # ------------------------------------------------------------------ acciones
     @Slot()
     def nuevo(self) -> None:
         self.nuevo_turno()

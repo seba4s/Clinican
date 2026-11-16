@@ -41,7 +41,6 @@ class Mensaje:
     mascota: str
     inicio: datetime
     texto: str
-    # Datos para canales con plantilla aprobada: día en palabras, mascota y hora.
     parametros: tuple[str, ...] = ()
 
 

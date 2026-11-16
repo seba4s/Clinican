@@ -2,9 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Hora en franjas de 30 minutos: se escribe (9, 9:30, 930, 4:30 pm) o se elige de una cuadrícula.
-// Con ↑ y ↓ sube o baja media hora. Al salir del campo queda escrita como 09:30; si no se
-// entiende, el borde se pone rojo.
 Rectangle {
     id: c
     objectName: "campoHora"

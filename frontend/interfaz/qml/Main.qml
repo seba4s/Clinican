@@ -27,7 +27,6 @@ ApplicationWindow {
 
     Fondo { anchors.fill: parent }
 
-    // Todo lo que no es el diálogo; se desenfoca detrás del diálogo abierto (efecto vidrio).
     Item {
         id: escena
         anchors.fill: parent
@@ -53,8 +52,6 @@ ApplicationWindow {
                 Layout.fillHeight: true
                 spacing: 0
                 Aviso { Layout.fillWidth: true; Layout.leftMargin: 24; Layout.rightMargin: 24 }
-                // Las pantallas quedan cargadas y apiladas; al cambiar de sección se funden,
-                // sin volver a armar sus controles.
                 Item {
                     id: pila
                     Layout.fillWidth: true
@@ -86,7 +83,6 @@ ApplicationWindow {
         }
     }
 
-    // Capa del diálogo: velo y diálogo centrado. Bloquea los clics a la ventana de atrás.
     Item {
         id: capa
         anchors.fill: parent

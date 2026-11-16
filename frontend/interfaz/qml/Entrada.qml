@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 
-// Caja de texto de una línea con el estilo del tema.
 TextField {
     id: f
     property bool conError: false

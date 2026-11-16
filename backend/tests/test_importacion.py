@@ -47,7 +47,7 @@ def test_encabezados_de_la_plantilla_real():
     encabezados = next(libro["Mascotas"].iter_rows(values_only=True))
     libro.close()
     assert set(mapear_encabezados(encabezados).values()) == set(COLUMNAS)
-    assert leer_filas(PLANTILLA_REAL) == []  # solo encabezados
+    assert leer_filas(PLANTILLA_REAL) == []
 
 
 def test_importa_fila_de_ejemplo_de_la_plantilla(con, tmp_path):
@@ -70,22 +70,22 @@ def test_importa_fila_de_ejemplo_de_la_plantilla(con, tmp_path):
 
 def test_informe_acepta_y_rechaza_sin_abortar(con, tmp_path):
     filas = [
-        _fila(),                                                         # 2 ok
+        _fila(),
         _fila(nombre_mascota="Luna", tamano="Grande", edad_anios=None,
-              edad_meses=None, ultima_visita=datetime(2026, 3, 26)),     # 3 ok, mismo dueño
-        _fila(cedula=None),                                              # 4 sin cédula
-        _fila(cedula="555", celular1="12345"),                           # 5 cédula y celular malos
-        _fila(cedula="2222", raza="Dálmata"),                            # 6 raza inexistente
-        _fila(cedula="3333", raza="Perro mestizo (sin raza)", tamano="Mediana"),  # 7 falta pelaje
-        _fila(cedula="4444", tamano=None),                               # 8 sin tamaño
-        _fila(cedula="5555", tamano="Enorme", complicado="Tal vez"),     # 9 valores inválidos
-        _fila(cedula="6666", edad_meses=14),                             # 10 meses fuera de rango
-        _fila(cedula="7777", ultima_visita="26/03/2026"),                # 11 fecha mal escrita
-        [None] * len(COLUMNAS),                                          # 12 vacía: se ignora
-        _fila(),                                                         # 13 mascota repetida
-        _fila(cedula="8888", direccion=None, nombre_mascota=None),       # 14 faltan datos
+              edad_meses=None, ultima_visita=datetime(2026, 3, 26)),
+        _fila(cedula=None),
+        _fila(cedula="555", celular1="12345"),
+        _fila(cedula="2222", raza="Dálmata"),
+        _fila(cedula="3333", raza="Perro mestizo (sin raza)", tamano="Mediana"),
+        _fila(cedula="4444", tamano=None),
+        _fila(cedula="5555", tamano="Enorme", complicado="Tal vez"),
+        _fila(cedula="6666", edad_meses=14),
+        _fila(cedula="7777", ultima_visita="26/03/2026"),
+        [None] * len(COLUMNAS),
+        _fila(),
+        _fila(cedula="8888", direccion=None, nombre_mascota=None),
         _fila(cedula=" 9.999.999 ", celular1="300 765 4321", raza="perro MESTIZO (sin raza)",
-              tamano="mediana", complicado="SÍ", celular2="3107654321"), # 15 ok
+              tamano="mediana", complicado="SÍ", celular2="3107654321"),
     ]
     informe = importar_mascotas_desde_excel(con, _xlsx(tmp_path / "m.xlsx", filas), ahora=AHORA)
     assert [a.fila for a in informe.aceptadas] == [2, 3, 15]
@@ -107,7 +107,6 @@ def test_informe_acepta_y_rechaza_sin_abortar(con, tmp_path):
     assert (nuevo.telefono, nuevo.celular2) == ("3007654321", "3107654321")
     [mestizo] = clientes.buscar_mascotas(con, propietario_id=nuevo.id)
     assert mestizo.complicado and mestizo.tamano is Tamano.MEDIANO
-    # Las filas rechazadas no dejaron propietarios a medias
     assert clientes.obtener_por_cedula(con, "2222") is None
 
 

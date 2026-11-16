@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Etiqueta, entrada y mensaje de error debajo (validación en el momento con «editado»).
 ColumnLayout {
     id: c
     property string titulo: ""

@@ -20,9 +20,6 @@ def _m(d, h, mi=0):
     return datetime(d.year, d.month, d.day, h, mi, tzinfo=ZONA)
 
 
-# --------------------------------------------------------------------------- fechas en texto
-
-
 @pytest.mark.parametrize(
     "hoy, dia, esperado",
     [
@@ -75,11 +72,8 @@ def test_texto_del_recordatorio_como_el_ejemplo():
 def test_texto_usa_la_hora_de_colombia():
     from datetime import timezone
 
-    inicio = datetime(2026, 10, 8, 14, 0, tzinfo=timezone.utc)  # 9:00 en Bogotá
+    inicio = datetime(2026, 10, 8, 14, 0, tzinfo=timezone.utc)
     assert "a las 9:00 am" in texto_recordatorio("Roma", inicio, inicio - timedelta(hours=1))
-
-
-# --------------------------------------------------------------------------- planificación
 
 
 def test_con_mas_de_24_horas_programa_los_dos():

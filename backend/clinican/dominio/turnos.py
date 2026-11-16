@@ -12,7 +12,6 @@ from clinican.dominio.entidades import Turno
 from clinican.dominio.errores import FranjaNoDisponible
 from clinican.dominio.estados import EstadoTurno, ocupa_cupo
 
-# Turnos que todavía no terminaron (bloquear su franja los dejaría sin atender).
 ESTADOS_ACTIVOS = frozenset(
     {EstadoTurno.PENDIENTE_ABONO, EstadoTurno.CONFIRMADO, EstadoTurno.EN_ATENCION}
 )

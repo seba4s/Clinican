@@ -1,6 +1,5 @@
 import QtQuick
 
-// Panel de vidrio: translúcido sobre el fondo desenfocado, con filo de luz arriba.
 Rectangle {
     property bool fuerte: false
     property int relleno: 16

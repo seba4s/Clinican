@@ -1,15 +1,8 @@
-﻿# Guarda los datos de WhatsApp (Cloud API de Meta) como variables de entorno de tu usuario de Windows.
-# El token NO se escribe en ningún archivo ni en el repositorio.
-# Uso, desde la carpeta backend:
-#     powershell -ExecutionPolicy Bypass -File .\configurar_whatsapp.ps1
-# Para cambiar solo el token (por ejemplo, cuando vence el temporal), vuelve a ejecutarlo y
-# deja en blanco lo que no quieras cambiar.
-
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 
 function Guardar($nombre, $valor) {
     [Environment]::SetEnvironmentVariable($nombre, $valor, "User")
-    Set-Item -Path "Env:$nombre" -Value $valor   # también en esta consola
+    Set-Item -Path "Env:$nombre" -Value $valor
 }
 
 $actualId = [Environment]::GetEnvironmentVariable("CLINICAN_WHATSAPP_NUMERO_ID", "User")

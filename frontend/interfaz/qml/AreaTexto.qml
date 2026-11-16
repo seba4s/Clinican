@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Etiqueta y caja de texto de varias líneas.
 ColumnLayout {
     id: c
     property string titulo: ""

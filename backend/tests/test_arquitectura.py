@@ -29,7 +29,7 @@ CAPAS_PERMITIDAS: dict[str, set[str]] = {
     "adaptadores": {"dominio", "servicios"},
     "ui": {"dominio", "servicios"},
 }
-RAIZ = "raiz"  # raíz de composición: puede importar cualquier capa
+RAIZ = "raiz"
 MODULOS_RAIZ = {f"{PAQUETE}", f"{PAQUETE}.demo", "main"}
 
 MODULOS_RED = {
@@ -62,9 +62,6 @@ class Violacion:
 
     def __str__(self) -> str:
         return f"{self.archivo}:{self.linea} [{self.regla}] {self.detalle}"
-
-
-# --------------------------------------------------------------------------- utilidades
 
 
 def _modulo_de(ruta: Path, raiz: Path) -> tuple[str, bool]:
@@ -133,7 +130,6 @@ def _importaciones(arbol: ast.AST, paquete_actual: str) -> list[tuple[str, int]]
             else:
                 base = nodo.module or ""
             encontrados.append((base, nodo.lineno))
-            # `from clinican import datos` o `from . import datos`: el destino real es el submódulo
             for alias in nodo.names:
                 if alias.name != "*" and base:
                     encontrados.append((f"{base}.{alias.name}", nodo.lineno))
@@ -164,9 +160,6 @@ def _es_sql(texto: str) -> bool:
     return any(p.search(texto) for p in _PATRONES_SQL)
 
 
-# --------------------------------------------------------------------------- analizador
-
-
 def archivos_a_revisar(raiz: Path) -> list[tuple[Path, Path]]:
     """Pares (archivo, carpeta desde la que se importa su paquete)."""
     archivos: list[tuple[Path, Path]] = []
@@ -192,12 +185,9 @@ def analizar_archivo(ruta: Path, raiz: Path, base: Path) -> list[Violacion]:
 
     for destino, linea in _importaciones(arbol, paquete_actual):
         raiz_mod = destino.split(".")[0]
-        # Dependencias entre capas
-        # El paquete desnudo (`from clinican import x`) se evalúa por su submódulo x.
         if raiz_mod in (PAQUETE, PAQUETE_UI) and destino != PAQUETE and capa not in (None, RAIZ):
             capa_destino = _capa_de(destino)
             if capa_destino in (RAIZ, None):
-                # La raíz de composición y los módulos sin capa no se importan desde una capa
                 violaciones.append(
                     Violacion(rel, linea, "capas", f"{capa} no puede importar {destino}")
                 )
@@ -205,10 +195,8 @@ def analizar_archivo(ruta: Path, raiz: Path, base: Path) -> list[Violacion]:
                 violaciones.append(
                     Violacion(rel, linea, "capas", f"{capa} no puede importar {capa_destino} ({destino})")
                 )
-        # sqlite3 solo en datos
         if raiz_mod == "sqlite3" and capa != "datos":
             violaciones.append(Violacion(rel, linea, "sqlite3", f"importa {destino} fuera de datos/"))
-        # Red solo en adaptadores
         if raiz_mod in MODULOS_RED and capa != "adaptadores":
             violaciones.append(Violacion(rel, linea, "red", f"importa {destino} fuera de adaptadores/"))
 
@@ -242,17 +230,12 @@ def analizar(raiz: Path) -> list[Violacion]:
     return violaciones
 
 
-# --------------------------------------------------------------------------- pruebas
-
-
 def test_paquete_real_respeta_la_arquitectura():
     violaciones = analizar(RAIZ_REPO)
     assert not violaciones, "Violaciones de arquitectura:\n" + "\n".join(map(str, violaciones))
 
 
-# (archivo relativo a la raíz falsa, código, regla esperada)
 ATAJOS: list[tuple[str, str, str]] = [
-    # Capas
     ("backend/clinican/dominio/a1.py", "from clinican.datos import repo", "capas"),
     ("backend/clinican/dominio/a2.py", "from ..servicios import algo", "capas"),
     ("backend/clinican/dominio/a3.py", "import interfaz", "capas"),
@@ -265,18 +248,15 @@ ATAJOS: list[tuple[str, str, str]] = [
     ("frontend/interfaz/a10.py", "from clinican.datos.conexion import abrir", "capas"),
     ("frontend/interfaz/a11.py", "from clinican import adaptadores", "capas"),
     ("backend/clinican/servicios/a12.py", "from clinican import demo", "capas"),
-    # sqlite3
     ("backend/clinican/servicios/b1.py", "import sqlite3", "sqlite3"),
     ("backend/clinican/servicios/b2.py", "from sqlite3 import connect", "sqlite3"),
     ("backend/clinican/servicios/b3.py", "import importlib\nimportlib.import_module('sqlite3')", "sqlite3"),
     ("frontend/interfaz/b4.py", "__import__('sqlite3')", "sqlite3"),
     ("frontend/main.py", "import sqlite3", "sqlite3"),
-    # Llamadas SQL
     ("frontend/interfaz/c1.py", "def f(con):\n    con.execute('x')", "sql-llamada"),
     ("frontend/interfaz/c2.py", "def f(cur):\n    cur.executemany('x', [])", "sql-llamada"),
     ("frontend/interfaz/c3.py", "def f(con):\n    con.executescript('x')", "sql-llamada"),
     ("backend/clinican/servicios/c4.py", "def f(con, otra):\n    con.backup(otra)", "sql-llamada"),
-    # Textos SQL
     ("backend/clinican/servicios/d1.py", "Q = 'SELECT nombre FROM pacientes'", "sql-texto"),
     ("backend/clinican/servicios/d2.py", "Q = 'insert into pacientes values (1)'", "sql-texto"),
     ("backend/clinican/servicios/d3.py", "Q = 'UPDATE pacientes SET nombre = 1'", "sql-texto"),
@@ -290,7 +270,6 @@ ATAJOS: list[tuple[str, str, str]] = [
     ("backend/clinican/servicios/d11.py", "Q = 'ROLLBACK'", "sql-texto"),
     ("backend/clinican/servicios/d12.py", "def f(t):\n    return f'SELECT * FROM {t}'", "sql-texto"),
     ("backend/clinican/dominio/d13.py", "def f():\n    x = 1\n    'DELETE FROM t'", "sql-texto"),
-    # Red
     *[
         (f"backend/clinican/servicios/e_{m}.py", f"import {m}", "red")
         for m in sorted(MODULOS_RED)
@@ -302,7 +281,6 @@ ATAJOS: list[tuple[str, str, str]] = [
     ("backend/clinican/datos/e_datos.py", "import requests", "red"),
 ]
 
-# Archivos que no deben generar violaciones
 LIMPIOS: list[tuple[str, str]] = [
     ("backend/clinican/__init__.py", '"""Paquete."""'),
     ("backend/clinican/demo.py", "from clinican import datos, servicios, adaptadores"),

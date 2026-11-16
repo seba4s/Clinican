@@ -26,7 +26,6 @@ def test_agenda_del_dia(con, esc):
     assert (nueve.turnos[0].propietario, nueve.turnos[0].celular) == ("Ana", "3001234567")
     diez = dia[2]
     assert diez.libres[C.TIJERA] == 1 and diez.turnos[0].turno.estado is E.CANCELADO
-    # Al vencer los pendientes, sus cupos vuelven a estar libres
     despues = consultas.agenda_del_dia(con, LUNES, ahora=AHORA + timedelta(minutes=30))
     assert despues[0].libres[C.MAQUINA] == 2
 
@@ -79,12 +78,11 @@ def test_estado_bandeja(con, esc, ruta_db):
                 raise ErrorEnvio("sin señal")
 
     d = Despachador(ruta_db, Falla())
-    momento = a_las(11, dia=LUNES + timedelta(days=1))  # martes: tocan los de 24 h del miércoles
+    momento = a_las(11, dia=LUNES + timedelta(days=1))
     for espera in (0, 1, 5, 15):
         momento += timedelta(minutes=espera)
         d.procesar_una_vez(momento)
     estado = consultas.estado_bandeja(con)
-    # Pendientes: los 3 de 1 h del miércoles y los 2 del turno lejano
     assert estado.conteo == {EN.PENDIENTE: 5, EN.ENVIADA: 2, EN.DESCARTADA: 0, EN.FALLIDA: 1}
     ids = [n.turno_id for n in estado.proximas]
     assert len(ids) == 5 and ids.count(lejano.id) == 2 and ids[-1] == lejano.id

@@ -35,7 +35,7 @@ def test_vencimiento_exige_zona_horaria():
         (timedelta(hours=30), 20000),
         (timedelta(hours=11, minutes=59), 0),
         (timedelta(hours=1), 0),
-        (timedelta(hours=-1), 0),  # avisó después de la hora del turno
+        (timedelta(hours=-1), 0),
     ],
 )
 def test_inasistencia_segun_aviso(anticipacion, saldo):
@@ -73,8 +73,6 @@ def test_aplicar_saldo_valida_pesos(saldo, requerido):
     with pytest.raises((TypeError, ValueError)):
         aplicar_saldo(saldo, requerido)
 
-
-# --------------------------------------------------------------------------- edad aproximada
 
 from datetime import date  # noqa: E402
 

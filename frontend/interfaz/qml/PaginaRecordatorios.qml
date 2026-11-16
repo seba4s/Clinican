@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Recordatorios: la bandeja de salida.
 Item {
     id: pagina
     readonly property var p: app.recordatorios

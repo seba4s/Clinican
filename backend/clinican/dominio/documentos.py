@@ -34,7 +34,6 @@ def fecha_nacimiento_aproximada(anios: int, meses: int, hoy: date) -> date:
     total = hoy.year * 12 + (hoy.month - 1) - (anios * 12 + meses)
     anio, mes = divmod(total, 12)
     mes += 1
-    # Mismo día del mes, ajustado si ese mes es más corto
     for dia in (hoy.day, 30, 29, 28):
         try:
             return date(anio, mes, min(hoy.day, dia))

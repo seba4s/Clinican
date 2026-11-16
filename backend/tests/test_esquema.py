@@ -81,10 +81,10 @@ def test_claves_foraneas(con):
     [
         {"estado": "inventado"},
         {"categoria": "mediana"},
-        {"estado": "liberado"},  # sin motivo
-        {"motivo_liberacion": "abono_vencido"},  # con motivo sin estar liberado
+        {"estado": "liberado"},
+        {"motivo_liberacion": "abono_vencido"},
         {"estado": "liberado", "motivo_liberacion": "porque_si"},
-        {"abono_pagado": 30000},  # más que el abono requerido
+        {"abono_pagado": 30000},
         {"abono_requerido": 20000.5},
     ],
 )

@@ -22,9 +22,8 @@ def _zona_bogota() -> tzinfo:
             return ZoneInfo("America/Bogota")
         except ZoneInfoNotFoundError:
             pass
-    except ImportError:  # pragma: no cover
+    except ImportError:
         pass
-    # Windows sin el paquete tzdata: Colombia no tiene horario de verano.
     return timezone(timedelta(hours=-5), "COT")
 
 
@@ -63,11 +62,10 @@ class Jornada:
             raise ValueError("La apertura no puede ser posterior a la última franja")
 
 
-_JORNADA_NORMAL = Jornada(time(9, 0), time(16, 30))  # 16 franjas
+_JORNADA_NORMAL = Jornada(time(9, 0), time(16, 30))
 
 
 def _horario_por_defecto() -> dict[int, Jornada | None]:
-    # 0 = lunes ... 6 = domingo
     return {**{d: _JORNADA_NORMAL for d in range(6)}, 6: None}
 
 

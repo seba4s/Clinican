@@ -106,9 +106,6 @@ def mapear_encabezados(encabezados: Iterable[Any]) -> dict[int, str]:
     return mapa
 
 
-# --------------------------------------------------------------------------- celdas
-
-
 def _texto(valor: Any) -> str:
     if valor is None:
         return ""
@@ -151,9 +148,6 @@ def _fecha(valor: Any) -> date | None:
 
 def _clave(texto: str) -> str:
     return normalizar_encabezado(texto)
-
-
-# --------------------------------------------------------------------------- fila
 
 
 @dataclass(frozen=True)
@@ -299,11 +293,11 @@ def importar_filas(
     informe = InformeImportacion()
     for numero, datos in filas:
         if not any(_texto(v) for v in datos.values()):
-            continue  # fila vacía
+            continue
         try:
             informe.aceptadas.append(_importar_fila(con, numero, datos, ahora))
         except ErrorNegocio as error:
             informe.rechazadas.append(FilaRechazada(numero, str(error)))
-        except Exception as error:  # una fila rara no debe detener la importación
+        except Exception as error:
             informe.rechazadas.append(FilaRechazada(numero, f"Error inesperado: {error}"))
     return informe

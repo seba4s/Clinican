@@ -64,7 +64,7 @@ def test_respaldo_diario_solo_si_falta(ruta_db):
 def test_restaurar_respalda_antes_y_restaura(con, esc, ruta_db):
     esc.propietario("Ana")
     copia = respaldos.crear_respaldo(ruta_db, ahora=AHORA)
-    esc.propietario("Beto")  # cambio posterior a la copia
+    esc.propietario("Beto")
     previo = respaldos.restaurar(ruta_db, copia, ahora=AHORA + timedelta(minutes=5))
     nueva = abrir(ruta_db)
     try:
@@ -72,7 +72,6 @@ def test_restaurar_respalda_antes_y_restaura(con, esc, ruta_db):
         assert historial(nueva, "respaldo")[-1].accion == "restaurar"
     finally:
         nueva.close()
-    # El respaldo previo guarda el estado de antes de restaurar (con Beto)
     viejo = sqlite3.connect(previo)
     try:
         assert {f[0] for f in viejo.execute("SELECT nombre FROM propietarios")} == {"Ana", "Beto"}
@@ -127,7 +126,7 @@ def test_hilo_de_respaldo_diario(ruta_db):
         limite = reloj_real.monotonic() + 10
         while not respaldos.listar_respaldos(_carpeta(ruta_db)) and reloj_real.monotonic() < limite:
             reloj_real.sleep(0.02)
-        reloj_real.sleep(0.2)  # varios ciclos más: no debe duplicar la copia del día
+        reloj_real.sleep(0.2)
     finally:
         hilo.detener()
     assert not hilo.corriendo

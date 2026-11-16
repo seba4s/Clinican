@@ -1,6 +1,5 @@
 import QtQuick
 
-// Texto con la letra y los colores del tema. «suave» es el texto secundario.
 Text {
     property int tamano: tema.medida.cuerpo
     property bool negrita: false

@@ -45,7 +45,7 @@ class App(Presentador):
         self._fallidos = 0
         self._dialogo: Dialogo | None = None
         self._al_cerrar = None
-        self._cerrados: list[Dialogo] = []  # QML puede seguir animando el cierre
+        self._cerrados: list[Dialogo] = []
 
         from interfaz.puentes.agenda import PantallaAgenda
         from interfaz.puentes.ajustes import PantallaAjustes
@@ -97,7 +97,6 @@ class App(Presentador):
     def actual(self) -> str:
         return self._seccion
 
-    # ------------------------------------------------------------------ aviso
     def avisar(self, mensaje: str, error: bool = False) -> None:
         self.poner(aviso=mensaje, aviso_error=error, aviso_visible=True)
 
@@ -110,13 +109,12 @@ class App(Presentador):
         try:
             with self.ctx.con() as con:
                 fallidas = consultas.estado_bandeja(con, limite=1).conteo.get(EstadoNotificacion.FALLIDA, 0)
-        except Exception:  # la insignia nunca debe tumbar la ventana
+        except Exception:
             registro.exception("No se pudo leer la bandeja")
             return
         texto = "Recordatorios" + (f"   ·  {fallidas} fallido{'s' if fallidas != 1 else ''}" if fallidas else "")
         self.poner(insignia=texto, fallidos=fallidas)
 
-    # ------------------------------------------------------------------ navegación
     @Slot(str)
     def ir(self, nombre: str):
         """Muestra una sección. Se actualiza antes de pasar al frente, para que nunca se vea a medio armar."""
@@ -141,7 +139,6 @@ class App(Presentador):
         self.ir("Clientes")
         self.enfocarBusqueda.emit()
 
-    # ------------------------------------------------------------------ diálogos
     def hay_dialogo(self) -> bool:
         return self._dialogo is not None
 

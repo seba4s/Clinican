@@ -1,16 +1,12 @@
 import QtQuick
 import QtQuick.Controls
 
-// Agenda del día como una hoja de cálculo: encabezado verde fijo, la hora combinada a la
-// izquierda de cada franja. Un turno ocupa toda la franja (dos filas de alto); si se agenda
-// otro turno a la misma hora, la franja se divide entre los turnos. Una hora sin turnos es una
-// sola fila vacía que se toca para agendar ahí mismo.
 Item {
     id: hoja
-    required property var p           // presentador de la agenda
+    required property var p
     readonly property var pesos: [0.75, 0.95, 1.15, 1.0, 1.25, 1.3, 1.3, 1.05, 1.4]
     readonly property var titulos: ["Hora", "Cupo", "Mascota", "Raza", "Servicio", "Propietario", "Celular", "Abono", "Estado"]
-    readonly property real totalPesos: 10.4   // sin la hora, que tiene ancho fijo
+    readonly property real totalPesos: 10.4
     readonly property int anchoHora: 64
     readonly property int altoFila: 34
     readonly property int pad: 10
@@ -26,7 +22,6 @@ Item {
                 if (g[i].filas[j].id === turnoId) { lista.positionViewAtIndex(i, ListView.Contain); return }
     }
 
-    // La hoja se reemplaza al refrescar; se conserva la posición para que no salte arriba.
     property var grupos: p.grupos
     onGruposChanged: {
         var y = lista.contentY
@@ -73,13 +68,11 @@ Item {
             required property var modelData
             readonly property var g: modelData
             width: lista.width
-            // Turnos y horas libres ocupan la franja entera (mínimo dos filas); al sumar turnos se reparte.
             readonly property real filasFranja: (g.filas[0].tipo === "turno" || g.filas[0].tipo === "libre")
                                                 ? Math.max(2, g.filas.length) : g.filas.length
             readonly property real alturaFila: height / g.filas.length
             height: filasFranja * hoja.altoFila
 
-            // Celda de la hora, combinada para toda la franja.
             Rectangle {
                 width: hoja.xs[1]; height: parent.height
                 color: grupo.g.bloqueo ? tema.color.verde : tema.color.fondoHora
@@ -133,7 +126,6 @@ Item {
         Rectangle { visible: fila.f.tipo !== "bloqueo"; x: fila.cx(2); width: 1; height: parent.height; color: tema.color.linea }
         Rectangle { visible: fila.f.tipo !== "bloqueo"; anchors.bottom: parent.bottom; width: parent.width; height: 1; color: tema.color.linea }
 
-        // Hora sin turnos: una fila vacía de la tabla ("Libre" en Estado); se toca para agendar ahí.
         Item {
             objectName: "libre"
             anchors.fill: parent
@@ -163,7 +155,6 @@ Item {
                         enabled: fila.f.tipo === "libre"; onClicked: hoja.p.elegir_libre(fila.f.clave) }
         }
 
-        // Fila de un turno.
         Item {
             anchors.fill: parent
             visible: fila.esTurno
@@ -188,7 +179,6 @@ Item {
                     }
                 }
             }
-            // Estado: celda con el color del estado, como un relleno condicional.
             Rectangle {
                 readonly property var e: fila.esTurno ? (tema.estados[fila.f.estado] || ({})) : ({})
                 x: fila.cx(8) + 4; width: fila.ancho(8) - 8
@@ -199,7 +189,6 @@ Item {
                         text: fila.f.estadoTexto || ""; negrita: true; tamano: tema.medida.etiqueta + 1
                         color: parent.e.letra || tema.color.tinta; elide: Text.ElideRight; wrapMode: Text.NoWrap }
             }
-            // La fila elegida lleva un borde fucsia.
             Rectangle { anchors.fill: parent; anchors.margins: 1; color: "transparent"; visible: fila.elegida
                         border.width: 2; border.color: tema.color.accion }
             MouseArea { id: zonaTurno; anchors.fill: parent; hoverEnabled: true; enabled: fila.esTurno; cursorShape: Qt.PointingHandCursor

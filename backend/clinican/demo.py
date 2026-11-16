@@ -35,7 +35,7 @@ PERMITIDAS = {
     "adaptadores": {"dominio", "servicios"},
     "ui": {"dominio", "servicios"},
 }
-AHORA = datetime(2026, 11, 9, 8, 0, tzinfo=ZONA)  # lunes 8:00 (reloj fijo de la demo)
+AHORA = datetime(2026, 11, 9, 8, 0, tzinfo=ZONA)
 
 
 def _titulo(texto: str) -> None:
@@ -44,9 +44,6 @@ def _titulo(texto: str) -> None:
 
 def _a_las(hora: int, minuto: int = 0) -> datetime:
     return AHORA.replace(hour=hora, minute=minuto)
-
-
-# --------------------------------------------------------------------------- 1
 
 
 def dependencias_reales() -> dict[str, set[str]]:
@@ -82,9 +79,6 @@ def seccion_capas() -> None:
     print("  SQL solo en datos/; red solo en adaptadores/ (lo verifica tests/test_arquitectura.py).")
 
 
-# --------------------------------------------------------------------------- base de la demo
-
-
 def _preparar(carpeta: Path) -> Path:
     ruta = carpeta / "demo.db"
     con = abrir(ruta)
@@ -100,9 +94,6 @@ def _mascota(con, nombre: str, celular: str):
         con, f"Dueño de {nombre}", celular, cedula=celular[-8:], ahora=AHORA
     )
     return clientes.crear_mascota(con, dueno.id, nombre, tamano=Tamano.MEDIANO, ahora=AHORA)
-
-
-# --------------------------------------------------------------------------- 2
 
 
 def seccion_ultimo_cupo(ruta: Path) -> None:
@@ -139,9 +130,6 @@ def seccion_ultimo_cupo(ruta: Path) -> None:
         print(f"  {nombre}: {resultados[nombre]}")
 
 
-# --------------------------------------------------------------------------- 3
-
-
 def seccion_sin_red(ruta: Path) -> None:
     _titulo("3) Agendar sin red mientras WhatsApp falla")
     whatsapp = NotificadorWhatsApp(
@@ -156,7 +144,6 @@ def seccion_sin_red(ruta: Path) -> None:
             print(f"  Turno #{t.id} de Kira a las 10:00: {t.estado.value} (sin red, sin problema)")
         finally:
             con.close()
-        # Turno a las 10:00: su recordatorio de 1 h antes sale a las 9:00.
         resumen = Despachador(ruta, whatsapp).procesar_una_vez(_a_las(9))
     con = abrir(ruta)
     try:
@@ -167,9 +154,6 @@ def seccion_sin_red(ruta: Path) -> None:
     for n in estado.proximas:
         hora = n.programada_para.astimezone(ZONA).strftime("%H:%M")
         print(f"  Recordatorio #{n.id}: intento {n.intentos}, próximo a las {hora}. Error: {n.ultimo_error}")
-
-
-# --------------------------------------------------------------------------- 4
 
 
 def seccion_cambio_de_canal(ruta: Path) -> None:
@@ -187,7 +171,6 @@ def seccion_cambio_de_canal(ruta: Path) -> None:
             elegido = configuracion.cargar(con).canal_notificaciones
             notificador = notificador_para(elegido, ruta.parent)
             print(f"  Canal configurado: {elegido} -> {type(notificador).__name__}")
-            # Sale el recordatorio de 1 h antes. El de Kira (sección 3) ya no sale: su turno empezó.
             Despachador(ruta, notificador).procesar_una_vez(_a_las(hora - 1))
             if canal == "archivo":
                 lineas = (ruta.parent / "recordatorios.txt").read_text(encoding="utf-8").splitlines()

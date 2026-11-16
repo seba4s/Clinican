@@ -75,9 +75,6 @@ def _con_zona(momento: datetime, nombre: str) -> datetime:
     return momento
 
 
-# --------------------------------------------------------------------------- consultas
-
-
 def obtener_turno(con, turno_id: int) -> Turno:
     turno = repo_agenda.obtener_turno(con, turno_id)
     if turno is None:
@@ -107,9 +104,6 @@ def disponibilidad(con, dia: date, *, ahora: datetime) -> list[tuple[Franja, dic
         ocupacion = contar_ocupacion(en_franja, ahora, cfg.minutos_expiracion)
         salida.append((franja, {c: cupos_libres(cfg.cupos, ocupacion, c) for c in CategoriaCupo}))
     return salida
-
-
-# --------------------------------------------------------------------------- internas
 
 
 def _verificar_cupo(
@@ -156,9 +150,6 @@ def _pendiente_vencido(turno: Turno, cfg: ConfigClinica, ahora: datetime) -> boo
     return turno.estado is E.PENDIENTE_ABONO and esta_vencido(
         turno.creado_en, ahora, cfg.minutos_expiracion
     )
-
-
-# --------------------------------------------------------------------------- turnos
 
 
 def crear_turno(con, mascota_id: int, inicio: datetime, servicio: Servicio, *, ahora: datetime) -> Turno:
@@ -331,7 +322,7 @@ def cancelar_turno(con, turno_id: int, *, ahora: datetime) -> Turno:
         transicionar(turno.estado, E.CANCELADO)
         if turno.estado is E.PENDIENTE_ABONO:
             campos = _devolver_lo_puesto(con, turno)
-        else:  # CONFIRMADO
+        else:
             if turno.abono_total:
                 repo_clientes.sumar_saldo(con, turno.propietario_id, turno.abono_total)
             campos = {"saldo_generado": turno.abono_total}
@@ -407,9 +398,6 @@ def marcar_atendido(
 
 def marcar_entregado(con, turno_id: int, *, ahora: datetime) -> Turno:
     return _cambiar_estado(con, turno_id, E.ENTREGADO, ahora)
-
-
-# --------------------------------------------------------------------------- bloqueos
 
 
 def crear_bloqueo(con, bloqueo: Bloqueo, *, ahora: datetime) -> Bloqueo:

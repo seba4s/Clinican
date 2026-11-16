@@ -19,9 +19,8 @@ def a_las(hora: int, minuto: int = 0, dia: date = LUNES) -> datetime:
     return datetime(dia.year, dia.month, dia.day, hora, minuto, tzinfo=ZONA)
 
 
-AHORA = a_las(8)  # lunes 8:00, antes de abrir
+AHORA = a_las(8)
 
-# categoría -> (tamaño, complicado, servicio) que la produce
 PERFIL = {
     CategoriaCupo.MAQUINA: (Tamano.MEDIANO, False, Servicio.CORTE_MAQUINA),
     CategoriaCupo.GRANDE: (Tamano.GRANDE, False, Servicio.BANO),

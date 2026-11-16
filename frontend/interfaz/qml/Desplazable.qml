@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 
-// Contenedor con desplazamiento vertical y fondo transparente.
 ScrollView {
     id: v
     default property alias contenido: columna.data

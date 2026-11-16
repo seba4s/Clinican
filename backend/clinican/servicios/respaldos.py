@@ -71,7 +71,7 @@ def crear_respaldo(ruta_db: str | Path, *, ahora: datetime, motivo: str = "manua
     carpeta, conservar = _config(ruta_db)
     base = carpeta / f"{PREFIJO}{ahora.astimezone(ZONA).strftime(FORMATO)}"
     destino, n = base.with_suffix(".db"), 1
-    while destino.exists():  # dos copias en el mismo segundo
+    while destino.exists():
         destino = base.parent / f"{base.name}_{n}.db"
         n += 1
     datos_respaldos.copiar(ruta_db, destino)

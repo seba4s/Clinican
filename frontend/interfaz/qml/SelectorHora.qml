@@ -1,8 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Día con flechas y las franjas que aún tienen cupo (8 por fila). d: diálogo con
-// «franjas», «mover_dia» y «elegir_hora».
 ColumnLayout {
     id: s
     required property var d

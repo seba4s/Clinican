@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 
-// tipo: principal (fucsia, uno por pantalla), secundario, peligro, peligroLleno o enlace.
 Button {
     id: b
     property string tipo: "secundario"
@@ -42,7 +41,6 @@ Button {
         border.color: b.visualFocus ? tema.color.tinta : tema.color.bordeCampo
         opacity: b.enabled ? 1 : 0.6
         Behavior on color { ColorAnimation { duration: 140 } }
-        // Brillo de vidrio en la parte de arriba de los botones llenos.
         Rectangle {
             visible: b.lleno
             anchors { left: parent.left; right: parent.right; top: parent.top; margins: 1 }

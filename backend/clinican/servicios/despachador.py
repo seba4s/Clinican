@@ -85,8 +85,6 @@ class Despachador:
         self._parar = threading.Event()
         self._hilo: threading.Thread | None = None
 
-    # ------------------------------------------------------------------ ciclo
-
     def procesar_una_vez(self, ahora: datetime) -> ResumenDespacho:
         if ahora.tzinfo is None or ahora.utcoffset() is None:
             raise ValueError("ahora debe tener zona horaria")
@@ -102,7 +100,7 @@ class Despachador:
                     id_externo = self._notificador.enviar(mensaje)
                 except ErrorEnvio as e:
                     error = str(e) or type(e).__name__
-                except Exception as e:  # un fallo del canal no debe tumbar el despachador
+                except Exception as e:
                     error = f"Error inesperado: {e!r}"
                 self._registrar_resultado(con, pendiente.id, error, ahora, resumen, id_externo)
             with transaccion(con):
@@ -117,7 +115,7 @@ class Despachador:
         with transaccion(con):
             n = repo_notificaciones.obtener(con, notificacion_id)
             if n is None or n.estado is not EN.PENDIENTE or n.programada_para > ahora:
-                return None  # otro despachador ya la tomó
+                return None
             turno = repo_agenda.obtener_turno(con, n.turno_id)
             motivo = None
             if turno.estado is not EstadoTurno.CONFIRMADO:
@@ -179,8 +177,6 @@ class Despachador:
                 )
                 resumen.reintentos += 1
 
-    # ------------------------------------------------------------------ hilo
-
     def iniciar(self) -> threading.Thread:
         """Arranca el despachador en un hilo que procesa cada ``intervalo_segundos``."""
         if self._reloj is None:
@@ -205,6 +201,6 @@ class Despachador:
         while not self._parar.is_set():
             try:
                 self.procesar_una_vez(self._reloj())
-            except Exception:  # se registra y se sigue en el próximo ciclo
+            except Exception:
                 registro.exception("Falló un ciclo del despachador de notificaciones")
             self._parar.wait(self._intervalo)

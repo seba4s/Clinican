@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Barra lateral flotante de vidrio: logo, las cuatro secciones y la sección activa invertida.
 Tarjeta {
     id: barra
     radius: 18
@@ -18,7 +17,6 @@ Tarjeta {
             id: menu
             Layout.fillWidth: true
             Layout.preferredHeight: app.secciones.length * 42
-            // Indicador que se desliza hasta la sección activa.
             Rectangle {
                 id: indicador
                 width: parent.width; height: 40; radius: tema.medida.radio
@@ -44,7 +42,6 @@ Tarjeta {
                         wrapMode: Text.NoWrap
                         Behavior on color { ColorAnimation { duration: 200 } }
                     }
-                    // Recordatorios fallidos, como insignia a la derecha.
                     Chip {
                         readonly property var e: tema.estados["PENDIENTE_ABONO"] || ({})
                         visible: modelData === "Recordatorios" && app.fallidos > 0

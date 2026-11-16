@@ -72,7 +72,7 @@ class Pantalla(Presentador):
         self.app = app
         self.ctx: Contexto = app.ctx
 
-    def refrescar(self) -> None:  # pragma: no cover - cada pantalla la define
+    def refrescar(self) -> None:
         pass
 
     def refrescar_periodico(self) -> None:
@@ -134,7 +134,6 @@ class Dialogo(Presentador):
     def archivo(self) -> str:
         return self.vista
 
-    # ------------------------------------------------------------------ errores
     def error(self, mensaje: str | None) -> None:
         self.poner(error=mensaje or "")
 
@@ -164,9 +163,8 @@ class Dialogo(Presentador):
         self.error(None)
         return True
 
-    # ------------------------------------------------------------------ cierre
     @Slot()
-    def aceptar(self) -> None:  # pragma: no cover - cada diálogo la define
+    def aceptar(self) -> None:
         pass
 
     @Slot()

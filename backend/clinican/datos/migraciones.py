@@ -24,7 +24,6 @@ def _semilla_precios() -> str:
     return f"INSERT INTO precios (categoria, valor, vigente_desde) VALUES {filas};"
 
 
-# Razas de la plantilla de importación (sin tamaño por defecto).
 RAZAS_INICIALES = (
     "Bulldog Francés", "Chihuahua", "Gato (sin raza definida)", "Golden Retriever", "Husky",
     "Labrador Retriever", "Pastor Alemán", "Perro mestizo (sin raza)", "Pitbull y similares",

@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Panel del turno elegido: datos, nota y las acciones según el estado.
 Tarjeta {
     id: panel
     required property var p
@@ -17,7 +16,6 @@ Tarjeta {
             width: parent.width
             spacing: 0
             opacity: 1
-            // Al cambiar de turno, el contenido aparece con un fundido corto.
             onVisibleChanged: aparecer.restart()
             Connections { target: panel; function onDChanged() { aparecer.restart() } }
             NumberAnimation { id: aparecer; target: columna; property: "opacity"; from: 0.4; to: 1; duration: 180 }

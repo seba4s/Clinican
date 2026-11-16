@@ -48,7 +48,6 @@ def test_franjas_con_zona_y_consecutivas():
 
 def test_bloqueo_dia_completo():
     assert generar_franjas(SABADO, bloqueos=[Bloqueo(SABADO, motivo="Festivo")]) == []
-    # No afecta otros días
     assert len(generar_franjas(LUNES, bloqueos=[Bloqueo(SABADO)])) == 16
 
 

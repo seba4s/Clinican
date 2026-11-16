@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Agenda del día: hoja tipo Excel, pendientes de abono y panel del turno elegido.
 Item {
     id: pagina
     readonly property var p: app.agenda
@@ -29,7 +28,6 @@ Item {
             Boton { text: "+ Nuevo turno  (Ctrl+N)"; tipo: "principal"; onClicked: pagina.p.nuevo() }
         }
 
-        // Pendientes de abono: se ven siempre, aunque el turno sea de otro día.
         Flow {
             Layout.fillWidth: true
             visible: pagina.p.pendientes.length > 0

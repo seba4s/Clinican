@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Franja de aviso dentro de la ventana (éxito o error). Se cierra con su botón.
 Item {
     id: a
     implicitHeight: app.avisoVisible ? caja.implicitHeight + 12 : 0

@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 
-// Lista desplegable en la que también se puede escribir (razas).
 ComboBox {
     id: c
     editable: true

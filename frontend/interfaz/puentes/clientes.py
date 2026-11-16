@@ -59,7 +59,6 @@ class PantallaClientes(Pantalla):
     def refrescar_periodico(self) -> None:
         pass
 
-    # ------------------------------------------------------------------ lista
     @Slot(str)
     def buscar(self, texto: str) -> None:
         self.texto = texto.strip()
@@ -89,7 +88,6 @@ class PantallaClientes(Pantalla):
         self.seleccion = None
         self.refrescar()
 
-    # ------------------------------------------------------------------ detalle
     def _datos_detalle(self) -> None:
         if self.seleccion is None:
             self._propietario = None
@@ -149,7 +147,6 @@ class PantallaClientes(Pantalla):
             "historial": filas,
         })
 
-    # ------------------------------------------------------------------ acciones
     @Slot()
     def nuevo_turno_cliente(self) -> None:
         primera = self._detalle.get("primera") if not self._detalle.get("vacio") else 0
@@ -243,7 +240,7 @@ class PantallaClientes(Pantalla):
         try:
             with self.ctx.con() as con:
                 informe = self.ctx.importar_excel(con, ruta, self.ctx.ahora())
-        except Exception as e:  # archivo dañado, hoja faltante, etc.
+        except Exception as e:
             self.avisar(f"No se pudo leer el archivo: {e}", error=True)
             return
         detalle = "\n".join(f"Fila {r.fila}: {r.motivo}" for r in informe.rechazadas)

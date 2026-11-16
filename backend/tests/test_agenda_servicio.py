@@ -30,9 +30,6 @@ def _saldo(con, propietario_id):
     return clientes.obtener_propietario(con, propietario_id).saldo_a_favor
 
 
-# --------------------------------------------------------------------------- crear
-
-
 def test_crear_turno_pendiente(con, esc):
     t = esc.turno(C.MAQUINA)
     assert t.estado is E.PENDIENTE_ABONO
@@ -80,7 +77,6 @@ def test_cupos_por_categoria(con, esc):
         esc.turno(cat)
         with pytest.raises(SinCupo):
             esc.turno(cat)
-    # Otra franja está libre
     assert esc.turno(C.MAQUINA, inicio=a_las(9, 30)).estado is E.PENDIENTE_ABONO
 
 
@@ -113,9 +109,6 @@ def test_abono_configurable(con, esc):
     assert esc.turno().abono_requerido == 15000
 
 
-# --------------------------------------------------------------------------- saldo a favor
-
-
 def test_saldo_cubre_todo_el_abono(con, esc):
     p = esc.propietario(saldo=25000)
     t = esc.turno(propietario=p)
@@ -141,9 +134,6 @@ def test_liberar_devuelve_saldo_aplicado(con, esc):
     t = agenda.obtener_turno(con, t.id)
     assert (t.estado, t.motivo_liberacion, t.saldo_aplicado) == (E.LIBERADO, M.ABONO_VENCIDO, 0)
     assert _saldo(con, p.id) == 5000
-
-
-# --------------------------------------------------------------------------- abonos
 
 
 def test_registrar_abono_confirma(con, esc):
@@ -179,9 +169,8 @@ def test_abono_de_mas_queda_a_favor(con, esc):
 
 def test_abono_parcial_vencido_pasa_a_saldo(con, esc):
     p = esc.propietario(saldo=3000)
-    t = esc.turno(propietario=p)  # usa los 3000
+    t = esc.turno(propietario=p)
     agenda.registrar_abono(con, t.id, 7000, ahora=AHORA + timedelta(minutes=10))
-    # El vencimiento sigue contando desde la creación, aunque haya abonos parciales
     assert agenda.barrer_vencidos(con, ahora=AHORA + MIN30) == [t.id]
     t = agenda.obtener_turno(con, t.id)
     assert (t.estado, t.saldo_aplicado, t.abono_pagado, t.saldo_generado) == (E.LIBERADO, 0, 7000, 7000)
@@ -199,7 +188,7 @@ def test_abono_vencido_libera_y_rechaza(con, esc, ruta_db):
     t = esc.turno()
     with pytest.raises(AbonoRechazado, match="venció"):
         agenda.registrar_abono(con, t.id, 20000, ahora=AHORA + MIN30)
-    otra = abrir(ruta_db)  # la liberación quedó confirmada en disco
+    otra = abrir(ruta_db)
     try:
         guardado = agenda.obtener_turno(otra, t.id)
     finally:
@@ -249,9 +238,6 @@ def test_minutos_de_expiracion_configurables(con, esc):
     assert agenda.barrer_vencidos(con, ahora=AHORA + timedelta(minutes=60)) == [t.id]
 
 
-# --------------------------------------------------------------------------- mover / cancelar
-
-
 def test_mover_turno(con, esc):
     t = esc.turno(inicio=a_las(9))
     t = agenda.mover_turno(con, t.id, a_las(11), ahora=AHORA)
@@ -266,7 +252,6 @@ def test_mover_revalida_cupo_excluyendo_el_propio(con, esc):
     esc.turno(inicio=a_las(10))
     with pytest.raises(SinCupo):
         agenda.mover_turno(con, a.id, a_las(10), ahora=AHORA)
-    # Moverlo a su misma franja llena no cuenta dos veces
     assert agenda.mover_turno(con, a.id, a_las(9), ahora=AHORA).inicio == a_las(9)
     with pytest.raises(FranjaNoDisponible):
         agenda.mover_turno(con, a.id, a_las(10, dia=DOMINGO), ahora=AHORA)
@@ -321,9 +306,6 @@ def test_cancelar_estado_final(con, esc):
     agenda.cancelar_turno(con, t.id, ahora=AHORA)
     with pytest.raises(TransicionInvalida):
         agenda.cancelar_turno(con, t.id, ahora=AHORA)
-
-
-# --------------------------------------------------------------------------- inasistencias
 
 
 def test_inasistencia_con_aviso_genera_saldo_que_se_aplica_al_siguiente(con, esc):
@@ -382,9 +364,6 @@ def test_inasistencia_validaciones(con, esc):
         agenda.marcar_inasistencia(con, t.id, aviso_en=a_las(11), ahora=a_las(10))
 
 
-# --------------------------------------------------------------------------- atención
-
-
 def test_flujo_de_atencion_audita_cada_paso(con, esc):
     t = esc.turno()
     agenda.registrar_abono(con, t.id, 20000, ahora=AHORA)
@@ -399,9 +378,6 @@ def test_flujo_de_atencion_audita_cada_paso(con, esc):
     ]
 
 
-# --------------------------------------------------------------------------- bloqueos
-
-
 def test_bloqueo_con_turnos_activos_rechazado(con, esc):
     esc.turno(inicio=a_las(14))
     with pytest.raises(BloqueoConTurnos, match="14:00"):
@@ -409,7 +385,6 @@ def test_bloqueo_con_turnos_activos_rechazado(con, esc):
     with pytest.raises(BloqueoConTurnos):
         agenda.crear_bloqueo(con, Bloqueo(LUNES, time(13, 45), time(14, 15)), ahora=AHORA)
     assert agenda.bloqueos_del_dia(con, LUNES) == []
-    # Un rango que no toca el turno sí se puede
     b = agenda.crear_bloqueo(con, Bloqueo(LUNES, time(9), time(12)), ahora=AHORA)
     assert b.id is not None and agenda.bloqueos_del_dia(con, LUNES) == [b]
 
@@ -417,7 +392,7 @@ def test_bloqueo_con_turnos_activos_rechazado(con, esc):
 def test_bloqueo_ignora_turnos_inactivos(con, esc):
     cancelado = esc.turno(inicio=a_las(14))
     agenda.cancelar_turno(con, cancelado.id, ahora=AHORA)
-    esc.turno(inicio=a_las(15))  # pendiente que vencerá
+    esc.turno(inicio=a_las(15))
     b = agenda.crear_bloqueo(con, Bloqueo(LUNES), ahora=AHORA + MIN30)
     assert agenda.bloqueos_del_dia(con, LUNES) == [b]
 
@@ -433,9 +408,6 @@ def test_quitar_bloqueo(con, esc):
     with pytest.raises(NoEncontrado):
         agenda.quitar_bloqueo(con, 999, ahora=AHORA)
     assert [r.accion for r in historial(con, "bloqueo", b.id)] == ["crear", "quitar"]
-
-
-# --------------------------------------------------------------------------- consultas y auditoría
 
 
 def test_disponibilidad(con, esc):
@@ -454,6 +426,5 @@ def test_escritura_fallida_no_deja_auditoria(con, esc):
     antes = len(historial(con))
     with pytest.raises(SinCupo):
         esc.turno(C.GRANDE, propietario=repo_clientes.obtener_propietario(con, 1))
-    # El escenario crea una mascota (auditada) antes de intentar el turno
     nuevas = historial(con)[antes:]
     assert [r.entidad for r in nuevas] == ["mascota"]

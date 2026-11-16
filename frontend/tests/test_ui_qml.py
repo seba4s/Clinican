@@ -35,7 +35,6 @@ def ventana(ruta_db, con, esc):
     from interfaz.contexto import Contexto
     from interfaz.puentes.app import Ventana
 
-    # Datos: un pendiente, un confirmado, uno en atención y un grande atendido.
     pendiente = esc.turno(inicio=a_las(11), ahora=a_las(9, 30))
     confirmado = agenda.registrar_abono(con, esc.turno(inicio=a_las(10)).id, 20000, ahora=AHORA)
     en_atencion = agenda.registrar_abono(con, esc.turno(inicio=a_las(9)).id, 20000, ahora=AHORA)
@@ -45,7 +44,7 @@ def ventana(ruta_db, con, esc):
     agenda.marcar_atendido(con, grande.id, ahora=AHORA)
 
     ctx = Contexto(abrir=lambda: abrir(ruta_db), ruta_db=ruta_db, reloj=lambda: AHORA_UI)
-    QStandardPaths.setTestModeEnabled(True)  # la preferencia de tema no toca la configuración real
+    QStandardPaths.setTestModeEnabled(True)
     QSettings("Clinican", "Clinican").clear()
     v = Ventana(ctx)
     v.ids = {"pendiente": pendiente.id, "confirmado": confirmado.id,
@@ -89,7 +88,7 @@ def test_todas_las_pantallas_abren(ventana):
         procesar()
         assert app.actual == nombre and pantalla is app.pantallas[nombre]
         pagina = item(ventana, "pagina" + nombre)
-        assert pagina.property("item") is not None  # la página cargó
+        assert pagina.property("item") is not None
         assert pagina.property("activa")
 
 
@@ -110,7 +109,6 @@ def test_agenda_muestra_turnos_y_acciones_por_estado(ventana):
         assert ag.panel["acciones"][0]["texto"] == primera
         boton = item(ventana, "accion0")
         assert boton is not None and boton.property("text") == primera
-    # Días anterior y siguiente no fallan (domingo cerrado incluido)
     for _ in range(7):
         ag.dia_siguiente()
         procesar()
@@ -123,7 +121,6 @@ def test_tablero_cuenta_libres_y_bloquea_pasadas(ventana, con):
     assert len(filas) == 16
     assert filas[0].pasada and not filas[-1].pasada
     assert not fuera
-    # 16 franjas x 5 puestos, menos las pasadas (9:00) y los turnos de las franjas futuras
     assert libres == 15 * 5 - 2
 
 
@@ -140,7 +137,7 @@ def test_nuevo_turno_desde_el_dialogo(ventana, con, esc):
     d.agendar("$15.000")
     turno = d.resultado
     assert turno.inicio == a_las(14)
-    assert turno.estado is E.CONFIRMADO  # 5.000 de saldo + 15.000 de abono
+    assert turno.estado is E.CONFIRMADO
     assert ventana.app._dialogo is None and dialogo_qml(ventana) is None
     assert ag.seleccion == turno.id and "confirmado" in ventana.app._aviso
 
@@ -181,7 +178,7 @@ def test_abono_parcial_y_ficha(ventana, con):
     f = ventana.app._dialogo
     assert isinstance(f, DialogoFicha) and dialogo_qml(ventana) is not None
     f.cuenta("$50.000")
-    assert f.cobrar.endswith("Cobrar al entregar $30.000")  # el abono se resta del precio final
+    assert f.cobrar.endswith("Cobrar al entregar $30.000")
     f.guardar(["Baño"], "", "", "40", "Lomo listo", "$50.000")
     assert agenda.obtener_turno(con, ventana.ids["en_atencion"]).estado is E.ATENDIDO
     ficha = fichas.ficha_de_turno(con, ventana.ids["en_atencion"])
@@ -205,7 +202,7 @@ def test_mover_cancelar_y_bloquear(ventana, con):
     confirmacion = ventana.app._dialogo
     assert dialogo_qml(ventana) is not None
     confirmacion.cancelar()
-    assert agenda.obtener_turno(con, t.id).estado is E.CONFIRMADO  # «No, volver» no cancela
+    assert agenda.obtener_turno(con, t.id).estado is E.CONFIRMADO
 
     ag.bloquear()
     b = ventana.app._dialogo
@@ -244,9 +241,9 @@ def test_hoja_tipo_excel_agrupa_por_hora_y_agenda_desde_libre(ventana, con, esc)
     filas, _fuera, _libres = armar_tablero(con, a_las(9).date(), AHORA_UI)
     grupos = agrupar(filas, ORDEN_CATEGORIAS)
     bandas = [g for g in grupos if g.filas[0].tipo == "bloqueo"]
-    assert len(bandas) == 1 and bandas[0].filas[0].hasta == a_las(13)  # 12:00 y 12:30 en una sola banda
+    assert len(bandas) == 1 and bandas[0].filas[0].hasta == a_las(13)
     nueve = grupos[0]
-    assert [f.tipo for f in nueve.filas] == ["turno", "turno"]  # 9:00 ya pasó: sin fila «Libre»
+    assert [f.tipo for f in nueve.filas] == ["turno", "turno"]
     diez = next(g for g in grupos if g.inicio == a_las(10))
     assert [f.tipo for f in diez.filas] == ["turno", "libre"]
     assert diez.filas[-1].libres[C.MAQUINA] == 1
@@ -257,23 +254,19 @@ def test_hoja_tipo_excel_agrupa_por_hora_y_agenda_desde_libre(ventana, con, esc)
     hoja = ag.grupos
     assert [g["hora"] for g in hoja][:2] == ["09:00", "09:30"]
     assert any(g["bloqueo"] and g["filas"][0]["texto"].startswith("Bloqueado de 12:00 a 13:00") for g in hoja)
-    assert len(items(ventana, "libre")) > 0  # los cupos libres se dibujan
-    # Un turno ocupa toda la franja: con turnos no hay filas «Libre»; una hora vacía es una sola fila
+    assert len(items(ventana, "libre")) > 0
     diez_qml = next(g for g in hoja if g["hora"] == "10:00")
     assert [f["tipo"] for f in diez_qml["filas"]] == ["turno"]
     una_hora = next(g for g in hoja if g["hora"] == "13:00")
     assert [f["tipo"] for f in una_hora["filas"]] == ["libre"]
-    # Tocar la hora libre abre el nuevo turno en esa hora
     ag.elegir_libre(una_hora["filas"][0]["clave"])
     d = ventana.app._dialogo
     assert d.selector.elegida == a_las(13) and d.categoria_sugerida is None
     d.cancelar()
-    # Elegir un turno marca la fila sin volver a armar la hoja
     antes = ag.grupos
     ag.seleccionar(ventana.ids["confirmado"])
     assert ag.seleccion == ventana.ids["confirmado"] and ag.seleccionado == ventana.ids["confirmado"]
     assert ag.grupos is antes
-    # Un segundo turno a la misma hora divide la franja entre los dos
     esc.turno(inicio=a_las(10), ahora=a_las(9, 30))
     ag.refrescar()
     procesar()
@@ -288,7 +281,7 @@ def test_atajos_y_un_dialogo_a_la_vez(ventana):
     assert primero is not None and app.actual == "Agenda"
     app.nuevoTurno()
     app.buscarCliente()
-    assert app._dialogo is primero and app.actual == "Agenda"  # nunca hay dos a la vez
+    assert app._dialogo is primero and app.actual == "Agenda"
     primero.cancelar()
     app.buscarCliente()
     assert app.actual == "Clientes"
@@ -305,7 +298,6 @@ def test_cliente_nuevo_y_mascota(ventana, con):
     d.guardar("Ana Quintero", "1020", "3001234567", "", False, d.inicial["fecha"], "")
     p = d.resultado
     assert p.telefono == "3001234567"
-    # Al crear el cliente se abre de una vez el diálogo de su mascota.
     m = ventana.app._dialogo
     assert isinstance(m, DialogoMascota) and m.propietario_id == p.id and dialogo_qml(ventana) is not None
     m.guardar("", "Sin raza", False, "", "")
@@ -334,7 +326,7 @@ def test_cliente_autoriza_y_revoca_datos(ventana, con):
     d = ventana.app._dialogo
     d.guardar("Luis Pantoja", "5050", "3009998877", "", True, "05/11/2026", "Formato firmado")
     p = d.resultado
-    ventana.app._dialogo.cancelar()  # el diálogo de la mascota
+    ventana.app._dialogo.cancelar()
     vigente = autorizaciones.autorizacion_vigente(con, p.id)
     assert vigente is not None and vigente.medio == "Formato firmado"
     assert fmt.fecha_numerica(vigente.fecha) == "05/11/2026"
@@ -360,7 +352,7 @@ def test_clientes_busca_une_e_historial(ventana, con, esc):
 
     cl = ventana.app.ir("Clientes")
     uno = esc.propietario("Rosa Benavides")
-    otro = esc.propietario("Rosa B.")  # mismo celular de prueba: posible duplicado
+    otro = esc.propietario("Rosa B.")
     esc.mascota(propietario=otro)
     cl.buscar("Rosa")
     assert {f["id"] for f in cl.lista} == {uno.id, otro.id}
@@ -378,7 +370,6 @@ def test_clientes_busca_une_e_historial(ventana, con, esc):
     assert not clientes.obtener_propietario(con, otro.id).activo
     assert len(cl.detalle["mascotas"]) == 1 and "Clientes unidos" in ventana.app._aviso
 
-    # Historial con ficha: el precio abre la ficha para corregirla.
     t = agenda.obtener_turno(con, ventana.ids["grande"])
     cl.elegir(t.propietario_id)
     fila = next(f for f in cl.detalle["historial"] if f["turnoId"] == t.id)
@@ -388,7 +379,7 @@ def test_clientes_busca_une_e_historial(ventana, con, esc):
     ventana.app._dialogo.cancelar()
 
     cl.elegir(uno.id)
-    cl.nuevo_turno_cliente()  # una sola mascota: abre el turno con ella
+    cl.nuevo_turno_cliente()
     assert ventana.app._dialogo is not None and ventana.app.actual == "Agenda"
     ventana.app._dialogo.cancelar()
 
@@ -431,7 +422,7 @@ def test_recordatorios_fallidos_se_reintentan_y_corrigen(ventana, con, esc, ruta
 
     t = agenda.registrar_abono(con, esc.turno(inicio=a_las(16), ahora=AHORA).id, 20000, ahora=AHORA)
     d = Despachador(ruta_db, Falla())
-    momento = a_las(15)  # el recordatorio de 1 h antes
+    momento = a_las(15)
     for _ in range(4):
         d.procesar_una_vez(momento)
         momento = notificaciones_de_turno(con, t.id)[0].programada_para
@@ -439,7 +430,6 @@ def test_recordatorios_fallidos_se_reintentan_y_corrigen(ventana, con, esc, ruta
 
     app = ventana.app
     app.actualizar_insignias()
-    # El despachador también intentó los recordatorios de los turnos del escenario.
     total = len([n for n in rec_fallidas(con)])
     assert total >= 1 and app.insignia == f"Recordatorios   ·  {total} fallido{'s' if total != 1 else ''}"
     rec = app.ir("Recordatorios")
@@ -475,11 +465,11 @@ def test_ajustes_abre_todas_las_secciones(ventana, con):
         assert aj.tituloSeccion == seccion and aj.explicacion
         assert item(ventana, "seccionAjustes").property("item") is not None
         assert item(ventana, "seccion" + seccion).property("activo")
-    for seccion in reversed(SECCIONES):  # al volver, ninguna sección lee datos de otra (sin avisos QML)
+    for seccion in reversed(SECCIONES):
         aj.ir(seccion)
         procesar()
     aj.ir("Registro de cambios")
-    assert aj.datos["cambios"]  # el escenario dejó cambios registrados
+    assert aj.datos["cambios"]
 
 
 def test_ajustes_horario_se_escribe_y_se_guarda(ventana, con):
@@ -489,8 +479,7 @@ def test_ajustes_horario_se_escribe_y_se_guarda(ventana, con):
     aj.ir("Horario y bloqueos")
     procesar()
     campos = items(ventana, "campoHora")
-    assert len(campos) == 14  # dos por día
-    # El orden de items() no es el de la pantalla: se ubica el «hasta» del lunes por su fila.
+    assert len(campos) == 14
     lunes = [c for c in campos if c.parentItem().property("modelData")["dia"] == 0]
     hasta = max(lunes, key=lambda c: c.x())
     hasta.setProperty("texto", "1530")
@@ -498,11 +487,9 @@ def test_ajustes_horario_se_escribe_y_se_guarda(ventana, con):
     procesar()
     assert configuracion.cargar(con).horario.dias[0].ultima_franja.strftime("%H:%M") == "15:30"
     assert ventana.app.aviso == "Horario guardado." and not ventana.app.avisoError
-    # Una hora que no se entiende avisa y no guarda.
     aj.guardar_horario([{"abierto": True, "desde": "nueve", "hasta": "16:30"}] + [{"abierto": False}] * 6)
     assert ventana.app.avisoError and "lunes" in ventana.app.aviso
     assert configuracion.cargar(con).horario.dias[0].ultima_franja.strftime("%H:%M") == "15:30"
-    # Bloqueo desde Ajustes
     aj.nuevo_bloqueo()
     d = ventana.app._dialogo
     assert dialogo_qml(ventana) is not None
@@ -557,7 +544,7 @@ def test_ajustes_cupos_precios_y_razas(ventana, con):
     d = ventana.app._dialogo
     assert isinstance(d, DialogoRaza) and dialogo_qml(ventana) is not None
     d.guardar("", "")
-    assert d.error_general  # el nombre es obligatorio
+    assert d.error_general
     d.elegir_tamano("Grande")
     d.guardar("Gran danés", "corto")
     assert ventana.app._dialogo is None and ventana.app.aviso == "Raza guardada."
@@ -614,8 +601,8 @@ def test_boton_alterna_modo_claro_y_oscuro_y_lo_recuerda(ventana):
     boton.clicked.emit()
     procesar()
     assert ventana.tema.oscuro and boton.property("text") == "Modo claro"
-    assert ventana.raiz.property("color") is not None  # la ventana se repinta sin avisos de QML
-    assert Tema().oscuro  # una ventana nueva recuerda la elección
+    assert ventana.raiz.property("color") is not None
+    assert Tema().oscuro
     boton.clicked.emit()
     procesar()
     assert not ventana.tema.oscuro and not Tema().oscuro

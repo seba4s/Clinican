@@ -24,7 +24,7 @@ def test_main_arranca_y_cierra_con_respaldo(tmp_path, monkeypatch):
     hilo.start()
     limite = reloj_real.monotonic() + 15
     while not respaldos.listar_respaldos(ruta.parent / "respaldos") and reloj_real.monotonic() < limite:
-        reloj_real.sleep(0.05)  # el respaldo diario corre al arrancar
+        reloj_real.sleep(0.05)
     parar.set()
     hilo.join(30)
     assert resultado["codigo"] == 0
@@ -34,7 +34,7 @@ def test_main_arranca_y_cierra_con_respaldo(tmp_path, monkeypatch):
     finally:
         con.close()
     nombres = [p.name for p in respaldos.listar_respaldos(ruta.parent / "respaldos")]
-    assert len(nombres) == 2  # diario + al cerrar
+    assert len(nombres) == 2
 
 
 def test_ruta_por_defecto(monkeypatch):

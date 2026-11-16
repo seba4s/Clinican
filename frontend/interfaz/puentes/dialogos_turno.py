@@ -150,7 +150,6 @@ class DialogoNuevoTurno(Dialogo):
     def servicios(self) -> list[dict]:
         return [{"valor": s.value, "texto": fmt.SERVICIO[s]} for s in Servicio]
 
-    # -------------------------------------------------------------- cliente y mascota
     @Slot(str)
     def buscar(self, texto: str) -> None:
         texto = texto.strip()
@@ -209,7 +208,6 @@ class DialogoNuevoTurno(Dialogo):
     def _mascota(self):
         return next((m for m in self.mascotas if m.id == self._mascota_id), None)
 
-    # -------------------------------------------------------------- categoría, hora y resumen
     def _categoria(self) -> CategoriaCupo | None:
         m = self._mascota()
         if m is None:

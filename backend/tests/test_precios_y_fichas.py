@@ -11,9 +11,6 @@ from clinican.servicios.auditoria import historial
 from escenario import AHORA, LUNES, a_las, timedelta
 
 
-# --------------------------------------------------------------------------- precios
-
-
 def test_precios_iniciales_sembrados(con):
     assert precios.precios_vigentes(con, LUNES) == dict(PRECIOS_INICIALES)
     assert precios.precios_vigentes(con, FECHA_PRECIOS_INICIALES) == dict(PRECIOS_INICIALES)
@@ -42,7 +39,7 @@ def test_cambiar_precio_agrega_historial(con):
         (-1, date(2026, 12, 1)),
         (48000, datetime(2026, 12, 1, 9)),
         (48000, "2026-12-01"),
-        (48000, FECHA_PRECIOS_INICIALES),  # ya hay precio en esa fecha
+        (48000, FECHA_PRECIOS_INICIALES),
     ],
 )
 def test_cambiar_precio_validaciones(con, valor, fecha):
@@ -54,7 +51,7 @@ def test_cambiar_precio_validaciones(con, valor, fecha):
 def test_editar_precio(con):
     precios.editar_precio(con, C.MAQUINA, FECHA_PRECIOS_INICIALES, 47000, ahora=AHORA)
     assert precios.precio_en_fecha(con, C.MAQUINA, LUNES) == 47000
-    assert len(precios.historial_precios(con, C.MAQUINA)) == 1  # corrige, no agrega
+    assert len(precios.historial_precios(con, C.MAQUINA)) == 1
     registro = historial(con, "precio")[-1]
     assert (registro.accion, registro.detalle["antes"], registro.detalle["despues"]) == (
         "editar_precio", 45000, 47000
@@ -80,9 +77,6 @@ def test_editar_precio_no_cambia_fichas_ya_creadas(con, esc):
     assert fichas.ficha_de_turno(con, t.id).precio_final == 45000
 
 
-# --------------------------------------------------------------------------- fichas
-
-
 def _atendido(con, esc, categoria=C.MAQUINA, inicio=None, **ficha):
     t = esc.turno(categoria, inicio=inicio or a_las(9))
     agenda.registrar_abono(con, t.id, 20000, ahora=AHORA)
@@ -104,11 +98,11 @@ def test_marcar_atendido_crea_ficha_con_precio_vigente(con, esc):
 
 def test_precio_final_se_toma_en_la_fecha_del_turno_y_queda_guardado(con, esc):
     precios.cambiar_precio(con, C.MAQUINA, 50000, LUNES + timedelta(days=1), ahora=AHORA)
-    t = _atendido(con, esc, inicio=a_las(9))  # turno del lunes: precio anterior
+    t = _atendido(con, esc, inicio=a_las(9))
     ficha = fichas.ficha_de_turno(con, t.id)
     assert ficha.precio_final == 45000
     precios.cambiar_precio(con, C.MAQUINA, 99000, LUNES - timedelta(days=1), ahora=AHORA)
-    assert fichas.obtener_ficha(con, ficha.id).precio_final == 45000  # no se recalcula
+    assert fichas.obtener_ficha(con, ficha.id).precio_final == 45000
 
 
 def test_ficha_falla_si_no_hay_precio_y_el_turno_no_cambia(con, esc, monkeypatch):

@@ -82,7 +82,6 @@ class PantallaAjustes(Pantalla):
                 configuracion.guardar(con, nombre, valor, ahora=self.ctx.ahora())
         self.ejecutar(guardar, exito)
 
-    # ------------------------------------------------------------------ horario y bloqueos
     def _horario(self) -> None:
         with self.ctx.con() as con:
             cfg = configuracion.cargar(con)
@@ -135,7 +134,6 @@ class PantallaAjustes(Pantalla):
     def quitar_bloqueo(self, bloqueo_id: int) -> None:
         self.ejecutar(lambda con: agenda.quitar_bloqueo(con, bloqueo_id, ahora=self.ctx.ahora()), "Bloqueo quitado.")
 
-    # ------------------------------------------------------------------ cupos y abono
     def _cupos(self) -> None:
         with self.ctx.con() as con:
             cfg = configuracion.cargar(con)
@@ -157,7 +155,6 @@ class PantallaAjustes(Pantalla):
         self._guardar_config([("cupos", cupos), ("abono", valor_abono), ("minutos_expiracion", mins)],
                              "Cupos y abono guardados.")
 
-    # ------------------------------------------------------------------ precios
     def _datos_precios(self) -> None:
         hoy = self.ctx.hoy()
         with self.ctx.con() as con:
@@ -188,7 +185,6 @@ class PantallaAjustes(Pantalla):
 
         self.app.abrir(DialogoPrecio(self.ctx, cat, existente), listo)
 
-    # ------------------------------------------------------------------ razas
     def _razas(self) -> None:
         with self.ctx.con() as con:
             razas = clientes.buscar_razas(con)
@@ -210,7 +206,6 @@ class PantallaAjustes(Pantalla):
 
         self.app.abrir(DialogoRaza(self.ctx, raza), listo)
 
-    # ------------------------------------------------------------------ recordatorios
     def _recordatorios(self) -> None:
         with self.ctx.con() as con:
             cfg = configuracion.cargar(con)
@@ -239,7 +234,6 @@ class PantallaAjustes(Pantalla):
                               ("horas_antes_recordatorio_final", valores["horasFinal"])],
                              "Guardado. El canal nuevo se usa desde el próximo inicio.")
 
-    # ------------------------------------------------------------------ respaldos
     def _respaldos(self) -> None:
         with self.ctx.con() as con:
             cfg = configuracion.cargar(con)
@@ -284,7 +278,6 @@ class PantallaAjustes(Pantalla):
                                     "guarda una copia de la base actual, por si necesitas volver.", "Restaurar",
                                     no="No restaurar"), listo)
 
-    # ------------------------------------------------------------------ registro
     def _registro(self) -> None:
         with self.ctx.con() as con:
             registros = auditoria.historial(con)

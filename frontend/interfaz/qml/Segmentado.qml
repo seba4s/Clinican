@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 
-// Botones de una sola elección (tamaño de la mascota o de la raza).
 Rectangle {
     id: s
     property var opciones: []

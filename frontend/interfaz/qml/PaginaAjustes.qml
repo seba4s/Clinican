@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Ajustes: menú de secciones a la izquierda y el contenido de la sección a la derecha.
 Item {
     id: pagina
     readonly property var p: app.ajustes
@@ -63,18 +62,16 @@ Item {
                     "Recordatorios y WhatsApp": recordatorios,
                     "Respaldos": respaldosC,
                     "Registro de cambios": registro
-                })[pagina.p.tituloSeccion] || null  // el título llega junto con sus datos
+                })[pagina.p.tituloSeccion] || null
                 onLoaded: { item.opacity = 0; aparecer.restart() }
                 NumberAnimation { id: aparecer; target: seccion.item; property: "opacity"; to: 1; duration: 180; easing.type: Easing.OutCubic }
             }
         }
     }
 
-    // Encabezado de columna de las tablas.
     component Columna: Texto { tamano: tema.medida.etiqueta; negrita: true; suave: true; wrapMode: Text.NoWrap }
     component Subtitulo: Texto { tamano: tema.medida.subtitulo; negrita: true }
 
-    // ------------------------------------------------------------------ horario y bloqueos
     Component {
         id: horario
         Column {
@@ -158,7 +155,6 @@ Item {
         }
     }
 
-    // ------------------------------------------------------------------ cupos y abono
     Component {
         id: cupos
         Column {
@@ -197,7 +193,6 @@ Item {
         }
     }
 
-    // ------------------------------------------------------------------ precios
     Component {
         id: preciosC
         Tarjeta {
@@ -245,7 +240,6 @@ Item {
         }
     }
 
-    // ------------------------------------------------------------------ razas
     Component {
         id: razas
         Column {
@@ -282,7 +276,6 @@ Item {
         }
     }
 
-    // ------------------------------------------------------------------ recordatorios
     Component {
         id: recordatorios
         Column {
@@ -330,7 +323,6 @@ Item {
         }
     }
 
-    // ------------------------------------------------------------------ respaldos
     Component {
         id: respaldosC
         Column {
@@ -365,7 +357,6 @@ Item {
         }
     }
 
-    // ------------------------------------------------------------------ registro
     Component {
         id: registro
         Tarjeta {

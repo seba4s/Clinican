@@ -1,6 +1,5 @@
 import QtQuick
 
-// Estado del turno: siempre con texto e ícono, no solo color.
 Chip {
     property string estado: ""
     property string texto2: ""

@@ -29,11 +29,10 @@ from typing import Callable, Mapping
 
 from clinican.servicios.notificaciones import ErrorEnvio, Mensaje
 
-VERSION_API = "v25.0"  # la v21.0 deja de funcionar el 21/01/2027
+VERSION_API = "v25.0"
 URL_BASE = "https://graph.facebook.com"
 TIEMPO_ESPERA = 15
 
-# Códigos de error de la Cloud API de Meta -> explicación para la veterinaria.
 ERRORES_META = {
     190: "El token de WhatsApp venció o no es válido. Genera uno nuevo y guárdalo con configurar_whatsapp.ps1",
     131030: "Ese celular no está en la lista de destinatarios permitidos del número de prueba de Meta",
