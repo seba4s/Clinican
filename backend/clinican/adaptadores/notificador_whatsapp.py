@@ -6,7 +6,8 @@ Se configura con variables de entorno:
 - ``CLINICAN_WHATSAPP_NUMERO_ID``: id del número emisor (obligatorio).
 - ``CLINICAN_WHATSAPP_PLANTILLA``: nombre de la plantilla aprobada
   (por defecto ``recordatorio_turno``).
-- ``CLINICAN_WHATSAPP_IDIOMA``: código de idioma de la plantilla (por defecto ``es``).
+- ``CLINICAN_WHATSAPP_IDIOMA``: código de idioma de la plantilla (por defecto ``es_CO``,
+  el idioma con que se aprobó ``recordatorio_turno`` en Meta).
 - ``CLINICAN_WHATSAPP_VERSION``: versión de la Graph API (por defecto ``v25.0``).
 
 Si falta el token o el número, el notificador queda inactivo y cada envío lanza
@@ -30,6 +31,7 @@ from typing import Callable, Mapping
 from clinican.servicios.notificaciones import ErrorEnvio, Mensaje
 
 VERSION_API = "v25.0"
+IDIOMA_PLANTILLA = "es_CO"
 URL_BASE = "https://graph.facebook.com"
 TIEMPO_ESPERA = 15
 
@@ -66,7 +68,7 @@ class NotificadorWhatsApp:
         self._token = entorno.get("CLINICAN_WHATSAPP_TOKEN", "").strip()
         self._numero_id = entorno.get("CLINICAN_WHATSAPP_NUMERO_ID", "").strip()
         self.plantilla = entorno.get("CLINICAN_WHATSAPP_PLANTILLA", "").strip() or "recordatorio_turno"
-        self.idioma = entorno.get("CLINICAN_WHATSAPP_IDIOMA", "").strip() or "es"
+        self.idioma = entorno.get("CLINICAN_WHATSAPP_IDIOMA", "").strip() or IDIOMA_PLANTILLA
         self._abrir_url = abrir_url
         self._version = entorno.get("CLINICAN_WHATSAPP_VERSION", "").strip() or version_api
 

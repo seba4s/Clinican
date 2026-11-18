@@ -100,7 +100,7 @@ Atajos: Ctrl+N nuevo turno, Ctrl+F buscar cliente, Ctrl+1 a Ctrl+4 secciones,
 | `CLINICAN_WHATSAPP_TOKEN` | Token de acceso de WhatsApp Business (Graph API de Meta). |
 | `CLINICAN_WHATSAPP_NUMERO_ID` | Id del número emisor de WhatsApp. |
 | `CLINICAN_WHATSAPP_PLANTILLA` | Nombre de la plantilla aprobada. Por defecto `recordatorio_turno`. |
-| `CLINICAN_WHATSAPP_IDIOMA` | Idioma de la plantilla. Por defecto `es`. |
+| `CLINICAN_WHATSAPP_IDIOMA` | Idioma de la plantilla. Por defecto `es_CO` (Español de Colombia, como está aprobada `recordatorio_turno`). |
 | `CLINICAN_WHATSAPP_VERSION` | Versión de la Graph API. Por defecto `v25.0`. |
 
 Si falta el token o el id del número, WhatsApp queda inactivo: cada envío falla,
@@ -137,7 +137,7 @@ el de 24 h atrasado se descarta. «Hoy» o «el día de mañana» se calcula al 
 Activarlo:
 
 1. En WhatsApp Manager de Meta, crea la plantilla **`recordatorio_turno`**, categoría
-   **Utilidad**, idioma **Español**, con este cuerpo exacto:
+   **Utilidad**, idioma **Español (COL)** (`es_CO`), con este cuerpo exacto:
 
    > Estimado cliente, le recordamos que {{1}}, tiene un turno de peluquería para {{2}}, a las {{3}}. En caso de no poder asistir, avisar con anterioridad para evitar pérdida del saldo abonado. Muchas gracias.
 

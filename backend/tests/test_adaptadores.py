@@ -86,7 +86,7 @@ def test_whatsapp_envia_plantilla_por_https():
     assert cuerpo["to"] == "573001234567"
     assert cuerpo["type"] == "template"
     assert cuerpo["template"]["name"] == "recordatorio_turno"
-    assert cuerpo["template"]["language"] == {"code": "es"}
+    assert cuerpo["template"]["language"] == {"code": "es_CO"}
     textos = [p["text"] for p in cuerpo["template"]["components"][0]["parameters"]]
     assert textos == ["hoy, lunes 9 de noviembre (09/11/2026)", "Toby", "10:00 am"]
 
